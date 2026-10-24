@@ -4,7 +4,12 @@ Extract, paint and repack aircraft skins for **Ace Combat 8**, add new skin slot
 
 This repository holds the source of **version 2.4.4** for **Windows and Linux** (x86-64, Steam Deck included). The same code builds both; the platform differences are in `os_windows.go`, `pick_windows.go` and `os_other.go`.
 
-How to use the program, step by step, is in [README.txt](README.txt); what changed in each version is in [CHANGELOG.txt](CHANGELOG.txt).
+## Documentation
+
+- **Players:** [Getting started](docs/getting-started.md) · [Screens](docs/screens.md) · [Troubleshooting](docs/troubleshooting.md) · [Linux and Steam Deck](docs/linux.md) · [Settings and folders](docs/settings-and-folders.md)
+- **Developers:** [Architecture](docs/architecture.md) · [Game file formats](docs/game-formats.md) · [How new skin slots work](docs/skin-slots.md) · [Building and releasing](docs/building.md) · [Contributing](CONTRIBUTING.md)
+
+The player's guide that ships with the program is [README.txt](README.txt); what changed in each version is in [CHANGELOG.txt](CHANGELOG.txt).
 
 > Use modded files offline and in single player only.
 
