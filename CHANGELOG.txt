@@ -1,0 +1,341 @@
+ACE8 Skin Studio - what changed
+===============================
+
+2.4.4
+-----
+- Fixed extracting and previews failing for some people with "Extracted 0
+  (6 failed)" or "none of this aircraft's skin textures could be shown"
+  (and New emblem or Names on the radio saying a list "was not found in
+  the game files"). retoc needs Oodle (oo2core_9_win64.dll) next to it to
+  read the game's compressed files, and downloads it the first time; where
+  that download was blocked, or retoc's folder could not be written to,
+  every file failed. Skin Studio now makes sure the file is there before
+  retoc runs: copied from the game's folder when the game has one,
+  otherwise downloaded and checked. If neither works, the message says why
+  and what to do. The support report says whether it is there.
+- Settings now checks the Workspace folder. When it cannot be used (on a
+  drive that is not on this computer, such as an unplugged drive or
+  settings copied from another PC, a protected folder, or a file), it says
+  why and offers "Use the folder next to the program". Tasks do not start
+  while it cannot be used.
+- A Linux build (x86-64, Steam Deck included): see LINUX.txt in it.
+
+2.4.3
+-----
+- When one of the game's lists cannot be taken out of the game files (the
+  emblem list for New emblem, the radio lists for Names on the radio, the
+  skin list for skin slots), Skin Studio now tries once more, one file at
+  a time, and shows retoc's reason. retoc prints why it could not convert a
+  file only when its output is a terminal, so the second try gives it a
+  pipe it takes for one. Before, the message only said "... was not found
+  in the game files", even when the file was there but retoc could not
+  convert it. The reason also goes into the support report.
+- When the reason is that a file it refers to could not be read, the
+  message suggests Steam's "Verify integrity of game files".
+
+2.4.2
+-----
+- Pilots: new radio portraits are kept when the program is closed. Each
+  one is saved in the workspace (pilots\my-portraits) with how it was
+  made: the photo you used, where you moved and zoomed it, and the text.
+  Next time they are all still there, marked New; clicking one opens it as
+  you left it, and every build of the pilots mod has all of them. "Take it
+  out of the mod" deletes the kept copy.
+- Portraits made with an earlier version are inside the pilots mod built
+  from them. The Pilots screen lists them ("Your mod ... has new portraits
+  that are not in this list") and "Bring them back" reads their pictures
+  back out of the mod, so a new build keeps them. Their text and photo can
+  be changed again on top of the picture.
+
+2.4.1
+-----
+- Extract and Repack work for aircraft whose skins are ordinary textures
+  instead of UDIM tiles, such as the Ladon (OP0045): one 4096 x 4096
+  picture per part (Body, Wing), with _D colour, _MROS metal and roughness
+  and _N normal maps. Extract writes one picture per texture with no tile
+  number; Repack builds them back in the game's own format, or as BC7 or
+  with no mipmaps (a texture with a single size is kept whole inside its
+  .uexp, the way the engine keeps one). Before, Extract stopped with "none
+  of these textures is a streamed UDIM texture this program can read".
+- With more than one part, pictures go to the part their name says (Body_01
+  or Wing_01, or Body or Wing); one that says no part is used for neither,
+  and the table says why.
+- Two-channel normal maps (_N) get no ambient occlusion picture, since they
+  keep none.
+- New skin slot says plainly when an aircraft is not in the game's skin
+  list (use Replace a game skin for it).
+
+2.4.0
+-----
+- Repack and New skin slot: two new boxes below the table, for the colour
+  texture. "Sharper colours (BC7)" stores it as BC7 instead of DXT1: thin
+  lines, markings, text and gradients stay much closer to the picture, and
+  the file is twice as big. The layout written is the same as the game's
+  own BC7 textures (checked against the Su-57's normal map, byte for byte
+  in everything but the pixels). "No mipmaps" keeps only the full-size
+  picture; it is not yet tried in game. The boxes keep your last choice.
+- The BC7 encoder can now split a block into two or three parts with a
+  colour line each (modes 0 to 3), so an edge between colours that do not
+  lie on one line (a red stripe with a white border, the edge of a letter)
+  stays clean. Blocks of smooth paint stay as before. This also helps the
+  normal maps, icons and portraits it builds.
+- The Skin slots screen says when a skin's colour texture is BC7 or has no
+  mipmaps, and so does the problem report.
+
+2.3.4
+-----
+- Names on the radio: Baxter, Tasha, Coster and Kate have a "Hangar name"
+  box of their own, for the hangar's pilot list, which writes names in
+  capitals. Left empty, the hangar gets the new name in capitals (Rosa
+  becomes ROSA); anything typed there is used as it is.
+
+2.3.3
+-----
+- Find is taken out of Names on the radio. It was there to find the texts
+  the hangar uses for the pilots' names; those are known now and built in
+  (2.3.2), so there is nothing to find.
+- SkinSlotText is back to 1.2, the same file as before 2.3.1 (it is put
+  back the next time names are saved or the skin list is rebuilt). The
+  find.txt that 2.3.1 left in its folder is taken out when names are saved.
+
+2.3.2
+-----
+- Names on the radio: a wingman's new name also goes on the hangar's pilot
+  list (Baxter, Tasha, Coster, Kate), without using Find. The hangar's key
+  for Tasha was found in game with Find; the others follow the game's own
+  order of the hangar's wingmen.
+
+2.3.1
+-----
+- Names on the radio: "Find them in my next game" finds the screens that
+  show a name through texts of their own, such as the hangar's pilot list.
+  During the next game SkinSlotText notes every text with the old names;
+  each one that is the whole old name is then listed, ticked, to change
+  with the name. Longer texts that only mention a name (dialogue) stay as
+  they are. Stop finding when every screen shows the new names.
+- The name boxes show the game's own name once SkinSlotText has noted it.
+- SkinSlotText 1.3: notes texts for finding when a find.txt is next to it
+  (nothing changes without one), and goes in even when it has only that to
+  do. It uses the same Windows functions as 1.2. It is updated the next
+  time names are saved or the skin list is rebuilt.
+
+2.3.0
+-----
+- Pilots: names on the radio. Give anyone who talks on the radio a new
+  name, and the wingmen (Baxter, Tasha, Coster, Kate) new callsigns; the
+  flight names (Joker 3, Queen 1 ...) can be changed too. The list comes
+  from the game's own radio speaker and wingman lists, with each person's
+  portrait.
+  - Names need no building: they are saved straight away into one file for
+    SkinSlotText (SkinStudioNames.ini) and show the next time the game
+    starts. "Put the game's names back" takes them out again.
+  - After a game, each saved name says whether the game showed it, from
+    SkinSlotText's own log.
+  - Saving takes out PilotNameTest.ini, the earlier test file, if it is
+    there; another text file that sets the same names first is pointed out.
+- The tutorial's Pilots page covers names.
+
+2.2.0
+-----
+- New screen: New emblem. Add a picture of yours to the game's emblem list,
+  with its own name and description and an emblem number of its own (from
+  601 up). The program makes the five pictures the game uses: the decal on
+  the aircraft and the icons in the menus. A PNG with a see-through
+  background keeps those parts see-through.
+  - Emblems go into skin mods, like new skins; a skin mod can hold skins,
+    emblems or both, and shares and imports as one .zip.
+  - The Skin slots screen shows them next to the skins: Edit name, Change
+    picture and Remove.
+- New screen: Save tools, for your campaign save (the game must be closed).
+  - Unlock now: unlocks every new skin and emblem in your save straight
+    away, marked new, without finishing a mission.
+  - Prepare my save for the game without mods: takes the new skins and
+    emblems out of the save and off the aircraft wearing them (back to the
+    game's own skin, no emblem), before you take the mods out.
+  - Restore a backup. Both save files are backed up before every change, and
+    a restore backs up the save it replaces.
+  - Backup at game start: SkinStudioSaveBackup, a small UE4SS mod (a Lua
+    script only), copies the save each time the game starts and keeps the
+    last 20. It is installed with SkinSlotText and can be turned off.
+  - The save is rewritten with its sizes and checksum worked out again, read
+    back and checked before it replaces the old one. A save read and
+    written without a change comes out byte for byte the same.
+- Settings: the game's save folder (found by itself).
+- The tutorial has pages for New emblem and Save tools.
+- The support report also says how many new emblems there are and what the
+  save tools see (no save contents).
+- Tidier code inside; nothing else changes how it works.
+
+2.1.0
+-----
+- New screen: Pilots.
+  - Helmets: pick a pilot, get full-size paint-ready pictures of every part
+    of their helmet (base colour, metallic, roughness, ambient occlusion,
+    normal map), and drop your painted pictures back. Each part is rebuilt
+    from whatever you painted; the rest stays as the game's.
+  - Radio portraits: change the portrait next to a pilot's radio messages.
+    Use a picture of your own (drag and zoom it into the photo box), or
+    another portrait's photo, and keep the text or write new text (name,
+    call sign, rank, unit) in the game's own font, placed the way the
+    game's portraits have it.
+  - Helmet and portraits are built into one mod and can be copied straight
+    into your mods folder.
+- Pictures with see-through parts (portraits, icons) keep cleaner edges:
+  text and soft edges no longer get dark specks.
+- The tutorial has a page for the Pilots screen.
+
+2.0.11
+------
+- Shared skin mods carry SkinSlotText (1.2) again, so people installing one
+  by hand get the names and descriptions from the same download. Tested on
+  Nexus Mods: what got the earlier zips quarantined was the zip inside the
+  zip, which 2.0.9 took out; SkinSlotText's DLL is accepted.
+
+2.0.10
+------
+- SkinSlotText 1.2: the same code as 1.1, now with version information
+  (Windows shows its name, description and version under Properties >
+  Details) and the standard x64 unwind tables. Virus scanners that guess
+  from how a file looks flag it far less: 1 of 71 on VirusTotal instead of
+  4. It is updated the next time the skin list is rebuilt.
+
+2.0.9
+-----
+- Shared skin mods (Share as .zip) no longer hold program code or a zip inside
+  the zip. Nexus Mods held them back for both. The skins' materials and icons
+  are now plain files in a "slotfiles" folder, and SkinSlotText's DLL is no
+  longer put in the zip: ACE8 Skin Studio installs SkinSlotText as before, and
+  people installing a skin mod by hand get SkinSlotText once, from its own
+  download. The zip still carries the skins' names for it.
+- Zips shared with 2.0.2 to 2.0.8 still import. To upload one again, import
+  it (or keep using the installed copy) and press Share as .zip in 2.0.9.
+- Skin mods keep their materials and icons in a "slotfiles" folder instead of
+  slotfiles.zip; mods installed by an older version are still read.
+- The source code of SkinSlotText and the steps to build it are now in the
+  source download (skinslottext-source). The build reproduces the shipped
+  SkinSlotText.dll byte for byte.
+
+2.0.8
+-----
+- The logo is the wolf again (as in 2.0.5), with the name ACE8 Skin Studio over it,
+  in the window and as the program's icon.
+- In a narrow window the whole name still shows over the logo.
+
+2.0.7
+-----
+- The logo is now the EMBLEM DIRECT artwork on its own, without the ring, with the
+  name ACE8 Skin Studio over it. The program's icon is the same artwork.
+
+2.0.6
+-----
+- The logo now has the EMBLEM DIRECT artwork inside the ring.
+
+2.0.5
+-----
+- New logo, with the name ACE8 Skin Studio over it in the window, and as the
+  program's icon.
+
+2.0.4
+-----
+- Fixed: a skin mod that was taken out and comes back later (for example
+  imported again) took back its old skin number even when another skin had
+  been given that number since, so that skin moved. Now the skin that holds
+  the number keeps it and the returning one gets a free number, as the
+  import preview already said.
+- Mods screen: the shared skin list now shows the two game files it replaces
+  (the skin list and the unlock list) and how many new files it adds (the
+  new skins' material slots and icons).
+
+2.0.3
+-----
+- New skins are now unlocked exactly the way the game unlocks its own first
+  skins (skins 001 and 002 of every aircraft): when a campaign mission is
+  finished. This is also how the SkinSlotTest skins were unlocked, which the
+  game did act on. The "From the start" choice is gone: its rule is one the
+  game itself never uses, and testing showed no skin unlocked with it.
+- The unlock rules of new skins are now numbered just after the game's own
+  (from 1400689, close to where the SkinSlotTest rules were) instead of from
+  1401000, with room left for rules a game update may add.
+- Skins made with 2.0.0 to 2.0.2 get the new rule, under a new number, when
+  the skin list is rebuilt; the Skin slots screen asks for it.
+- "Edit name" changes the name and description only.
+
+2.0.2
+-----
+- Every new skin now gets a material slot of its own, numbered like the
+  game's skins. Su-57 skin 603 has its material at
+  PP0021_su57\Materials\603\MI_PP0021_su57_603_Decal and its icon at
+  T_UI_Icon_Skin_su57_603, the way the game keeps skins 001 to 137 (and the
+  way the SkinSlotTest skins were made). A new skin without paint of its own
+  gets one too, a copy of the original's.
+- The material slot is made with the shared skin list, so a skin that moves
+  to another number (when a mod is imported) takes its slot along. The big
+  texture files stay in the skin's own mod. Skin mods now carry
+  slotfiles.zip with each skin's material and icon.
+- Skins made with 2.0.0 or 2.0.1 on this computer get their material slot
+  when the skin list is rebuilt; the Skin slots screen asks for it.
+- The game adds new skins when a mission ends. The build result and the
+  "From the start" choice now say so: finish any mission, then the new skin
+  is in the hangar.
+
+2.0.1
+-----
+- Step 01 (the skin to start from, or to replace) is now chosen for you from
+  your pictures' names when they say which skin they were painted on, as
+  Substance Painter's exports (MI_PP0021_su57_001_Decal_...) and this
+  program's tiles (T_PP0021_su57_001_C_...) do. If you pick a different skin
+  than the names say, a note says so, with a button to switch back.
+- The reason shown beside the build button is now a link: it takes you to
+  the step that still needs doing. Repack (Replace a game skin) shows these
+  reasons too.
+- The skin list in step 01 shows each game skin once, grouped by aircraft,
+  even when the same skin is found in several raw folders (the workspace's
+  own copy is used first).
+- "Add a folder of raw files" now checks the folder: a folder without raw
+  game textures, such as your painted pictures, is not added, and the
+  message says where the pictures go instead.
+
+2.0.0
+-----
+A new program, next to AC8 Skin Studio 1.x (which is unchanged). Everything
+1.0.2 does is still here.
+
+New skin slots
+- "New skin slot" adds your paint as an extra skin instead of replacing one
+  of the game's skins: its own skin number, name, description, icon and
+  unlock rule (from the start, or after finishing any mission).
+- Icons: keep the original, recolour the original in your paint's main
+  colour or a colour you pick, or use your own picture. A preview shows the
+  icon before building.
+- Skin mods can hold several skins; skins can be added to a skin mod later,
+  and changed (paint, icon, name) without losing their number.
+- One shared skin list (zz_SkinStudio_SkinList) is built from the game's own
+  list plus every installed skin mod, so any number of skin mods work at the
+  same time. A skin keeps its number once it has one.
+- SkinSlotText, the UE4SS mod that shows the names and descriptions, is
+  built in and installed when needed.
+
+Sharing and importing
+- "Share as .zip" makes a file to upload, for example to Nexus Mods.
+- Import a skin mod's .zip on the Skin slots screen. Before installing, it
+  shows the skins and the numbers they will get; a skin whose number is
+  taken gets the next free one, with its name, description and icon.
+  Importing a newer version of a mod replaces the old one.
+- Mods made with other tools that carry their own copy of the skin list are
+  found, and their skins and changes are copied into the shared list instead
+  of hiding everyone else's.
+
+Repack
+- Can also change the name, description and icon the game shows for the
+  skin it replaces.
+
+Other
+- New look.
+- Settings can copy the setup of AC8 Skin Studio 1.x.
+- The Skin slots screen says when the shared skin list needs rebuilding:
+  after a game update, or when skin mods were added or removed by hand.
+- The Mods screen marks skin mods, the shared skin list and mods with their
+  own skin list, and does not count the shared skin list standing in for
+  other skin lists as a conflict.
+- The skin list and unlock list layouts are built in; a mappings file
+  (.usmap) set in Settings is used instead after a game update changes them.

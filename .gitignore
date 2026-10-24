@@ -1,0 +1,8 @@
+# built programs
+/ACE8SkinStudio
+/ACE8SkinStudio.exe
+*.test
+# never commit settings: they hold your AES key
+settings.json
+ACE8SkinStudio.log
+workspace/

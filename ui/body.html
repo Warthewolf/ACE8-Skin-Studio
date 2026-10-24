@@ -1,0 +1,723 @@
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="brand" aria-label="ACE8 Skin Studio">
+      <img class="emblem" src="{{EMBLEM}}" alt="">
+      <div class="wordmark"><b>ACE8</b><span>SKIN STUDIO</span></div>
+    </div>
+    <nav class="nav" aria-label="Sections">
+      <div class="group">// Prepare</div>
+      <button data-page="extract">Extract</button>
+      <button data-page="split">Split</button>
+      <button data-page="model">Model</button>
+      <div class="group">// Build</div>
+      <button data-page="repack" data-mode="replace">Repack</button>
+      <button data-page="repack" data-mode="slot">New skin slot</button>
+      <button data-page="emblem">New emblem</button>
+      <button data-page="pilots">Pilots</button>
+      <div class="group">// Manage</div>
+      <button data-page="slots">Skin slots<span class="badge blue" id="navSlotsBadge" hidden></span></button>
+      <button data-page="mods">Mods<span class="badge" id="navModsBadge" hidden></span></button>
+      <button data-page="save">Save tools</button>
+      <div class="sep"></div>
+      <button data-page="settings">Settings</button>
+      <button id="navTutorial" type="button">Tutorial</button>
+    </nav>
+    <div class="rail-foot">
+      <button class="setup-status" id="setupStatus" title="Open Settings"><span class="dot"></span><span id="setupText">Checking setup</span></button>
+      <div>
+        <div class="seg-label mono-label" id="themeLabel">Appearance</div>
+        <div class="seg" role="group" aria-labelledby="themeLabel">
+          <button data-theme-set="dark">Dark</button>
+          <button data-theme-set="light">Day</button>
+          <button data-theme-set="system">System</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="hud" aria-label="Status">
+      <div class="cell"><span class="mono-label">Session status</span><span class="val" id="hudSession">—</span></div>
+      <div class="cell"><span class="mono-label">Operation</span><span class="val" id="hudOp">No data</span></div>
+      <div class="cell grow"></div>
+      <div class="cell"><span class="mono-label">Mod loader</span><span class="val" id="hudLoader">—</span></div>
+      <div class="cell"><span class="mono-label">New skins</span><span class="val" id="hudSlots">—</span></div>
+    </header>
+    <div class="scroll" id="scroll">
+
+      <!-- ================= EXTRACT ================= -->
+      <section class="page" id="page-extract" hidden>
+        <div class="pagehead">
+          <div class="eyebrow">Prepare // 01</div>
+          <h1>Extract a skin</h1>
+          <p class="lead">Pulls an aircraft's textures out of the game files and turns them into tiles you can paint on. The game files themselves are never changed.</p>
+        </div>
+        <div class="notice warn" id="exSetup" hidden></div>
+
+        <div class="block">
+          <h2>Which aircraft</h2>
+          <div class="row">
+            <label class="field grow">Aircraft folder name
+              <input type="text" id="exFilter" class="mono" placeholder="For example su57 or PP0021_su57" autocomplete="off" spellcheck="false">
+            </label>
+            <button class="btn" id="exFind" style="align-self:flex-end">Find aircraft in the game files</button>
+          </div>
+          <div id="exVehiclesBox" hidden>
+            <p class="hint" id="exVehiclesHint"></p>
+            <div class="list vehicles" id="exVehicles"></div>
+          </div>
+          <div id="exSkinsBox" hidden style="display:flex;flex-direction:column;gap:10px">
+            <p class="hint">Skin folders to take. Pick any to take only those, or leave them all unpicked to take every skin. Each one is roughly 130 to 320 MB of raw files.</p>
+            <div class="row">
+              <button class="btn" id="exPreview" type="button">Preview skins</button>
+              <button class="btn quiet" id="exPreviewClear" type="button" hidden>Remove these previews</button>
+            </div>
+            <p class="hint" id="exPreviewNote">Preview skins shows what each folder looks like before you extract. It fetches only each skin's colour texture, makes a small picture of it, and deletes the full-size file again.</p>
+            <div class="pvgrid" id="exPreviews" hidden></div>
+            <div class="chips" id="exSkins"></div>
+          </div>
+          <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px">
+            <legend class="mono-label" style="padding:0;margin-bottom:8px">What to take</legend>
+            <label class="check"><input type="radio" name="exScope" value="textures" checked><span>Skin textures only</span></label>
+            <label class="check"><input type="radio" name="exScope" value="all"><span>Everything in the aircraft's folder<span class="hint">Models and materials come out as raw game files. Use FModel to turn a model into a .glb for painting.</span></span></label>
+          </fieldset>
+          <label class="check"><input type="checkbox" id="exConvert" checked><span>Make paint-ready tiles straight away<span class="hint">Base colour, metallic, roughness, normal and ambient occlusion as separate pictures, one per UDIM tile.</span></span></label>
+          <div class="row">
+            <button class="btn primary" id="exGo">Extract</button>
+            <label class="row mono-label" style="gap:8px">Tile format
+              <select id="exFormat"><option value="png">PNG</option><option value="tga">TGA</option></select>
+            </label>
+          </div>
+          <div id="exResult"></div>
+        </div>
+
+        <div class="block">
+          <h2>Extracted skins</h2>
+          <p class="hint">Every skin texture the program can see. Raw files from your own earlier extractions can be added too.</p>
+          <div id="libList"></div>
+          <div class="row">
+            <button class="btn small" id="libAdd">Add a folder of raw files I already have</button>
+            <button class="btn small" id="libRefresh">Refresh</button>
+            <button class="btn small" id="libOpenPaint">Open the paint-ready folder</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SPLIT ================= -->
+      <section class="page" id="page-split" hidden>
+        <div class="pagehead">
+          <div class="eyebrow">Prepare // 02</div>
+          <h1>Split into tiles</h1>
+          <p class="lead">Cuts a wide skin picture, such as one exported with FModel, into its UDIM tiles: 1001, 1002 and so on. Substance Painter and Blender want one picture per tile.</p>
+        </div>
+
+        <div class="drop" id="spDrop">
+          <div class="strip" style="--n:5" aria-hidden="true" id="spEmptyStrip">
+            <div class="cell"><span class="tag">1001</span></div><div class="cell"><span class="tag">1002</span></div><div class="cell"><span class="tag">1003</span></div><div class="cell"><span class="tag">1004</span></div><div class="cell"><span class="tag">1005</span></div>
+          </div>
+          <div class="drop-text">
+            <p><strong>Drop PNG or TGA pictures here.</strong> Each picture is cut into as many squares as fit across it: five for many aircraft, seven for some. The count is worked out from the picture itself.</p>
+            <button class="btn" id="spPick">Choose pictures</button>
+          </div>
+        </div>
+        <div id="spFiles" style="display:flex;flex-direction:column;gap:12px"></div>
+
+        <div class="block">
+          <h2>How to cut</h2>
+          <div class="row">
+            <label class="row mono-label" style="gap:8px">Pieces
+              <select id="spPieces"><option value="0">Automatic (width ÷ height)</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select>
+            </label>
+            <label class="row mono-label" style="gap:8px">Save as
+              <select id="spFormat"><option value="same">Same format as the original</option><option value="png">PNG</option><option value="tga">TGA</option></select>
+            </label>
+          </div>
+          <label class="check"><input type="checkbox" id="spPainter"><span>Separate the packed channels<span class="hint">A picture whose name ends in _MRX becomes Metallic and Roughness files. One ending in _NO becomes a normal map and an ambient occlusion file. Other pictures are only cut.</span></span></label>
+          <label class="field">Save the tiles in
+            <div class="setrow"><input type="text" id="spOut" class="mono" spellcheck="false"><button class="btn" data-pick-folder="spOut">Browse</button></div>
+          </label>
+          <label class="check"><input type="checkbox" id="spGroup" checked><span>Give each skin its own folder inside it<span class="hint">Tiles cut from T_X_001_C.png and T_X_001_MRX.png both go into a folder named T_X_001, so one folder holds one skin and Repack never has to guess.</span></span></label>
+          <div class="row">
+            <button class="btn primary" id="spGo" disabled>Split</button>
+            <button class="btn quiet" id="spClear" hidden>Clear the list</button>
+          </div>
+          <div id="spResult"></div>
+        </div>
+      </section>
+
+      <!-- ================= MODEL ================= -->
+      <section class="page" id="page-model" hidden>
+        <div class="pagehead">
+          <div class="eyebrow">Prepare // 03</div>
+          <h1>Prepare a model</h1>
+          <p class="lead">A model exported from the game with FModel also carries the cockpit, glass, seat and weapons, each with its own textures. This keeps only the parts that wear the skin, so Substance Painter shows a single texture set.</p>
+        </div>
+        <div class="drop" id="mdDrop">
+          <div class="drop-text">
+            <p><strong>Drop .glb models here.</strong> Add the aircraft, and if you want to paint them too, its door, probe and pylon models (names ending in GearOff, RefuelOff, DPTK or DPP, with or without a number, such as DPP1 or DPP2).</p>
+            <button class="btn" id="mdPick">Choose models</button>
+          </div>
+          <div id="mdUp" hidden><div class="upbar"><i></i></div></div>
+        </div>
+        <div class="block" id="mdBlock" hidden>
+          <h2>Parts to keep</h2>
+          <p class="hint">Materials with "Decal" in the name wear the skin and are ticked for you. The tile count shows how many UDIM tiles a part spreads over.</p>
+          <div class="tablewrap"><table class="plan" id="mdTable"></table></div>
+          <div class="row">
+            <label class="field grow">Name of the new model
+              <input type="text" id="mdName" class="mono" maxlength="48" spellcheck="false">
+            </label>
+          </div>
+          <label class="check"><input type="checkbox" id="mdLoose" checked><span>Move pylons below the aircraft<span class="hint">Pylon models sit at the centre of the aircraft, inside the fuselage, where a brush cannot reach them.</span></span></label>
+          <div class="row">
+            <button class="btn primary" id="mdGo" disabled>Save paint model</button>
+            <button class="btn quiet" id="mdClear">Clear the list</button>
+          </div>
+          <div id="mdResult"></div>
+        </div>
+        <div id="mdError"></div>
+      </section>
+
+      <!-- ================= REPACK / NEW SKIN SLOT ================= -->
+      <section class="page" id="page-repack" hidden>
+        <div class="pagehead">
+          <div class="eyebrow" id="rpEyebrow">Build // 04</div>
+          <h1 id="rpTitle">Repack into a mod</h1>
+          <p class="lead" id="rpLead"></p>
+        </div>
+        <div class="modes" role="group" aria-label="What to make">
+          <button type="button" data-rpmode="replace"><b>Replace a game skin</b><span>Your paint takes the place of one of the game's skins.</span></button>
+          <button type="button" data-rpmode="slot"><b>New skin slot</b><span>Your paint becomes an extra skin with its own name, description and icon.</span></button>
+        </div>
+        <div class="notice warn" id="rpSetup" hidden></div>
+
+        <div class="block">
+          <h2><span class="step">01</span><span id="rpSkinHead">Skin to replace</span></h2>
+          <div class="row">
+            <select id="rpSkin" class="grow" style="width:100%" aria-label="Skin"></select>
+            <button class="btn" id="rpAddRaw">Add a folder of raw files</button>
+          </div>
+          <p class="hint" id="rpSkinHint">Extract the skin first (Extract in the menu), or add a folder that already holds its raw .uasset, .uexp and .ubulk files.</p>
+          <div class="skinauto" id="rpSkinAuto" role="status" hidden></div>
+          <div class="row slot-only" id="rpTemplateRow" hidden>
+            <label class="row mono-label" style="gap:10px">Based on the game's skin number
+              <input type="number" id="rpTemplate" min="1" max="999" style="width:90px" placeholder="auto">
+            </label>
+            <span class="hint" id="rpTemplateHint">The new skin starts as a copy of this skin: its material, finish, normal map and markings rules. It is the folder's number unless you type another.</span>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2><span class="step">02</span>Your painted files</h2>
+          <p class="hint slot-only" hidden>Optional for a new skin slot: without pictures, the new skin looks like the one it is based on and only its name, description and icon are new.</p>
+          <div class="drop" id="rpDrop">
+            <div class="drop-text">
+              <p><strong>Drop your exported pictures or their folder here.</strong> Tiles and whole pictures both work: either one picture per tile with the tile number in its name (1001, 1002 and so on), or one wide picture of the whole skin with no number, which does not need splitting first. The name must also say what the picture is: Substance Painter's names (Base_color, Metallic, Roughness, Normal) or the game's own endings (_C, _MRX, _NO). Aircraft with a picture per part, such as the Ladon (Body and Wing), need the part in the name too. If the folder holds more than one set, you choose which to use below.</p>
+              <button class="btn" id="rpPick">Choose folder</button>
+            </div>
+            <div id="rpUp" hidden><div class="upbar"><i></i></div><p class="hint" id="rpUpText" style="margin-top:6px"></p></div>
+          </div>
+          <p class="hint path" id="rpSource" hidden></p>
+          <div id="rpPlan"></div>
+          <div class="texopts" id="rpTexOpts" hidden>
+            <div class="mono-label">How the colour texture is stored</div>
+            <label class="check"><input type="checkbox" id="rpBC7"><span>Sharper colours (BC7)<span class="hint">Crisper lines, markings and colour gradients than the game's own DXT1. The colour texture's file is twice as big and takes longer to build.</span></span></label>
+            <label class="check"><input type="checkbox" id="rpNoMips"><span>No mipmaps<span class="hint">Keeps only the full-size picture. The paint stays sharp further away, but it shimmers on planes in the distance and the whole texture stays in video memory. Not yet tried in game: if the skin looks wrong or the game has trouble, build it again without this.</span></span></label>
+          </div>
+        </div>
+
+        <!-- new skin slot: what the game shows -->
+        <div class="block slot-only" id="rpDetails" hidden>
+          <h2><span class="step">03</span>Skin details</h2>
+          <div class="two">
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <label class="field">Name
+                <input type="text" id="slName" maxlength="80" placeholder="What the game shows in the skin list" spellcheck="true">
+              </label>
+              <label class="field">Description
+                <textarea id="slDesc" maxlength="1000" placeholder="Shown under the name in the hangar. Press Enter for a new line."></textarea>
+              </label>
+              <div>
+                <div class="mono-label" style="margin-bottom:6px">Unlocked</div>
+                <p class="hint" style="margin:0">The way the game unlocks its own first skins: when you finish a campaign mission. From then on it stays in the hangar.</p>
+              </div>
+            </div>
+            <div class="iconbox">
+              <span class="mono-label">Icon</span>
+              <div class="iconframe" id="slIconPreview"><span class="ph">The original skin's icon</span></div>
+              <div class="optgrid">
+                <label class="check"><input type="radio" name="slIcon" value="base" checked><span>Keep the original icon</span></label>
+                <label class="check"><input type="radio" name="slIcon" value="recolour"><span>Recolour it</span></label>
+                <div class="sub" id="slColourBox" hidden>
+                  <label class="check"><input type="checkbox" id="slColourAuto" checked><span>In my paint's main colour<span class="hint">Needs the colour texture ticked above.</span></span></label>
+                  <div class="row"><input type="color" id="slColour" value="#1c2a46" aria-label="Icon colour"><span class="hint" id="slColourText">#1c2a46</span></div>
+                </div>
+                <label class="check"><input type="radio" name="slIcon" value="picture"><span>My own picture</span></label>
+                <div class="sub" id="slPicBox" hidden>
+                  <div class="row"><button class="btn small" id="slPicPick" type="button">Choose a picture</button><span class="hint">or drop one on the icon</span></div>
+                  <span class="hint">PNG, JPEG or TGA. The middle square is used.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="block slot-only" id="rpModBlock" hidden>
+          <h2><span class="step">04</span>Mod</h2>
+          <fieldset style="border:0;padding:0;margin:0" class="optgrid">
+            <label class="check"><input type="radio" name="slModMode" value="new" checked><span>A new skin mod</span></label>
+            <div class="sub" id="slNewModBox">
+              <div class="row">
+                <label class="field grow">Mod name<input type="text" id="slModTitle" maxlength="60" placeholder="For example Navy Feather"></label>
+                <label class="field grow">Made by (optional)<input type="text" id="slAuthor" maxlength="60" placeholder="Your name, shown when you share it"></label>
+              </div>
+            </div>
+            <label class="check"><input type="radio" name="slModMode" value="add"><span>Add it to a skin mod made here</span></label>
+            <div class="sub" id="slAddModBox" hidden>
+              <select id="slMod" aria-label="Skin mod"></select>
+            </div>
+          </fieldset>
+          <p class="hint">Skin mods hold one or more new skins and are installed into your mods folder straight away. Two skin mods never get in each other's way: each skin gets a free skin number, and the Skin slots screen keeps them all together.</p>
+        </div>
+
+        <div class="block replace-only" id="rpExtras">
+          <h2><span class="step">03</span>Name, description and icon</h2>
+          <label class="check"><input type="checkbox" id="rxOn"><span>Also change what the game shows for this skin<span class="hint">Optional. The game's own name and description are replaced through SkinSlotText, and a new icon goes into this mod.</span></span></label>
+          <div class="two" id="rxBox" hidden>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <label class="field">Name<input type="text" id="rxName" maxlength="80" placeholder="Leave empty to keep the game's name"></label>
+              <label class="field">Description<textarea id="rxDesc" maxlength="1000" placeholder="Leave empty to keep the game's description"></textarea></label>
+              <label class="row mono-label" style="gap:10px">Skin number
+                <input type="number" id="rxNumber" min="1" max="999" style="width:90px" placeholder="auto">
+                <span class="hint" style="text-transform:none;letter-spacing:0">The folder's number unless you type another.</span>
+              </label>
+            </div>
+            <div class="iconbox">
+              <span class="mono-label">Icon</span>
+              <div class="optgrid">
+                <label class="check"><input type="radio" name="rxIcon" value="" checked><span>Keep the game's icon</span></label>
+                <label class="check"><input type="radio" name="rxIcon" value="recolour"><span>Recolour it</span></label>
+                <div class="sub" id="rxColourBox" hidden>
+                  <label class="check"><input type="checkbox" id="rxColourAuto" checked><span>In my paint's main colour</span></label>
+                  <input type="color" id="rxColour" value="#1c2a46" aria-label="Icon colour">
+                </div>
+                <label class="check"><input type="radio" name="rxIcon" value="picture"><span>My own picture</span></label>
+                <div class="sub" id="rxPicBox" hidden>
+                  <div class="row"><button class="btn small" id="rxPicPick" type="button">Choose a picture</button></div>
+                  <span class="hint path" id="rxPicName"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="block" id="rpBuildBlock">
+          <h2><span class="step" id="rpBuildStep">03</span><span id="rpBuildHead">Build the mod</span></h2>
+          <div class="replace-only">
+            <div class="row">
+              <label class="field grow">Mod name
+                <input type="text" id="rpName" class="mono" value="MySkin" maxlength="40" spellcheck="false">
+              </label>
+            </div>
+            <label class="check" style="margin-top:12px"><input type="checkbox" id="rpInstall"><span>Copy the finished mod into my mods folder<span class="hint" id="rpInstallHint"></span></span></label>
+          </div>
+          <div class="row"><button class="btn primary" id="rpGo" disabled>Build mod</button><span class="hint" id="rpGoHint"></span></div>
+          <div id="rpResult"></div>
+        </div>
+      </section>
+
+      <!-- ================= NEW EMBLEM ================= -->
+      <section class="page" id="page-emblem" hidden>
+        <div class="pagehead">
+          <div class="eyebrow">Build // 05</div>
+          <h1>New emblem</h1>
+          <p class="lead">Add an emblem of your own to the game's emblem list, with its own name and description. It can go on any aircraft, and every emblem of the game stays as it was.</p>
+        </div>
+        <div class="notice warn" id="emSetup" hidden></div>
+
+        <div class="block">
+          <h2><span class="step">01</span>Picture</h2>
+          <div class="two">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div class="drop" id="emDrop">
+                <div class="drop-text">
+                  <p><strong>Drop the emblem's picture here</strong>, or choose it. A PNG with a see-through background works best: the see-through parts show the aircraft's paint. The whole picture is used; it is fitted into a square, never cut.</p>
+                  <button class="btn" id="emPick" type="button">Choose a picture</button>
+                </div>
+                <div id="emUp" hidden><div class="upbar"><i></i></div></div>
+              </div>
+              <span class="hint path" id="emPicName"></span>
+              <span class="hint">PNG, JPEG or TGA, any size. 512 by 512 or larger looks sharpest on the aircraft. The program makes the five sizes the game uses: the decal on the aircraft and the icons in the menus.</span>
+            </div>
+            <div class="iconbox">
+              <span class="mono-label">Preview</span>
+              <div class="iconframe checker" id="emPreview"><span class="ph">No picture yet</span></div>
+              <span class="hint">The checks show where it is see-through.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2><span class="step">02</span>Name and description</h2>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <label class="field">Name<input type="text" id="emName" maxlength="80" placeholder="For example Night Owl"></label>
+            <label class="field">Description<textarea id="emDesc" maxlength="1000" placeholder="Shown with the name in the emblem list. Press Enter for a new line."></textarea></label>
+            <div>
+              <div class="mono-label" style="margin-bottom:6px">Unlocked</div>
+              <p class="hint" style="margin:0">The way the game unlocks its own emblems: when you finish a campaign mission. Or straight away: Unlock now on the Save tools screen.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2><span class="step">03</span>Mod</h2>
+          <fieldset style="border:0;padding:0;margin:0" class="optgrid">
+            <label class="check"><input type="radio" name="emModMode" value="new" checked><span>A new skin mod</span></label>
+            <div class="sub" id="emNewModBox">
+              <div class="row">
+                <label class="field grow">Mod name<input type="text" id="emModTitle" maxlength="60" placeholder="For example Night Owls"></label>
+                <label class="field grow">Made by (optional)<input type="text" id="emAuthor" maxlength="60" placeholder="Your name, shown when you share it"></label>
+              </div>
+            </div>
+            <label class="check"><input type="radio" name="emModMode" value="add"><span>Add it to a skin mod made here</span></label>
+            <div class="sub" id="emAddModBox" hidden>
+              <select id="emMod" aria-label="Skin mod"></select>
+            </div>
+          </fieldset>
+          <p class="hint">Emblems go into skin mods, like new skins: one skin mod can hold skins, emblems or both, and is shared as one .zip.</p>
+        </div>
+
+        <div class="block">
+          <h2><span class="step">04</span>Build</h2>
+          <div class="row"><button class="btn primary" id="emGo" type="button" disabled>Build new emblem</button><span class="hint" id="emGoHint"></span></div>
+          <div id="emResult"></div>
+        </div>
+      </section>
+
+      <!-- ================= PILOTS ================= -->
+      <section class="page" id="page-pilots" hidden>
+        <div class="pagehead">
+          <div class="eyebrow">Build // 06</div>
+          <h1>Pilots</h1>
+          <p class="lead">Repaint a pilot's helmet, change the portraits shown next to radio messages, and give the people on the radio new names. The game files are never changed: everything goes into a mod of its own.</p>
+        </div>
+        <div class="notice warn" id="piSetup" hidden></div>
+
+        <div class="block">
+          <h2><span class="step">01</span>Pilot</h2>
+          <div class="row"><button class="btn" id="piFind" type="button">Find pilots in the game files</button><span class="hint grow" id="piFindHint"></span></div>
+          <div id="piFindOut"></div>
+          <div class="pilotgrid" id="piList"></div>
+        </div>
+
+        <div class="block" id="piHelmetBlock" hidden>
+          <h2><span class="step">02</span><span id="piHelmetHead">Helmet</span></h2>
+          <p class="hint" id="piHelmetHint"></p>
+          <div class="row"><button class="btn" id="piPaint" type="button">Get paint-ready pictures</button><span class="hint">Base colour, metallic, roughness, ambient occlusion and normal map of every part, full size, in the paint-ready folder.</span></div>
+          <div id="piPaintOut"></div>
+          <div class="partgrid" id="piParts"></div>
+          <div class="drop" id="piDrop">
+            <div class="drop-text">
+              <p><strong>Or drop all your pictures, or their folder, here.</strong> Each one goes to the part its name says: the part's name (Helmet01_02) or a material name (MI_PI003_Helmet02), as Substance Painter writes them. The names must also say what each picture is: Base_color, Metallic, Roughness, AO or Normal, or the game's own endings (_C, _MRO, _N).</p>
+              <button class="btn" id="piPick" type="button">Choose folder</button>
+            </div>
+            <div id="piUp" hidden><div class="upbar"><i></i></div><p class="hint" id="piUpText" style="margin-top:6px"></p></div>
+          </div>
+          <div id="piPlan"></div>
+          <div class="row"><button class="btn quiet small" id="piClear" type="button" hidden>Remove these pictures</button></div>
+        </div>
+
+        <div class="block" id="piPortraitBlock" hidden>
+          <h2><span class="step">03</span>Radio portraits</h2>
+          <p class="hint">The picture shown next to a pilot's radio messages. Click one to change its photo, its text, or both. New portraits are kept when you close the program, so you can come back and add more. <span id="piPortCount"></span></p>
+          <div id="piPortMods"></div>
+          <div class="portgrid" id="piPorts"></div>
+          <div class="composer" id="pcBox" hidden>
+            <div class="cvwrap" id="pcWrap"><canvas id="pcCanvas" width="428" height="540" aria-label="The new portrait"></canvas><span class="cvtip">Drag to move the picture, scroll to zoom</span></div>
+            <div class="cvctl">
+              <div class="pchead"><b id="pcTitle"></b><span class="mono" id="pcName"></span></div>
+              <fieldset class="optgrid">
+                <legend class="mono-label">Photo</legend>
+                <label class="check"><input type="radio" name="pcPhoto" value="keep" checked><span id="pcKeepPhoto">Keep the game's photo</span></label>
+                <label class="check"><input type="radio" name="pcPhoto" value="mine"><span>My own picture</span></label>
+                <div class="sub" id="pcMineBox" hidden>
+                  <div class="row"><button class="btn small" id="pcChoose" type="button">Choose a picture</button><span class="hint">or drop one on the portrait</span></div>
+                  <input type="file" id="pcFile" accept="image/png,image/jpeg,image/webp,image/bmp" hidden>
+                  <span class="hint path" id="pcMineName"></span>
+                  <label class="row mono-label" style="gap:10px">Zoom<input type="range" id="pcZoom" min="1" max="4" step="0.01" value="1" class="grow"></label>
+                  <label class="check"><input type="checkbox" id="pcSoften" checked><span>Soften the colours like the game's portraits</span></label>
+                </div>
+                <label class="check"><input type="radio" name="pcPhoto" value="other"><span>The photo from another portrait</span></label>
+                <div class="sub" id="pcOtherBox" hidden><select id="pcOther" aria-label="Portrait to take the photo from"></select></div>
+              </fieldset>
+              <fieldset class="optgrid">
+                <legend class="mono-label">Text</legend>
+                <label class="check"><input type="radio" name="pcText" value="keep" checked><span id="pcKeepText">Keep the game's text</span></label>
+                <label class="check" id="pcTextOtherRow" hidden><input type="radio" name="pcText" value="other"><span>The text from that other portrait</span></label>
+                <label class="check"><input type="radio" name="pcText" value="new"><span>Write new text</span></label>
+                <div class="sub" id="pcNewBox" hidden>
+                  <div class="grid2">
+                    <label class="field">Name<input type="text" id="pcTName" maxlength="24" spellcheck="false"></label>
+                    <label class="field">Call sign<input type="text" id="pcTCall" maxlength="24" spellcheck="false"></label>
+                    <label class="field">Rank<input type="text" id="pcTRank" maxlength="12" spellcheck="false"></label>
+                    <label class="field">Unit<input type="text" id="pcTUnit" maxlength="24" spellcheck="false"></label>
+                  </div>
+                  <span class="hint" id="pcFontNote"></span>
+                </div>
+              </fieldset>
+              <label class="check" id="pcTwinRow" hidden><input type="checkbox" id="pcTwin" checked><span id="pcTwinText"></span></label>
+              <div class="row"><button class="btn" id="pcUse" type="button">Put it in the mod</button><button class="btn quiet" id="pcRemove" type="button" hidden>Take it out of the mod</button><button class="btn quiet" id="pcClose" type="button">Close</button></div>
+              <div id="pcMsg"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="block" id="piNamesBlock" hidden>
+          <h2><span class="step">04</span>Names on the radio</h2>
+          <p class="hint">Give the people on the radio new names, and the wingmen new callsigns. Leave a box empty to keep the game's own; an empty hangar name gives the hangar's pilot list the new name in capitals. Names need no building: they are saved straight away (SkinSlotText shows them) and appear the next time the game starts.</p>
+          <div id="pnStatus"></div>
+          <div class="namelist" id="pnList"></div>
+          <details class="namemore" id="pnMoreBox"><summary id="pnMoreHead">Everyone else on the radio</summary><div class="namelist" id="pnOthers"></div></details>
+          <details class="namemore" id="pnFlightBox"><summary>Flight names (Joker 3, Queen 1 ...)</summary>
+            <p class="hint">A flight name belongs to a place in the flight, not to a pilot: in missions where someone else flies as Joker 2, they get the new name too.</p>
+            <div class="namelist" id="pnFlights"></div></details>
+          <div class="row"><button class="btn primary" id="pnSave" type="button">Save names</button><button class="btn quiet" id="pnClear" type="button">Put the game's names back</button><span class="hint" id="pnHint"></span></div>
+          <div id="pnResult"></div>
+        </div>
+
+        <div class="block" id="piBuildBlock">
+          <h2><span class="step">05</span>Build the mod</h2>
+          <div class="row">
+            <label class="field grow">Mod name
+              <input type="text" id="piName" class="mono" value="Pilot" maxlength="40" spellcheck="false">
+            </label>
+          </div>
+          <label class="check"><input type="checkbox" id="piInstall"><span>Copy the finished mod into my mods folder<span class="hint" id="piInstallHint"></span></span></label>
+          <div class="row"><button class="btn primary" id="piGo" type="button" disabled>Build mod</button><span class="hint" id="piGoHint"></span></div>
+          <div id="piResult"></div>
+        </div>
+      </section>
+
+      <!-- ================= SKIN SLOTS ================= -->
+      <section class="page" id="page-slots" hidden>
+        <div class="pagehead">
+          <div class="eyebrow">Manage // 07</div>
+          <h1>Skin slots</h1>
+          <p class="lead">New skins in slots of their own and new emblems, from you and from others. Every skin mod here works next to the others: the program keeps one shared skin list and emblem list for all of them and gives each skin and emblem a free number.</p>
+        </div>
+        <div class="notice warn" id="slSetupNote" hidden></div>
+        <div class="statgrid" id="slStats"></div>
+        <div id="slProblems"></div>
+
+        <div class="block">
+          <h2>Import a skin mod</h2>
+          <div class="drop" id="imDrop">
+            <div class="drop-text">
+              <p><strong>Drop a skin mod's .zip here</strong> (or copy it in Explorer and press Ctrl+V), for example one downloaded from Nexus Mods. Mods made with ACE8 Skin Studio are fitted in next to your other skins, and any skin whose number is taken is given a free one. Other mods are installed as they are; if they bring their own skin list, their skins are taken into the shared one.</p>
+              <button class="btn" id="imPick">Choose a .zip</button>
+            </div>
+            <div id="imUp" hidden><div class="upbar"><i></i></div><p class="hint" id="imUpText" style="margin-top:6px"></p></div>
+          </div>
+          <div id="imPlan"></div>
+        </div>
+
+        <div class="block">
+          <h2 id="slModsHead">Installed skin mods</h2>
+          <div id="slList"></div>
+          <div class="row">
+            <button class="btn small" id="slNew">Make a new skin</button>
+            <button class="btn small" id="slRefresh">Refresh</button>
+            <button class="btn small" id="slRebuild">Rebuild the skin list</button>
+            <button class="btn small" id="slOpenShared">Open shared zips</button>
+          </div>
+          <div id="slResult"></div>
+        </div>
+
+        <div class="block" id="slTablesBlock" hidden>
+          <h2>Other mods with their own skin list</h2>
+          <p class="hint">These mods carry their own copy of the game's skin list. Their skins and changes are copied into the shared list, so they keep working next to the skin mods above.</p>
+          <div class="chips" id="slTables"></div>
+        </div>
+
+        <div class="block" id="slRemovedBlock" hidden>
+          <h2>Skin mods you made that are not installed</h2>
+          <div id="slRemoved"></div>
+        </div>
+      </section>
+
+      <!-- ================= MODS ================= -->
+      <section class="page" id="page-mods" hidden>
+        <div class="pagehead">
+          <div class="eyebrow">Manage // 08</div>
+          <h1>Installed mods</h1>
+          <p class="lead">What is in your mods folder, which game files each mod replaces, and which mods get in each other's way.</p>
+        </div>
+        <div class="notice warn" id="moSetup" hidden></div>
+        <div class="block" id="moBlock">
+          <h2 id="moSummary">Mods</h2>
+          <p class="hint path" id="moDir"></p>
+          <div id="moList"></div>
+          <div class="row">
+            <button class="btn small" id="moRefresh">Refresh</button>
+            <button class="btn small" id="moOpen">Open the mods folder</button>
+            <button class="btn small" id="moOpenRemoved" hidden>Open removed mods</button>
+          </div>
+          <div id="moResult"></div>
+          <p class="hint">Remove takes a mod out of the mods folder without deleting it. It is moved into the workspace, in the removed-mods folder; move it back to restore it, or delete it there for good. Close the game before removing a mod. Skin mods with new skin slots are best removed on the Skin slots screen, which also updates the skin list.</p>
+        </div>
+      </section>
+
+      <!-- ================= SAVE TOOLS ================= -->
+      <section class="page" id="page-save" hidden>
+        <div class="pagehead">
+          <div class="eyebrow">Manage // 09</div>
+          <h1>Save tools</h1>
+          <p class="lead">Unlock your new skins and emblems straight away, get your save ready for the game without mods, and put a backup back. Close the game first. Before every change, both save files are backed up.</p>
+        </div>
+        <div class="statgrid" id="svStats"></div>
+        <div id="svProblems"></div>
+        <div id="svResult"></div>
+
+        <div class="block">
+          <h2>Unlock now</h2>
+          <p class="hint">New skins and emblems unlock when you finish a campaign mission, the way the game unlocks its own. This unlocks them in your save straight away instead, marked as new in the hangar.</p>
+          <div id="svItems"></div>
+          <div class="row"><button class="btn primary" id="svUnlock" type="button">Unlock now</button><span class="hint" id="svUnlockHint"></span></div>
+        </div>
+
+        <div class="block">
+          <h2>Going back to the game without mods</h2>
+          <p class="hint">Do this before you take the mods out to play the game as it came. It takes the new skins and emblems out of your save: out of the unlocked lists, and off every aircraft wearing one (a skin goes back to the aircraft's first skin, an emblem to none). Your progress, money, aircraft and everything else stay as they are.</p>
+          <p class="hint">When the mods are back, press Unlock now (or finish a mission) and choose them again in the hangar.</p>
+          <div class="row" id="svVanillaRow"></div>
+        </div>
+
+        <div class="block">
+          <h2>Backups</h2>
+          <div id="svAuto"></div>
+          <div class="list" id="svBackups"></div>
+          <label class="check"><input type="checkbox" id="svWithSystem"><span>Also put back the settings save (System.sav)<span class="hint">Controls, sound and screen settings. Leave it unticked to keep the settings you have now.</span></span></label>
+          <div class="row">
+            <button class="btn small" id="svBackupNow" type="button">Back up now</button>
+            <button class="btn small" id="svOpen" type="button">Open the backups folder</button>
+            <button class="btn small" id="svRefresh" type="button">Refresh</button>
+          </div>
+          <p class="hint">Backups are kept next to the game's SaveGames folder, in SkinStudioSaveBackups, where the game and Steam Cloud leave them alone. Only Campaign.sav is ever changed; the replays are not touched.</p>
+        </div>
+      </section>
+
+      <!-- ================= SETTINGS ================= -->
+      <section class="page" id="page-settings" hidden>
+        <div class="pagehead">
+          <div class="eyebrow">System // 10</div>
+          <h1>Settings</h1>
+          <p class="lead">Set these once. They are saved in settings.json next to the program.</p>
+        </div>
+        <div class="block" id="seImportBlock">
+          <h2>Coming from AC8 Skin Studio 1.x</h2>
+          <p class="hint">Copies the game folder, AES key, mods folder and your extracted skins' location from the old program's settings, so you do not have to type them again. The old program is not changed.</p>
+          <div class="row"><button class="btn" id="seImportOld">Use the settings of AC8 Skin Studio 1.x</button><span class="hint" id="seImportNote"></span></div>
+        </div>
+        <div class="block">
+          <h2>Game files</h2>
+          <label class="field">Game Paks folder
+            <div class="setrow"><input type="text" id="sePaks" class="mono" spellcheck="false" placeholder="…\ACE COMBAT 8\Game\Content\Paks"><button class="btn" data-pick-folder="sePaks">Browse</button></div>
+            <span class="status" data-check="paks"></span>
+          </label>
+          <label class="field">AES key
+            <div class="setrow"><input type="text" id="seAes" class="mono masked" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other" aria-label="AES key" placeholder="0x followed by 64 characters"><button class="btn" id="seAesShow" type="button">Show</button></div>
+            <span class="status" data-check="aes"></span>
+          </label>
+          <label class="field">Mappings file (.usmap)
+            <div class="setrow"><input type="text" id="seUsmap" class="mono" spellcheck="false"><button class="btn" data-pick-file="seUsmap" data-filter="usmap">Browse</button></div>
+            <span class="status" data-check="usmap"></span>
+            <span class="hint">Optional. The layouts of the skin list and unlock list are built into the program. After a game update that changes them, a newer mappings file (from UE4SS) set here is used instead.</span>
+          </label>
+        </div>
+        <div class="block">
+          <h2>Tools and folders</h2>
+          <label class="field">retoc program
+            <div class="setrow"><input type="text" id="seRetoc" class="mono" spellcheck="false" placeholder="Leave empty if retoc.exe sits next to this program"><button class="btn" data-pick-file="seRetoc" data-filter="exe">Browse</button></div>
+            <span class="status" data-check="retoc"></span>
+            <span class="hint">retoc is the free tool that unpacks and packs the game's containers. It is included with this program.</span>
+          </label>
+          <label class="field">Mods folder
+            <div class="setrow"><input type="text" id="seMods" class="mono" spellcheck="false" placeholder="The folder your mod loader reads, one sub-folder per mod"><button class="btn" data-pick-folder="seMods">Browse</button></div>
+            <span class="status" data-check="mods"></span>
+            <span class="hint">For AC8 Mod Loader: …\ACE COMBAT 8\Game\Binaries\Win64\ue4ss\Mods\IoStoreLoaderMod. New skin slots are installed here.</span>
+          </label>
+          <label class="field">UE4SS Mods folder
+            <div class="setrow"><input type="text" id="seUe4ss" class="mono" spellcheck="false" placeholder="Leave empty to find it by itself"><button class="btn" data-pick-folder="seUe4ss">Browse</button></div>
+            <span class="status" data-check="ue4ss"></span>
+            <span class="hint">Where SkinSlotText goes: the small UE4SS mod that shows the names and descriptions of new skins. It is the folder that holds mods.txt.</span>
+          </label>
+          <label class="field">Game's save folder
+            <div class="setrow"><input type="text" id="seSaveDir" class="mono" spellcheck="false" placeholder="Leave empty to find it by itself"><button class="btn" data-pick-folder="seSaveDir">Browse</button></div>
+            <span class="status" data-check="save"></span>
+            <span class="hint">The folder that holds Campaign.sav, for the Save tools. Usually …\AppData\Local\BANDAI NAMCO Entertainment\ACE COMBAT 8\Saved\SaveGames.</span>
+          </label>
+          <label class="field">Workspace folder
+            <div class="setrow"><input type="text" id="seWork" class="mono" spellcheck="false"><button class="btn" data-pick-folder="seWork">Browse</button></div>
+            <span class="status" data-check="workspace"></span>
+            <button class="btn small" id="seWorkDefault" hidden>Use the folder next to the program</button>
+            <span class="hint">Extracted files, tiles, your skin mods' source files and shared zips are kept here. Extracting one aircraft's textures takes roughly 2 to 4 GB.</span>
+          </label>
+          <div id="seRawBox" hidden>
+            <p class="mono-label" style="margin-bottom:6px">Extra folders of raw files</p>
+            <div class="list" id="seRaw"></div>
+          </div>
+        </div>
+        <div class="block">
+          <h2>Preferences</h2>
+          <label class="row mono-label" style="gap:8px">Save tiles as
+            <select id="seFormat"><option value="png">PNG</option><option value="tga">TGA</option></select>
+          </label>
+          <label class="check"><input type="checkbox" id="seBrowser"><span>Open in my default browser instead of a separate window<span class="hint">Takes effect the next time the program starts.</span></span></label>
+          <div class="row">
+            <button class="btn primary" id="seSave">Save settings</button>
+            <span class="hint" id="seSaved" role="status"></span>
+          </div>
+        </div>
+        <div class="block">
+          <h2>About</h2>
+          <p class="hint" id="seAbout"></p>
+          <p class="hint">Mods made here replace or add game files, so the game needs a mod loader that accepts them; new skin slots need AC8 Mod Loader 1.1.0 or newer. Use modded files offline and in single player only.</p>
+          <div class="row"><button class="btn" id="seReport">Copy a support report</button><button class="btn" id="seOpenWork">Open the workspace folder</button><button class="btn" id="seQuit">Quit the program</button></div>
+          <p class="hint">The report holds the version, these settings and the last task's log, ready to paste to whoever is helping you. The AES key is never included, and your Windows user name is taken out of the folder paths.</p>
+          <div id="seReportOut"></div>
+        </div>
+      </section>
+
+    </div>
+
+    <div class="dock" id="dock" hidden aria-live="polite">
+      <div class="head">
+        <span class="title" id="dockTitle"></span>
+        <span class="step" id="dockStep"></span>
+        <button class="btn small" id="dockReport" hidden>Copy report</button>
+        <button class="btn small" id="dockLogBtn" aria-expanded="false">Show details</button>
+        <button class="btn small" id="dockCancel">Cancel</button>
+        <button class="btn small" id="dockClose" hidden>Close</button>
+      </div>
+      <div class="bar" id="dockBar"><i></i></div>
+      <pre class="log" id="dockLog" hidden tabindex="0"></pre>
+    </div>
+
+    <footer class="foot">Any issues please contact <b>@voidcallsreaper</b> on Discord</footer>
+  </div>
+</div>
+
+<dialog class="tut" id="tut" aria-labelledby="tutTitle">
+  <nav class="tut-topics" aria-label="Tutorial topics">
+    <div class="head">// Briefing</div>
+    <div id="tutTopics" style="display:contents"></div>
+  </nav>
+  <div class="tut-body" id="tutBody" tabindex="-1"></div>
+  <div class="tut-foot">
+    <label class="check"><input type="checkbox" id="tutHide"><span>Don't show this when the program starts</span></label>
+    <span class="count" id="tutCount"></span>
+    <button class="btn" id="tutBack" type="button">Back</button>
+    <button class="btn primary" id="tutNext" type="button">Next</button>
+  </div>
+</dialog>
