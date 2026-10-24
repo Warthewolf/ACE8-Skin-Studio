@@ -10,7 +10,7 @@ How to use the program, step by step, is in [README.txt](README.txt); what chang
 
 ## Building
 
-Needs [Go](https://go.dev) 1.22 or newer and Python 3 (to put the window's page together).
+Needs [Go](https://go.dev) 1.24 or newer and Python 3 (to put the window's page together).
 
 ```sh
 # the window's page: ui/*.html and ui/*.js -> ui/index.html (embedded in the program)
