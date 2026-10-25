@@ -15,7 +15,7 @@ import (
 )
 
 const appName = "ACE8 Skin Studio"
-const appVersion = "2.4.4"
+const appVersion = "2.4.5"
 
 type Settings struct {
 	Theme          string   `json:"theme"` // system, light, dark

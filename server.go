@@ -902,6 +902,7 @@ func routes() http.Handler {
 		writeJSON(w, 200, map[string]string{"movedTo": dest})
 	})
 	slotRoutes(api)
+	linkRoutes(api)
 	saveRoutes(api)
 	pilotNameRoutes(api)
 	api("/api/job", func(w http.ResponseWriter, r *http.Request) {

@@ -1,4 +1,4 @@
-ACE8 Skin Studio 2.4.4
+ACE8 Skin Studio 2.4.5
 ======================
 
 Extract, paint and repack aircraft skins for Ace Combat 8, and add your own
@@ -189,6 +189,18 @@ Pilots
      capitals, the way the hangar writes names.
   The text written on a portrait is part of the picture; change it there.
   A few story moments use a name of their own and keep the game's.
+
+Useful links
+  Other modders' pages with templates for the game's skins, which open in
+  your browser:
+  - Skin Template Repository - Project Pileus (Nimbus Custom Works, uploaded
+    by M4rkoz): layered PSD and XCF templates with the finish, normal map and
+    dirt mask textures and a Blender preview model.
+    https://www.nexusmods.com/acecombat8wingsoftheve/mods/87
+  - Skin templates by Rythus.
+    https://www.nexusmods.com/acecombat8wingsoftheve/mods/34
+  Paint on a template, export your pictures (PNG or TGA, one per tile) and
+  bring them into the game with Repack or New skin slot.
 
 Skin slots
   Every new skin and emblem you have, grouped by skin mod, with its icon,

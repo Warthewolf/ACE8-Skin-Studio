@@ -30,6 +30,7 @@ ACE8SkinStudio(.exe)
 | `slots_api.go` | Requests for skin slots, sharing and importing |
 | `jobs.go` | Background jobs; running retoc and explaining its failures in plain words |
 | `presence.go` | Knowing when the last window has closed |
+| `links.go` | The Useful links screen: the pages listed, and opening them in the browser |
 | `report.go` | The support report (never holds the AES key; user name taken out of paths) |
 | `ui/` | The page: `head.html` (styles), `body.html` (layout), `app.js` + one script per area; `build.py` joins them into `index.html` |
 

@@ -486,5 +486,13 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
   .modes { grid-template-columns: 1fr; }
   .modes button + button { border-left: 0; border-top: 1px solid var(--line-strong); }
 }
+/* Useful links */
+.lk-list { display: flex; flex-direction: column; gap: 14px; }
+.lk-card { background: var(--panel); border: 1px solid var(--line); padding: 18px 22px; display: flex; flex-direction: column; gap: 10px; }
+.lk-card h2 { margin: 0; font-size: 18px; }
+.lk-card .by { color: var(--muted); font-size: 13px; }
+.lk-card ul, .lk-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.lk-card .url { font-family: var(--font-mono); font-size: 12px; color: var(--muted); word-break: break-all; user-select: all; }
+.lk-card .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 </style>
 </head>

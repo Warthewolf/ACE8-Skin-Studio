@@ -163,6 +163,7 @@ function showPage(name, mode) {
   if (name === 'emblem') showEmblemPage();
   if (name === 'save') loadSave();
   if (name === 'settings') fillSettings();
+  if (name === 'links') showLinks();
 }
 $$('.nav button[data-page]').forEach(b => b.addEventListener('click', () => showPage(b.dataset.page, b.dataset.mode)));
 $('#setupStatus').addEventListener('click', () => showPage('settings'));
@@ -1168,6 +1169,29 @@ $('#tutHide').addEventListener('change', async ev => {
 });
 $('#tut').addEventListener('click', ev => { if (ev.target === $('#tut')) $('#tut').close(); }); // a click on the dimmed area closes it
 $('#navTutorial').addEventListener('click', () => openTutorial(0));
+
+// ---------------------------------------------------------------- useful links
+async function showLinks() {
+  const box = $('#lkList');
+  try {
+    const r = await api('/api/links');
+    box.replaceChildren(...r.links.map(l => el('div', { class: 'lk-card' },
+      el('h2', { text: l.title }),
+      el('div', { class: 'by', text: 'By ' + l.author + ' \u00b7 ' + l.site }),
+      el('p', { style: 'margin:0', text: l.about }),
+      l.points && l.points.length ? el('ul', {}, ...l.points.map(p => el('li', { text: p }))) : null,
+      el('div', { class: 'url', text: l.url }),
+      el('div', { class: 'row' },
+        el('button', { class: 'btn primary', type: 'button', onclick: async () => {
+          try { await api('/api/link/open', { url: l.url }); $('#lkResult').replaceChildren(); } catch (e) { notice($('#lkResult'), 'error', e.message); }
+        } }, 'Open in my browser'),
+        el('button', { class: 'btn', type: 'button', onclick: async ev => {
+          const b = ev.currentTarget;
+          try { await navigator.clipboard.writeText(l.url); b.textContent = 'Copied'; } catch (e) { b.textContent = 'Select the link above to copy it'; }
+          setTimeout(() => { b.textContent = 'Copy link'; }, 2000);
+        } }, 'Copy link')))));
+  } catch (e) { notice(box, 'error', e.message); }
+}
 
 // ---------------------------------------------------------------- start
 setInterval(() => { api('/api/ping').catch(() => {}); }, 15000);

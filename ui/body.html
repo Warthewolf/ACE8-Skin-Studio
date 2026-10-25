@@ -20,6 +20,7 @@
       <button data-page="mods">Mods<span class="badge" id="navModsBadge" hidden></span></button>
       <button data-page="save">Save tools</button>
       <div class="sep"></div>
+      <button data-page="links">Useful links</button>
       <button data-page="settings">Settings</button>
       <button id="navTutorial" type="button">Tutorial</button>
     </nav>
@@ -608,9 +609,27 @@
       </section>
 
       <!-- ================= SETTINGS ================= -->
+      <section class="page" id="page-links" hidden>
+        <div class="pagehead">
+          <div class="eyebrow">Help // 10</div>
+          <h1>Useful links</h1>
+          <p class="lead">Other modders' pages with templates for the game's skins: paint your skin on a template, then bring it into the game with Repack or New skin slot. They open in your browser; all credit goes to their authors.</p>
+        </div>
+        <div id="lkList" class="lk-list"></div>
+        <div class="block">
+          <h2><span class="step">01</span>Using a template with Skin Studio</h2>
+          <ol class="lk-steps">
+            <li>Download the template for your aircraft from its page (Nexus Mods may ask you to sign in).</li>
+            <li>Paint on it in Photoshop, GIMP or Substance Painter, and export your pictures as PNG or TGA, one per tile (1001, 1002 and so on), as the template explains.</li>
+            <li>Use <strong>Repack</strong> to replace a game skin with yours, or <strong>New skin slot</strong> to add it as an extra skin. Name your files after the texture (for example <span class="mono">T_PP0021_su57_001_C_1001.png</span>) so the program knows what each picture is for, or tell it on the screen.</li>
+          </ol>
+        </div>
+        <div id="lkResult"></div>
+      </section>
+
       <section class="page" id="page-settings" hidden>
         <div class="pagehead">
-          <div class="eyebrow">System // 10</div>
+          <div class="eyebrow">System // 11</div>
           <h1>Settings</h1>
           <p class="lead">Set these once. They are saved in settings.json next to the program.</p>
         </div>

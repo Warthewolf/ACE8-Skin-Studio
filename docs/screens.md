@@ -61,5 +61,12 @@ Work on the game's save (`Campaign.sav`). **Close the game first** — it writes
 - **Prepare my save for the game without mods** — so the game does not stumble over skins that are no longer installed.
 - **Save backup at game start** — a small UE4SS mod that backs the save up each time the game starts.
 
+## Useful links
+Pages with templates for the game's skins, opened in your browser:
+- [Skin Template Repository - Project Pileus](https://www.nexusmods.com/acecombat8wingsoftheve/mods/87) by Nimbus Custom Works, uploaded by M4rkoz: layered PSD/XCF templates with finish, normal map and dirt mask textures and a Blender preview model.
+- [Skin templates by Rythus](https://www.nexusmods.com/acecombat8wingsoftheve/mods/34).
+
+Paint on a template, export one PNG or TGA per tile, and bring it in with Repack or New skin slot. The links are listed in `links.go`; only those pages can be opened from the window.
+
 ## Settings
 Setup (see [Settings and folders](settings-and-folders.md)), appearance (Dark, Day, System), **Copy a support report**, and **Quit**.

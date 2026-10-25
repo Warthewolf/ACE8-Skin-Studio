@@ -486,6 +486,14 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
   .modes { grid-template-columns: 1fr; }
   .modes button + button { border-left: 0; border-top: 1px solid var(--line-strong); }
 }
+/* Useful links */
+.lk-list { display: flex; flex-direction: column; gap: 14px; }
+.lk-card { background: var(--panel); border: 1px solid var(--line); padding: 18px 22px; display: flex; flex-direction: column; gap: 10px; }
+.lk-card h2 { margin: 0; font-size: 18px; }
+.lk-card .by { color: var(--muted); font-size: 13px; }
+.lk-card ul, .lk-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.lk-card .url { font-family: var(--font-mono); font-size: 12px; color: var(--muted); word-break: break-all; user-select: all; }
+.lk-card .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 </style>
 </head>
 <body>
@@ -510,6 +518,7 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
       <button data-page="mods">Mods<span class="badge" id="navModsBadge" hidden></span></button>
       <button data-page="save">Save tools</button>
       <div class="sep"></div>
+      <button data-page="links">Useful links</button>
       <button data-page="settings">Settings</button>
       <button id="navTutorial" type="button">Tutorial</button>
     </nav>
@@ -1098,9 +1107,27 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
       </section>
 
       <!-- ================= SETTINGS ================= -->
+      <section class="page" id="page-links" hidden>
+        <div class="pagehead">
+          <div class="eyebrow">Help // 10</div>
+          <h1>Useful links</h1>
+          <p class="lead">Other modders' pages with templates for the game's skins: paint your skin on a template, then bring it into the game with Repack or New skin slot. They open in your browser; all credit goes to their authors.</p>
+        </div>
+        <div id="lkList" class="lk-list"></div>
+        <div class="block">
+          <h2><span class="step">01</span>Using a template with Skin Studio</h2>
+          <ol class="lk-steps">
+            <li>Download the template for your aircraft from its page (Nexus Mods may ask you to sign in).</li>
+            <li>Paint on it in Photoshop, GIMP or Substance Painter, and export your pictures as PNG or TGA, one per tile (1001, 1002 and so on), as the template explains.</li>
+            <li>Use <strong>Repack</strong> to replace a game skin with yours, or <strong>New skin slot</strong> to add it as an extra skin. Name your files after the texture (for example <span class="mono">T_PP0021_su57_001_C_1001.png</span>) so the program knows what each picture is for, or tell it on the screen.</li>
+          </ol>
+        </div>
+        <div id="lkResult"></div>
+      </section>
+
       <section class="page" id="page-settings" hidden>
         <div class="pagehead">
-          <div class="eyebrow">System // 10</div>
+          <div class="eyebrow">System // 11</div>
           <h1>Settings</h1>
           <p class="lead">Set these once. They are saved in settings.json next to the program.</p>
         </div>
@@ -1377,6 +1404,7 @@ function showPage(name, mode) {
   if (name === 'emblem') showEmblemPage();
   if (name === 'save') loadSave();
   if (name === 'settings') fillSettings();
+  if (name === 'links') showLinks();
 }
 $$('.nav button[data-page]').forEach(b => b.addEventListener('click', () => showPage(b.dataset.page, b.dataset.mode)));
 $('#setupStatus').addEventListener('click', () => showPage('settings'));
@@ -2382,6 +2410,29 @@ $('#tutHide').addEventListener('change', async ev => {
 });
 $('#tut').addEventListener('click', ev => { if (ev.target === $('#tut')) $('#tut').close(); }); // a click on the dimmed area closes it
 $('#navTutorial').addEventListener('click', () => openTutorial(0));
+
+// ---------------------------------------------------------------- useful links
+async function showLinks() {
+  const box = $('#lkList');
+  try {
+    const r = await api('/api/links');
+    box.replaceChildren(...r.links.map(l => el('div', { class: 'lk-card' },
+      el('h2', { text: l.title }),
+      el('div', { class: 'by', text: 'By ' + l.author + ' \u00b7 ' + l.site }),
+      el('p', { style: 'margin:0', text: l.about }),
+      l.points && l.points.length ? el('ul', {}, ...l.points.map(p => el('li', { text: p }))) : null,
+      el('div', { class: 'url', text: l.url }),
+      el('div', { class: 'row' },
+        el('button', { class: 'btn primary', type: 'button', onclick: async () => {
+          try { await api('/api/link/open', { url: l.url }); $('#lkResult').replaceChildren(); } catch (e) { notice($('#lkResult'), 'error', e.message); }
+        } }, 'Open in my browser'),
+        el('button', { class: 'btn', type: 'button', onclick: async ev => {
+          const b = ev.currentTarget;
+          try { await navigator.clipboard.writeText(l.url); b.textContent = 'Copied'; } catch (e) { b.textContent = 'Select the link above to copy it'; }
+          setTimeout(() => { b.textContent = 'Copy link'; }, 2000);
+        } }, 'Copy link')))));
+  } catch (e) { notice(box, 'error', e.message); }
+}
 
 // ---------------------------------------------------------------- new skin slots (Repack in "New skin slot" mode)
 const radio = name => (document.querySelector('input[name="' + name + '"]:checked') || {}).value;

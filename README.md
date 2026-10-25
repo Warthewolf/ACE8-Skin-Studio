@@ -2,7 +2,7 @@
 
 Extract, paint and repack aircraft skins for **Ace Combat 8**, add new skin slots with their own names, descriptions and icons, add emblems of your own, change pilots' helmets and radio portraits, and manage your mods. It runs as a small local program with its window in the browser.
 
-This repository holds the source of **version 2.4.4** for **Windows and Linux** (x86-64, Steam Deck included). The same code builds both; the platform differences are in `os_windows.go`, `pick_windows.go` and `os_other.go`.
+This repository holds the source of **version 2.4.5** for **Windows and Linux** (x86-64, Steam Deck included). The same code builds both; the platform differences are in `os_windows.go`, `pick_windows.go` and `os_other.go`.
 
 ## Documentation
 

@@ -1,6 +1,14 @@
 ACE8 Skin Studio - what changed
 ===============================
 
+2.4.5
+-----
+- New screen: Useful links. Pages with templates for the game's skins, to
+  open in your browser: the Skin Template Repository - Project Pileus by
+  Nimbus Custom Works (uploaded by M4rkoz), and Rythus' skin templates,
+  both on Nexus Mods, with a short guide to using a template with Repack
+  or New skin slot.
+
 2.4.4
 -----
 - Fixed extracting and previews failing for some people with "Extracted 0
