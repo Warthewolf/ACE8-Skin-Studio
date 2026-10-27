@@ -62,13 +62,13 @@
             <label class="field grow">Aircraft folder name
               <input type="text" id="exFilter" class="mono" placeholder="For example su57 or PP0021_su57" autocomplete="off" spellcheck="false">
             </label>
-            <button class="btn" id="exFind" style="align-self:flex-end">Find aircraft in the game files</button>
+            <button class="btn self-end" id="exFind">Find aircraft in the game files</button>
           </div>
           <div id="exVehiclesBox" hidden>
             <p class="hint" id="exVehiclesHint"></p>
             <div class="list vehicles" id="exVehicles"></div>
           </div>
-          <div id="exSkinsBox" hidden style="display:flex;flex-direction:column;gap:10px">
+          <div id="exSkinsBox" class="stack gap-10" hidden>
             <p class="hint">Skin folders to take. Pick any to take only those, or leave them all unpicked to take every skin. Each one is roughly 130 to 320 MB of raw files.</p>
             <div class="row">
               <button class="btn" id="exPreview" type="button">Preview skins</button>
@@ -78,15 +78,15 @@
             <div class="pvgrid" id="exPreviews" hidden></div>
             <div class="chips" id="exSkins"></div>
           </div>
-          <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px">
-            <legend class="mono-label" style="padding:0;margin-bottom:8px">What to take</legend>
+          <fieldset class="plain stack gap-8">
+            <legend class="mono-label">What to take</legend>
             <label class="check"><input type="radio" name="exScope" value="textures" checked><span>Skin textures only</span></label>
             <label class="check"><input type="radio" name="exScope" value="all"><span>Everything in the aircraft's folder<span class="hint">Models and materials come out as raw game files. Use FModel to turn a model into a .glb for painting.</span></span></label>
           </fieldset>
           <label class="check"><input type="checkbox" id="exConvert" checked><span>Make paint-ready tiles straight away<span class="hint">Base colour, metallic, roughness, normal and ambient occlusion as separate pictures, one per UDIM tile.</span></span></label>
           <div class="row">
             <button class="btn primary" id="exGo">Extract</button>
-            <label class="row mono-label" style="gap:8px">Tile format
+            <label class="row mono-label gap-8">Tile format
               <select id="exFormat"><option value="png">PNG</option><option value="tga">TGA</option></select>
             </label>
           </div>
@@ -122,15 +122,15 @@
             <button class="btn" id="spPick">Choose pictures</button>
           </div>
         </div>
-        <div id="spFiles" style="display:flex;flex-direction:column;gap:12px"></div>
+        <div id="spFiles" class="stack gap-12"></div>
 
         <div class="block">
           <h2>How to cut</h2>
           <div class="row">
-            <label class="row mono-label" style="gap:8px">Pieces
+            <label class="row mono-label gap-8">Pieces
               <select id="spPieces"><option value="0">Automatic (width ÷ height)</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select>
             </label>
-            <label class="row mono-label" style="gap:8px">Save as
+            <label class="row mono-label gap-8">Save as
               <select id="spFormat"><option value="same">Same format as the original</option><option value="png">PNG</option><option value="tga">TGA</option></select>
             </label>
           </div>
@@ -196,14 +196,14 @@
         <div class="block">
           <h2><span class="step">01</span><span id="rpSkinHead">Skin to replace</span></h2>
           <div class="row">
-            <select id="rpSkin" class="grow" style="width:100%" aria-label="Skin"></select>
+            <select id="rpSkin" class="grow wide" aria-label="Skin"></select>
             <button class="btn" id="rpAddRaw">Add a folder of raw files</button>
           </div>
           <p class="hint" id="rpSkinHint">Extract the skin first (Extract in the menu), or add a folder that already holds its raw .uasset, .uexp and .ubulk files.</p>
           <div class="skinauto" id="rpSkinAuto" role="status" hidden></div>
           <div class="row slot-only" id="rpTemplateRow" hidden>
-            <label class="row mono-label" style="gap:10px">Based on the game's skin number
-              <input type="number" id="rpTemplate" min="1" max="999" style="width:90px" placeholder="auto">
+            <label class="row mono-label">Based on the game's skin number
+              <input type="number" id="rpTemplate" min="1" max="999" class="short" placeholder="auto">
             </label>
             <span class="hint" id="rpTemplateHint">The new skin starts as a copy of this skin: its material, finish, normal map and markings rules. It is the folder's number unless you type another.</span>
           </div>
@@ -217,7 +217,7 @@
               <p><strong>Drop your exported pictures or their folder here.</strong> Tiles and whole pictures both work: either one picture per tile with the tile number in its name (1001, 1002 and so on), or one wide picture of the whole skin with no number, which does not need splitting first. The name must also say what the picture is: Substance Painter's names (Base_color, Metallic, Roughness, Normal) or the game's own endings (_C, _MRX, _NO). Aircraft with a picture per part, such as the Ladon (Body and Wing), need the part in the name too. If the folder holds more than one set, you choose which to use below.</p>
               <button class="btn" id="rpPick">Choose folder</button>
             </div>
-            <div id="rpUp" hidden><div class="upbar"><i></i></div><p class="hint" id="rpUpText" style="margin-top:6px"></p></div>
+            <div id="rpUp" hidden><div class="upbar"><i></i></div><p class="hint mt-6" id="rpUpText"></p></div>
           </div>
           <p class="hint path" id="rpSource" hidden></p>
           <div id="rpPlan"></div>
@@ -232,7 +232,7 @@
         <div class="block slot-only" id="rpDetails" hidden>
           <h2><span class="step">03</span>Skin details</h2>
           <div class="two">
-            <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="stack">
               <label class="field">Name
                 <input type="text" id="slName" maxlength="80" placeholder="What the game shows in the skin list" spellcheck="true">
               </label>
@@ -240,8 +240,8 @@
                 <textarea id="slDesc" maxlength="1000" placeholder="Shown under the name in the hangar. Press Enter for a new line."></textarea>
               </label>
               <div>
-                <div class="mono-label" style="margin-bottom:6px">Unlocked</div>
-                <p class="hint" style="margin:0">The way the game unlocks its own first skins: when you finish a campaign mission. From then on it stays in the hangar.</p>
+                <div class="mono-label mb-6">Unlocked</div>
+                <p class="hint">The way the game unlocks its own first skins: when you finish a campaign mission. From then on it stays in the hangar.</p>
               </div>
             </div>
             <div class="iconbox">
@@ -266,7 +266,7 @@
 
         <div class="block slot-only" id="rpModBlock" hidden>
           <h2><span class="step">04</span>Mod</h2>
-          <fieldset style="border:0;padding:0;margin:0" class="optgrid">
+          <fieldset class="plain optgrid">
             <label class="check"><input type="radio" name="slModMode" value="new" checked><span>A new skin mod</span></label>
             <div class="sub" id="slNewModBox">
               <div class="row">
@@ -286,12 +286,12 @@
           <h2><span class="step">03</span>Name, description and icon</h2>
           <label class="check"><input type="checkbox" id="rxOn"><span>Also change what the game shows for this skin<span class="hint">Optional. The game's own name and description are replaced through SkinSlotText, and a new icon goes into this mod.</span></span></label>
           <div class="two" id="rxBox" hidden>
-            <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="stack">
               <label class="field">Name<input type="text" id="rxName" maxlength="80" placeholder="Leave empty to keep the game's name"></label>
               <label class="field">Description<textarea id="rxDesc" maxlength="1000" placeholder="Leave empty to keep the game's description"></textarea></label>
-              <label class="row mono-label" style="gap:10px">Skin number
-                <input type="number" id="rxNumber" min="1" max="999" style="width:90px" placeholder="auto">
-                <span class="hint" style="text-transform:none;letter-spacing:0">The folder's number unless you type another.</span>
+              <label class="row mono-label">Skin number
+                <input type="number" id="rxNumber" min="1" max="999" class="short" placeholder="auto">
+                <span class="hint">The folder's number unless you type another.</span>
               </label>
             </div>
             <div class="iconbox">
@@ -321,7 +321,7 @@
                 <input type="text" id="rpName" class="mono" value="MySkin" maxlength="40" spellcheck="false">
               </label>
             </div>
-            <label class="check" style="margin-top:12px"><input type="checkbox" id="rpInstall"><span>Copy the finished mod into my mods folder<span class="hint" id="rpInstallHint"></span></span></label>
+            <label class="check mt-12"><input type="checkbox" id="rpInstall"><span>Copy the finished mod into my mods folder<span class="hint" id="rpInstallHint"></span></span></label>
           </div>
           <div class="row"><button class="btn primary" id="rpGo" disabled>Build mod</button><span class="hint" id="rpGoHint"></span></div>
           <div id="rpResult"></div>
@@ -340,7 +340,7 @@
         <div class="block">
           <h2><span class="step">01</span>Picture</h2>
           <div class="two">
-            <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="stack gap-10">
               <div class="drop" id="emDrop">
                 <div class="drop-text">
                   <p><strong>Drop the emblem's picture here</strong>, or choose it. A PNG with a see-through background works best: the see-through parts show the aircraft's paint. The whole picture is used; it is fitted into a square, never cut.</p>
@@ -361,19 +361,19 @@
 
         <div class="block">
           <h2><span class="step">02</span>Name and description</h2>
-          <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="stack">
             <label class="field">Name<input type="text" id="emName" maxlength="80" placeholder="For example Night Owl"></label>
             <label class="field">Description<textarea id="emDesc" maxlength="1000" placeholder="Shown with the name in the emblem list. Press Enter for a new line."></textarea></label>
             <div>
-              <div class="mono-label" style="margin-bottom:6px">Unlocked</div>
-              <p class="hint" style="margin:0">The way the game unlocks its own emblems: when you finish a campaign mission. Or straight away: Unlock now on the Save tools screen.</p>
+              <div class="mono-label mb-6">Unlocked</div>
+              <p class="hint">The way the game unlocks its own emblems: when you finish a campaign mission. Or straight away: Unlock now on the Save tools screen.</p>
             </div>
           </div>
         </div>
 
         <div class="block">
           <h2><span class="step">03</span>Mod</h2>
-          <fieldset style="border:0;padding:0;margin:0" class="optgrid">
+          <fieldset class="plain optgrid">
             <label class="check"><input type="radio" name="emModMode" value="new" checked><span>A new skin mod</span></label>
             <div class="sub" id="emNewModBox">
               <div class="row">
@@ -423,7 +423,7 @@
               <p><strong>Or drop all your pictures, or their folder, here.</strong> Each one goes to the part its name says: the part's name (Helmet01_02) or a material name (MI_PI003_Helmet02), as Substance Painter writes them. The names must also say what each picture is: Base_color, Metallic, Roughness, AO or Normal, or the game's own endings (_C, _MRO, _N).</p>
               <button class="btn" id="piPick" type="button">Choose folder</button>
             </div>
-            <div id="piUp" hidden><div class="upbar"><i></i></div><p class="hint" id="piUpText" style="margin-top:6px"></p></div>
+            <div id="piUp" hidden><div class="upbar"><i></i></div><p class="hint mt-6" id="piUpText"></p></div>
           </div>
           <div id="piPlan"></div>
           <div class="row"><button class="btn quiet small" id="piClear" type="button" hidden>Remove these pictures</button></div>
@@ -446,7 +446,7 @@
                   <div class="row"><button class="btn small" id="pcChoose" type="button">Choose a picture</button><span class="hint">or drop one on the portrait</span></div>
                   <input type="file" id="pcFile" accept="image/png,image/jpeg,image/webp,image/bmp" hidden>
                   <span class="hint path" id="pcMineName"></span>
-                  <label class="row mono-label" style="gap:10px">Zoom<input type="range" id="pcZoom" min="1" max="4" step="0.01" value="1" class="grow"></label>
+                  <label class="row mono-label">Zoom<input type="range" id="pcZoom" min="1" max="4" step="0.01" value="1" class="grow"></label>
                   <label class="check"><input type="checkbox" id="pcSoften" checked><span>Soften the colours like the game's portraits</span></label>
                 </div>
                 <label class="check"><input type="radio" name="pcPhoto" value="other"><span>The photo from another portrait</span></label>
@@ -518,7 +518,7 @@
               <p><strong>Drop a skin mod's .zip here</strong> (or copy it in Explorer and press Ctrl+V), for example one downloaded from Nexus Mods. Mods made with ACE8 Skin Studio are fitted in next to your other skins, and any skin whose number is taken is given a free one. Other mods are installed as they are; if they bring their own skin list, their skins are taken into the shared one.</p>
               <button class="btn" id="imPick">Choose a .zip</button>
             </div>
-            <div id="imUp" hidden><div class="upbar"><i></i></div><p class="hint" id="imUpText" style="margin-top:6px"></p></div>
+            <div id="imUp" hidden><div class="upbar"><i></i></div><p class="hint mt-6" id="imUpText"></p></div>
           </div>
           <div id="imPlan"></div>
         </div>
@@ -683,13 +683,13 @@
             <span class="hint">Extracted files, tiles, your skin mods' source files and shared zips are kept here. Extracting one aircraft's textures takes roughly 2 to 4 GB.</span>
           </label>
           <div id="seRawBox" hidden>
-            <p class="mono-label" style="margin-bottom:6px">Extra folders of raw files</p>
+            <p class="mono-label mb-6">Extra folders of raw files</p>
             <div class="list" id="seRaw"></div>
           </div>
         </div>
         <div class="block">
           <h2>Preferences</h2>
-          <label class="row mono-label" style="gap:8px">Save tiles as
+          <label class="row mono-label gap-8">Save tiles as
             <select id="seFormat"><option value="png">PNG</option><option value="tga">TGA</option></select>
           </label>
           <label class="check"><input type="checkbox" id="seBrowser"><span>Open in my default browser instead of a separate window<span class="hint">Takes effect the next time the program starts.</span></span></label>
@@ -730,7 +730,7 @@
 <dialog class="tut" id="tut" aria-labelledby="tutTitle">
   <nav class="tut-topics" aria-label="Tutorial topics">
     <div class="head">// Briefing</div>
-    <div id="tutTopics" style="display:contents"></div>
+    <div id="tutTopics" class="contents"></div>
   </nav>
   <div class="tut-body" id="tutBody" tabindex="-1"></div>
   <div class="tut-foot">

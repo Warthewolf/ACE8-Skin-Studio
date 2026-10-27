@@ -21,6 +21,9 @@
   --blue: #4c9dff; --blue-soft: rgba(76, 157, 255, .14);
   --danger: #ff5a52; --danger-soft: rgba(255, 90, 82, .12); --ok: #3fd29b; --ok-soft: rgba(63, 210, 155, .11); --focus: #6fb1ff;
   --tile-empty: #111b2b; --shadow: 0 18px 60px rgba(0, 0, 0, .55);
+  --drop-bg: rgba(76, 157, 255, .035); --foot-bg: rgba(5, 9, 16, .4); --scrim: rgba(3, 6, 12, .72); --on-blue: #ffffff;
+  /* portraits and the composer canvas sit on the game's own dark backdrop in both themes */
+  --stage: #0b0f14; --stage-ink: #e4ebf5; --stage-muted: #8592a6;
   --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-head: "Bahnschrift", "DIN Alternate", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --font-mono: "Cascadia Mono", Consolas, ui-monospace, "DejaVu Sans Mono", monospace;
@@ -36,6 +39,7 @@
     --blue: #1660d0; --blue-soft: rgba(22, 96, 208, .1);
     --danger: #c22a22; --danger-soft: rgba(194, 42, 34, .09); --ok: #13804f; --ok-soft: rgba(19, 128, 79, .09); --focus: #1660d0;
     --tile-empty: #d3dbe6; --shadow: 0 18px 50px rgba(20, 35, 60, .25); --foot-bg: rgba(255, 255, 255, .55);
+    --drop-bg: rgba(22, 96, 208, .03); --scrim: rgba(13, 23, 38, .45);
     color-scheme: light;
   }
 }
@@ -48,6 +52,7 @@
   --blue: #1660d0; --blue-soft: rgba(22, 96, 208, .1);
   --danger: #c22a22; --danger-soft: rgba(194, 42, 34, .09); --ok: #13804f; --ok-soft: rgba(19, 128, 79, .09); --focus: #1660d0;
   --tile-empty: #d3dbe6; --shadow: 0 18px 50px rgba(20, 35, 60, .25); --foot-bg: rgba(255, 255, 255, .55);
+    --drop-bg: rgba(22, 96, 208, .03); --scrim: rgba(13, 23, 38, .45);
   color-scheme: light;
 }
 * { box-sizing: border-box; }
@@ -58,9 +63,7 @@ body {
     radial-gradient(circle at 0 0, var(--grid-dot) 1.1px, transparent 1.6px) -1px -1px / 108px 108px,
     linear-gradient(var(--grid) 1px, transparent 1px) -1px -1px / 108px 108px,
     linear-gradient(90deg, var(--grid) 1px, transparent 1px) -1px -1px / 108px 108px,
-    radial-gradient(ellipse 80% 60% at 15% 0%, rgba(40, 80, 150, .22), transparent 70%),
-    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(255, 110, 20, .06), transparent 70%),
-    linear-gradient(160deg, var(--bg2), var(--bg));
+    var(--bg);
   background-attachment: fixed;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -78,13 +81,11 @@ code, .path { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: a
 .app { display: grid; grid-template-columns: 236px minmax(0, 1fr); height: 100%; }
 
 /* ---------- rail ---------- */
-.rail { background: linear-gradient(180deg, rgba(8, 13, 22, .92), rgba(8, 13, 22, .78)); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 20px 14px 14px; gap: 20px; overflow-y: auto; backdrop-filter: blur(6px); }
-:root[data-theme="light"] .rail { background: linear-gradient(180deg, rgba(247, 250, 253, .94), rgba(238, 243, 249, .88)); }
-@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .rail { background: linear-gradient(180deg, rgba(247, 250, 253, .94), rgba(238, 243, 249, .88)); } }
+.rail { background: var(--panel-solid); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 20px 14px 14px; gap: 20px; overflow-y: auto; }
 /* the name sits over the lower part of the logo, with a halo in the background colour so it reads
    over the orange ring in both themes */
 .brand { position: relative; width: 100%; max-width: 208px; padding: 2px 0 4px; }
-.brand .emblem { display: block; width: 100%; height: auto; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .35)); }
+.brand .emblem { display: block; width: 100%; height: auto; }
 .brand .wordmark { position: absolute; left: 0; right: 0; bottom: 2px; align-items: center; text-align: center;
   text-shadow: 0 0 2px var(--bg), 0 0 6px var(--bg), 0 0 12px var(--bg), 0 1px 1px var(--bg); }
 .brand .wordmark span { color: var(--ink); font-weight: 400; }
@@ -96,17 +97,17 @@ code, .path { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: a
 .nav button { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; cursor: pointer; font-family: var(--font-head); font-size: 14px; font-weight: 400; letter-spacing: .09em; text-transform: uppercase; border-left: 2px solid transparent; color: var(--muted); }
 .nav button:hover { color: var(--ink); background: var(--line-soft); }
 .nav button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-.nav button[aria-current="page"] { color: var(--ink); border-left-color: var(--accent); background: linear-gradient(90deg, var(--accent-soft), transparent 85%); font-weight: 600; }
+.nav button[aria-current="page"] { color: var(--ink); border-left-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 .nav .group { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); padding: 14px 14px 5px; }
 .nav .group:first-child { padding-top: 0; }
 .nav .sep { height: 1px; background: var(--line); margin: 12px 8px; }
 .nav .badge { margin-left: auto; min-width: 20px; height: 18px; padding: 0 6px; background: var(--accent); color: var(--accent-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; letter-spacing: 0; }
-.nav .badge.blue { background: var(--blue); color: #fff; }
+.nav .badge.blue { background: var(--blue); color: var(--on-blue); }
 .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 14px; padding: 0 4px; }
 .setup-status { all: unset; cursor: pointer; font-size: 12.5px; line-height: 1.35; display: flex; gap: 8px; align-items: flex-start; padding: 9px 10px; border: 1px solid var(--line); background: var(--panel); }
 .setup-status:hover { border-color: var(--line-strong); }
-.setup-status .dot { width: 8px; height: 8px; margin-top: 4px; flex: none; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
-.setup-status.bad .dot { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+.setup-status .dot { width: 8px; height: 8px; margin-top: 4px; flex: none; background: var(--ok); }
+.setup-status.bad .dot { background: var(--danger); }
 .seg-label { margin-bottom: 6px; }
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
 .seg button { all: unset; box-sizing: border-box; text-align: center; padding: 5px 0; font-size: 11px; cursor: pointer; font-family: var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
@@ -116,9 +117,7 @@ code, .path { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: a
 
 /* ---------- main ---------- */
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.hud { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(5, 9, 16, .55), rgba(5, 9, 16, .2)); padding: 0 24px; }
-:root[data-theme="light"] .hud { background: rgba(255, 255, 255, .45); }
-@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .hud { background: rgba(255, 255, 255, .45); } }
+.hud { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 1px solid var(--line); background: var(--bg2); padding: 0 24px; }
 .hud .cell { padding: 10px 18px 9px; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .hud .cell:first-child { border-left: 0; padding-left: 12px; }
 .hud .val { font-family: var(--font-head); font-size: 13.5px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 340px; }
@@ -138,7 +137,7 @@ code, .path { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: a
 .block > h2 { display: flex; align-items: baseline; gap: 12px; }
 .block > h2 .step { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--accent); letter-spacing: .08em; }
 .block.flash { animation: flashblock 1.8s ease-out; }
-@keyframes flashblock { 0%, 35% { box-shadow: 0 0 0 2px var(--accent), 0 0 28px var(--accent-soft); border-color: var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@keyframes flashblock { 0%, 35% { box-shadow: 0 0 0 2px var(--accent); border-color: var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .block.flash { animation: none; outline: 2px solid var(--accent); } }
 .linkbtn { background: none; border: 0; padding: 0; font: inherit; color: var(--accent-hi); cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 .linkbtn:hover { color: var(--accent); }
@@ -149,6 +148,17 @@ code, .path { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: a
 .hint { color: var(--muted); font-size: 13px; max-width: 74ch; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .grow { flex: 1 1 220px; min-width: 0; }
+/* small layout helpers, so body.html carries no inline styles */
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.gap-8 { gap: 8px; }
+.gap-10 { gap: 10px; }
+.gap-12 { gap: 12px; }
+.self-end { align-self: flex-end; }
+.mt-6 { margin-top: 6px; }
+.mt-12 { margin-top: 12px; }
+.mb-6 { margin-bottom: 6px; }
+.contents { display: contents; }
+.mono-label .hint { text-transform: none; letter-spacing: 0; }
 label.field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 label.field .hint { font-weight: 400; letter-spacing: 0; text-transform: none; }
 label.field input, label.field select, label.field textarea, label.field .setrow { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--ink); }
@@ -156,16 +166,18 @@ input[type="text"], input[type="password"], input[type="number"], select, textar
   background: var(--field); border: 1px solid var(--line-strong); border-radius: 0; padding: 8px 10px; min-height: 36px; width: 100%; min-width: 0; font-size: 14px;
 }
 textarea { resize: vertical; min-height: 84px; line-height: 1.45; }
-input:focus, select:focus, textarea:focus { border-color: var(--blue); outline: none; box-shadow: 0 0 0 1px var(--blue), 0 0 14px var(--blue-soft); }
+input:focus, select:focus, textarea:focus { border-color: var(--blue); outline: none; box-shadow: 0 0 0 1px var(--blue); }
 input[type="text"].mono, input[type="password"].mono { font-family: var(--font-mono); font-size: 13px; }
 /* Hidden like a password, but an ordinary text box, so browsers never offer to save it. */
 input.masked:not(:placeholder-shown) { -webkit-text-security: disc; }
 select { width: auto; padding-right: 28px; }
+select.wide { width: 100%; }
+input.short { width: 90px; }
 input:disabled, select:disabled, button:disabled { opacity: .45; cursor: not-allowed; }
 .check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; cursor: pointer; }
 .check input { margin: 3px 0 0; width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
 .check .hint { display: block; }
-.texopts { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 10px; }
+.texopts { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
 
 .btn { border: 1px solid var(--line-strong); background: transparent; padding: 7px 14px; min-height: 34px; cursor: pointer; font-family: var(--font-head); font-weight: 500; font-size: 12.5px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; color: var(--ink); }
 .btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hi); }
@@ -190,7 +202,7 @@ input:disabled, select:disabled, button:disabled { opacity: .45; cursor: not-all
 .modes button + button { border-left: 1px solid var(--line-strong); }
 .modes button b { font-family: var(--font-head); font-weight: 600; font-size: 14px; letter-spacing: .12em; text-transform: uppercase; }
 .modes button span { font-size: 12.5px; color: var(--muted); }
-.modes button[aria-pressed="true"] { border-bottom-color: var(--accent); background: linear-gradient(0deg, var(--accent-soft), transparent); }
+.modes button[aria-pressed="true"] { border-bottom-color: var(--accent); background: var(--accent-soft); }
 .modes button:hover { background: var(--line-soft); }
 .modes button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 
@@ -206,7 +218,7 @@ input:disabled, select:disabled, button:disabled { opacity: .45; cursor: not-all
 .strip-wrap .tags { position: absolute; inset: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; pointer-events: none; }
 .strip-wrap .tags span { align-self: end; justify-self: start; background: var(--accent); color: var(--accent-ink); font-family: var(--font-mono); font-weight: 700; font-size: 11.5px; line-height: 1; padding: 4px 6px 3px; }
 
-.drop { border: 1px dashed var(--line-strong); padding: 18px; display: flex; flex-direction: column; gap: 14px; background: rgba(76, 157, 255, .035); transition: border-color .12s, background .12s; position: relative; }
+.drop { border: 1px dashed var(--line-strong); padding: 18px; display: flex; flex-direction: column; gap: 14px; background: var(--drop-bg); transition: border-color .12s, background .12s; position: relative; }
 .drop.over { border-color: var(--accent); background: var(--accent-soft); }
 .drop-text { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
 .drop-text p { flex: 1 1 260px; }
@@ -238,13 +250,13 @@ input:disabled, select:disabled, button:disabled { opacity: .45; cursor: not-all
 .chip.blue { border-color: var(--blue); color: var(--blue); }
 .chip.orange { border-color: var(--accent); color: var(--accent); }
 button.chip { cursor: pointer; font-family: var(--font-mono); font-size: 12.5px; padding: 3px 9px; color: inherit; }
-button.chip[aria-pressed="true"] { background: var(--blue); color: #fff; border-color: var(--blue); }
+button.chip[aria-pressed="true"] { background: var(--blue); color: var(--on-blue); border-color: var(--blue); }
 #exSkinsBox[hidden] { display: none !important; }
 #exSkinsBox .chips { flex: none; }
 .pvgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 10px; }
 .pv { border: 1px solid var(--line); background: var(--raised); padding: 8px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
 .pv:hover { border-color: var(--line-strong); }
-.pv.on { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue), 0 0 16px var(--blue-soft); }
+.pv.on { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); }
 .pv .top { display: flex; gap: 8px; align-items: center; }
 .pv .tex { color: var(--muted); font-family: var(--font-mono); font-size: 11.5px; overflow-wrap: anywhere; flex: 1; min-width: 0; }
 .pv .tags { display: none; }
@@ -253,7 +265,7 @@ button.chip[aria-pressed="true"] { background: var(--blue); color: #fff; border-
 .pilotgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
 .pilotcard { border: 1px solid var(--line); background: var(--raised); padding: 8px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; text-align: left; color: inherit; font: inherit; }
 .pilotcard:hover { border-color: var(--line-strong); }
-.pilotcard.on, .portcard.on { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue), 0 0 16px var(--blue-soft); }
+.pilotcard.on, .portcard.on { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); }
 .pilotcard:focus-visible, .portcard:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .pilotcard .thumb, .partcard .thumb { aspect-ratio: 1; background: var(--tile-empty); display: grid; place-items: center; overflow: hidden; margin-bottom: 4px; }
 .pilotcard .thumb img, .partcard .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -261,7 +273,7 @@ button.chip[aria-pressed="true"] { background: var(--blue); color: #fff; border-
 .pilotcard .s { color: var(--muted); font-size: 12px; }
 .ph { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
 .partgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
-.partcard { border: 1px dashed var(--line-strong); background: rgba(76, 157, 255, .035); padding: 10px; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; transition: border-color .12s, background .12s; }
+.partcard { border: 1px dashed var(--line-strong); background: var(--drop-bg); padding: 10px; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; transition: border-color .12s, background .12s; }
 .partcard.over { border-color: var(--accent); background: var(--accent-soft); }
 .partcard .thumb { margin: 0; }
 .partcard .meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -289,23 +301,23 @@ button.chip[aria-pressed="true"] { background: var(--blue); color: #fff; border-
 .namemore > .namelist { margin-top: 8px; }
 @media (max-width: 760px) { .namerow, .namerow.one, .namerow.three { grid-template-columns: 44px minmax(0, 1fr); } .namerow .face { width: 44px; height: 44px; } .namerow .field { grid-column: 1 / -1; } }
 .portgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
-.portcard { border: 1px solid var(--line); background: #0b0f14; padding: 5px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; color: #e4ebf5; font: inherit; text-align: left; }
+.portcard { border: 1px solid var(--line); background: var(--stage); padding: 5px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; color: var(--stage-ink); font: inherit; text-align: left; }
 .portcard:hover { border-color: var(--line-strong); }
 .portcard .thumb { aspect-ratio: 428 / 540; overflow: hidden; }
 .portcard .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .portcard .n { font-size: 12px; display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
 .portcard .chip { font-size: 10.5px; padding: 0 5px; background: transparent; }
 .composer { display: grid; grid-template-columns: minmax(220px, 340px) minmax(0, 1fr); gap: 22px; align-items: start; border-top: 1px solid var(--line); padding-top: 18px; }
-.cvwrap { position: relative; background: #0b0f14; border: 1px solid var(--line-strong); padding: 10px; touch-action: none; }
+.cvwrap { position: relative; background: var(--stage); border: 1px solid var(--line-strong); padding: 10px; touch-action: none; }
 .cvwrap canvas { width: 100%; height: auto; display: block; }
 .cvwrap.over { border-color: var(--accent); }
 .cvwrap.movable { cursor: grab; }
 .cvwrap.movable:active { cursor: grabbing; }
-.cvwrap .cvtip { display: none; position: absolute; left: 10px; right: 10px; bottom: 8px; font-size: 11px; color: #8592a6; text-align: center; pointer-events: none; }
+.cvwrap .cvtip { display: none; position: absolute; left: 10px; right: 10px; bottom: 8px; font-size: 11px; color: var(--stage-muted); text-align: center; pointer-events: none; }
 .cvwrap.movable .cvtip { display: block; }
 .cvctl { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.cvctl fieldset { border: 0; padding: 0; margin: 0; }
-.cvctl legend { padding: 0; margin-bottom: 8px; }
+.cvctl fieldset, fieldset.plain { border: 0; padding: 0; margin: 0; }
+.cvctl legend, fieldset.plain > legend { padding: 0; margin-bottom: 8px; }
 .pchead { display: flex; flex-direction: column; gap: 2px; }
 .pchead b { font-family: var(--font-head); font-size: 18px; font-weight: 500; letter-spacing: .04em; }
 .pchead .mono { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
@@ -407,8 +419,8 @@ pre.report { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.45
 
 .setrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
 .status { font-size: 12.5px; font-weight: 400; display: flex; gap: 7px; align-items: flex-start; text-transform: none; letter-spacing: 0; color: var(--muted); }
-.status::before { content: ""; width: 7px; height: 7px; background: var(--ok); margin-top: 6px; flex: none; box-shadow: 0 0 6px var(--ok); }
-.status.bad::before { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+.status::before { content: ""; width: 7px; height: 7px; background: var(--ok); margin-top: 6px; flex: none; }
+.status.bad::before { background: var(--danger); }
 .status.bad { color: var(--danger); }
 .results .path { display: block; padding: 2px 0; }
 details.files summary { cursor: pointer; font-size: 13px; color: var(--muted); }
@@ -417,7 +429,7 @@ details.files ul { margin: 6px 0 0; padding-left: 18px; }
 /* ---------- tutorial ---------- */
 dialog.tut { border: 1px solid var(--line-strong); padding: 0; background: var(--panel-solid); color: var(--ink); width: min(860px, calc(100vw - 32px)); max-height: min(680px, calc(100vh - 32px)); box-shadow: var(--shadow); overflow: hidden; }
 dialog.tut[open] { display: grid; grid-template-columns: 210px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2px); }
+dialog.tut::backdrop { background: var(--scrim); }
 .tut-topics { grid-row: 1 / 3; background: var(--bg); border-right: 1px solid var(--line); padding: 18px 10px; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; }
 .tut-topics .head { font-family: var(--font-mono); font-size: 11px; letter-spacing: .2em; color: var(--accent); padding: 0 12px 12px; text-transform: uppercase; }
 .tut-topics button { all: unset; box-sizing: border-box; width: 100%; padding: 7px 12px; cursor: pointer; font-size: 13.5px; border-left: 2px solid transparent; color: var(--muted); }
@@ -453,16 +465,16 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
 
 /* ---------- task dock ---------- */
 .dock { border-top: 1px solid var(--line-strong); background: var(--panel-solid); padding: 12px 40px 14px; display: flex; flex-direction: column; gap: 8px; }
-.foot { border-top: 1px solid var(--line); padding: 7px 40px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--faint); text-align: center; background: var(--foot-bg, rgba(5, 9, 16, .4)); }
+.foot { border-top: 1px solid var(--line); padding: 7px 40px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--faint); text-align: center; background: var(--foot-bg); }
 .foot b { color: var(--ink); font-weight: 600; user-select: all; }
 .dock .head { display: flex; gap: 12px; align-items: center; }
 .dock .title { font-family: var(--font-head); font-weight: 600; font-size: 13.5px; letter-spacing: .12em; text-transform: uppercase; }
 .dock .step { color: var(--muted); font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar { height: 4px; background: var(--line-soft); overflow: hidden; }
-.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; box-shadow: 0 0 10px var(--accent); }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
 .bar.unknown i { width: 30%; animation: slide 1.4s linear infinite; }
-.dock.done .bar i { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
-.dock.failed .bar i { background: var(--danger); box-shadow: none; }
+.dock.done .bar i { background: var(--ok); }
+.dock.failed .bar i { background: var(--danger); }
 @keyframes slide { from { margin-left: -30%; } to { margin-left: 100%; } }
 @media (prefers-reduced-motion: reduce) { .bar.unknown i { animation: none; width: 100%; opacity: .5; } .bar i { transition: none; } }
 .log { font-family: var(--font-mono); font-size: 12px; line-height: 1.45; background: var(--field); border: 1px solid var(--line); padding: 8px 10px; max-height: 190px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
@@ -560,13 +572,13 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
             <label class="field grow">Aircraft folder name
               <input type="text" id="exFilter" class="mono" placeholder="For example su57 or PP0021_su57" autocomplete="off" spellcheck="false">
             </label>
-            <button class="btn" id="exFind" style="align-self:flex-end">Find aircraft in the game files</button>
+            <button class="btn self-end" id="exFind">Find aircraft in the game files</button>
           </div>
           <div id="exVehiclesBox" hidden>
             <p class="hint" id="exVehiclesHint"></p>
             <div class="list vehicles" id="exVehicles"></div>
           </div>
-          <div id="exSkinsBox" hidden style="display:flex;flex-direction:column;gap:10px">
+          <div id="exSkinsBox" class="stack gap-10" hidden>
             <p class="hint">Skin folders to take. Pick any to take only those, or leave them all unpicked to take every skin. Each one is roughly 130 to 320 MB of raw files.</p>
             <div class="row">
               <button class="btn" id="exPreview" type="button">Preview skins</button>
@@ -576,15 +588,15 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
             <div class="pvgrid" id="exPreviews" hidden></div>
             <div class="chips" id="exSkins"></div>
           </div>
-          <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px">
-            <legend class="mono-label" style="padding:0;margin-bottom:8px">What to take</legend>
+          <fieldset class="plain stack gap-8">
+            <legend class="mono-label">What to take</legend>
             <label class="check"><input type="radio" name="exScope" value="textures" checked><span>Skin textures only</span></label>
             <label class="check"><input type="radio" name="exScope" value="all"><span>Everything in the aircraft's folder<span class="hint">Models and materials come out as raw game files. Use FModel to turn a model into a .glb for painting.</span></span></label>
           </fieldset>
           <label class="check"><input type="checkbox" id="exConvert" checked><span>Make paint-ready tiles straight away<span class="hint">Base colour, metallic, roughness, normal and ambient occlusion as separate pictures, one per UDIM tile.</span></span></label>
           <div class="row">
             <button class="btn primary" id="exGo">Extract</button>
-            <label class="row mono-label" style="gap:8px">Tile format
+            <label class="row mono-label gap-8">Tile format
               <select id="exFormat"><option value="png">PNG</option><option value="tga">TGA</option></select>
             </label>
           </div>
@@ -620,15 +632,15 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
             <button class="btn" id="spPick">Choose pictures</button>
           </div>
         </div>
-        <div id="spFiles" style="display:flex;flex-direction:column;gap:12px"></div>
+        <div id="spFiles" class="stack gap-12"></div>
 
         <div class="block">
           <h2>How to cut</h2>
           <div class="row">
-            <label class="row mono-label" style="gap:8px">Pieces
+            <label class="row mono-label gap-8">Pieces
               <select id="spPieces"><option value="0">Automatic (width ÷ height)</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select>
             </label>
-            <label class="row mono-label" style="gap:8px">Save as
+            <label class="row mono-label gap-8">Save as
               <select id="spFormat"><option value="same">Same format as the original</option><option value="png">PNG</option><option value="tga">TGA</option></select>
             </label>
           </div>
@@ -694,14 +706,14 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
         <div class="block">
           <h2><span class="step">01</span><span id="rpSkinHead">Skin to replace</span></h2>
           <div class="row">
-            <select id="rpSkin" class="grow" style="width:100%" aria-label="Skin"></select>
+            <select id="rpSkin" class="grow wide" aria-label="Skin"></select>
             <button class="btn" id="rpAddRaw">Add a folder of raw files</button>
           </div>
           <p class="hint" id="rpSkinHint">Extract the skin first (Extract in the menu), or add a folder that already holds its raw .uasset, .uexp and .ubulk files.</p>
           <div class="skinauto" id="rpSkinAuto" role="status" hidden></div>
           <div class="row slot-only" id="rpTemplateRow" hidden>
-            <label class="row mono-label" style="gap:10px">Based on the game's skin number
-              <input type="number" id="rpTemplate" min="1" max="999" style="width:90px" placeholder="auto">
+            <label class="row mono-label">Based on the game's skin number
+              <input type="number" id="rpTemplate" min="1" max="999" class="short" placeholder="auto">
             </label>
             <span class="hint" id="rpTemplateHint">The new skin starts as a copy of this skin: its material, finish, normal map and markings rules. It is the folder's number unless you type another.</span>
           </div>
@@ -715,7 +727,7 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
               <p><strong>Drop your exported pictures or their folder here.</strong> Tiles and whole pictures both work: either one picture per tile with the tile number in its name (1001, 1002 and so on), or one wide picture of the whole skin with no number, which does not need splitting first. The name must also say what the picture is: Substance Painter's names (Base_color, Metallic, Roughness, Normal) or the game's own endings (_C, _MRX, _NO). Aircraft with a picture per part, such as the Ladon (Body and Wing), need the part in the name too. If the folder holds more than one set, you choose which to use below.</p>
               <button class="btn" id="rpPick">Choose folder</button>
             </div>
-            <div id="rpUp" hidden><div class="upbar"><i></i></div><p class="hint" id="rpUpText" style="margin-top:6px"></p></div>
+            <div id="rpUp" hidden><div class="upbar"><i></i></div><p class="hint mt-6" id="rpUpText"></p></div>
           </div>
           <p class="hint path" id="rpSource" hidden></p>
           <div id="rpPlan"></div>
@@ -730,7 +742,7 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
         <div class="block slot-only" id="rpDetails" hidden>
           <h2><span class="step">03</span>Skin details</h2>
           <div class="two">
-            <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="stack">
               <label class="field">Name
                 <input type="text" id="slName" maxlength="80" placeholder="What the game shows in the skin list" spellcheck="true">
               </label>
@@ -738,8 +750,8 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
                 <textarea id="slDesc" maxlength="1000" placeholder="Shown under the name in the hangar. Press Enter for a new line."></textarea>
               </label>
               <div>
-                <div class="mono-label" style="margin-bottom:6px">Unlocked</div>
-                <p class="hint" style="margin:0">The way the game unlocks its own first skins: when you finish a campaign mission. From then on it stays in the hangar.</p>
+                <div class="mono-label mb-6">Unlocked</div>
+                <p class="hint">The way the game unlocks its own first skins: when you finish a campaign mission. From then on it stays in the hangar.</p>
               </div>
             </div>
             <div class="iconbox">
@@ -764,7 +776,7 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
 
         <div class="block slot-only" id="rpModBlock" hidden>
           <h2><span class="step">04</span>Mod</h2>
-          <fieldset style="border:0;padding:0;margin:0" class="optgrid">
+          <fieldset class="plain optgrid">
             <label class="check"><input type="radio" name="slModMode" value="new" checked><span>A new skin mod</span></label>
             <div class="sub" id="slNewModBox">
               <div class="row">
@@ -784,12 +796,12 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
           <h2><span class="step">03</span>Name, description and icon</h2>
           <label class="check"><input type="checkbox" id="rxOn"><span>Also change what the game shows for this skin<span class="hint">Optional. The game's own name and description are replaced through SkinSlotText, and a new icon goes into this mod.</span></span></label>
           <div class="two" id="rxBox" hidden>
-            <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="stack">
               <label class="field">Name<input type="text" id="rxName" maxlength="80" placeholder="Leave empty to keep the game's name"></label>
               <label class="field">Description<textarea id="rxDesc" maxlength="1000" placeholder="Leave empty to keep the game's description"></textarea></label>
-              <label class="row mono-label" style="gap:10px">Skin number
-                <input type="number" id="rxNumber" min="1" max="999" style="width:90px" placeholder="auto">
-                <span class="hint" style="text-transform:none;letter-spacing:0">The folder's number unless you type another.</span>
+              <label class="row mono-label">Skin number
+                <input type="number" id="rxNumber" min="1" max="999" class="short" placeholder="auto">
+                <span class="hint">The folder's number unless you type another.</span>
               </label>
             </div>
             <div class="iconbox">
@@ -819,7 +831,7 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
                 <input type="text" id="rpName" class="mono" value="MySkin" maxlength="40" spellcheck="false">
               </label>
             </div>
-            <label class="check" style="margin-top:12px"><input type="checkbox" id="rpInstall"><span>Copy the finished mod into my mods folder<span class="hint" id="rpInstallHint"></span></span></label>
+            <label class="check mt-12"><input type="checkbox" id="rpInstall"><span>Copy the finished mod into my mods folder<span class="hint" id="rpInstallHint"></span></span></label>
           </div>
           <div class="row"><button class="btn primary" id="rpGo" disabled>Build mod</button><span class="hint" id="rpGoHint"></span></div>
           <div id="rpResult"></div>
@@ -838,7 +850,7 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
         <div class="block">
           <h2><span class="step">01</span>Picture</h2>
           <div class="two">
-            <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="stack gap-10">
               <div class="drop" id="emDrop">
                 <div class="drop-text">
                   <p><strong>Drop the emblem's picture here</strong>, or choose it. A PNG with a see-through background works best: the see-through parts show the aircraft's paint. The whole picture is used; it is fitted into a square, never cut.</p>
@@ -859,19 +871,19 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
 
         <div class="block">
           <h2><span class="step">02</span>Name and description</h2>
-          <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="stack">
             <label class="field">Name<input type="text" id="emName" maxlength="80" placeholder="For example Night Owl"></label>
             <label class="field">Description<textarea id="emDesc" maxlength="1000" placeholder="Shown with the name in the emblem list. Press Enter for a new line."></textarea></label>
             <div>
-              <div class="mono-label" style="margin-bottom:6px">Unlocked</div>
-              <p class="hint" style="margin:0">The way the game unlocks its own emblems: when you finish a campaign mission. Or straight away: Unlock now on the Save tools screen.</p>
+              <div class="mono-label mb-6">Unlocked</div>
+              <p class="hint">The way the game unlocks its own emblems: when you finish a campaign mission. Or straight away: Unlock now on the Save tools screen.</p>
             </div>
           </div>
         </div>
 
         <div class="block">
           <h2><span class="step">03</span>Mod</h2>
-          <fieldset style="border:0;padding:0;margin:0" class="optgrid">
+          <fieldset class="plain optgrid">
             <label class="check"><input type="radio" name="emModMode" value="new" checked><span>A new skin mod</span></label>
             <div class="sub" id="emNewModBox">
               <div class="row">
@@ -921,7 +933,7 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
               <p><strong>Or drop all your pictures, or their folder, here.</strong> Each one goes to the part its name says: the part's name (Helmet01_02) or a material name (MI_PI003_Helmet02), as Substance Painter writes them. The names must also say what each picture is: Base_color, Metallic, Roughness, AO or Normal, or the game's own endings (_C, _MRO, _N).</p>
               <button class="btn" id="piPick" type="button">Choose folder</button>
             </div>
-            <div id="piUp" hidden><div class="upbar"><i></i></div><p class="hint" id="piUpText" style="margin-top:6px"></p></div>
+            <div id="piUp" hidden><div class="upbar"><i></i></div><p class="hint mt-6" id="piUpText"></p></div>
           </div>
           <div id="piPlan"></div>
           <div class="row"><button class="btn quiet small" id="piClear" type="button" hidden>Remove these pictures</button></div>
@@ -944,7 +956,7 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
                   <div class="row"><button class="btn small" id="pcChoose" type="button">Choose a picture</button><span class="hint">or drop one on the portrait</span></div>
                   <input type="file" id="pcFile" accept="image/png,image/jpeg,image/webp,image/bmp" hidden>
                   <span class="hint path" id="pcMineName"></span>
-                  <label class="row mono-label" style="gap:10px">Zoom<input type="range" id="pcZoom" min="1" max="4" step="0.01" value="1" class="grow"></label>
+                  <label class="row mono-label">Zoom<input type="range" id="pcZoom" min="1" max="4" step="0.01" value="1" class="grow"></label>
                   <label class="check"><input type="checkbox" id="pcSoften" checked><span>Soften the colours like the game's portraits</span></label>
                 </div>
                 <label class="check"><input type="radio" name="pcPhoto" value="other"><span>The photo from another portrait</span></label>
@@ -1016,7 +1028,7 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
               <p><strong>Drop a skin mod's .zip here</strong> (or copy it in Explorer and press Ctrl+V), for example one downloaded from Nexus Mods. Mods made with ACE8 Skin Studio are fitted in next to your other skins, and any skin whose number is taken is given a free one. Other mods are installed as they are; if they bring their own skin list, their skins are taken into the shared one.</p>
               <button class="btn" id="imPick">Choose a .zip</button>
             </div>
-            <div id="imUp" hidden><div class="upbar"><i></i></div><p class="hint" id="imUpText" style="margin-top:6px"></p></div>
+            <div id="imUp" hidden><div class="upbar"><i></i></div><p class="hint mt-6" id="imUpText"></p></div>
           </div>
           <div id="imPlan"></div>
         </div>
@@ -1181,13 +1193,13 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
             <span class="hint">Extracted files, tiles, your skin mods' source files and shared zips are kept here. Extracting one aircraft's textures takes roughly 2 to 4 GB.</span>
           </label>
           <div id="seRawBox" hidden>
-            <p class="mono-label" style="margin-bottom:6px">Extra folders of raw files</p>
+            <p class="mono-label mb-6">Extra folders of raw files</p>
             <div class="list" id="seRaw"></div>
           </div>
         </div>
         <div class="block">
           <h2>Preferences</h2>
-          <label class="row mono-label" style="gap:8px">Save tiles as
+          <label class="row mono-label gap-8">Save tiles as
             <select id="seFormat"><option value="png">PNG</option><option value="tga">TGA</option></select>
           </label>
           <label class="check"><input type="checkbox" id="seBrowser"><span>Open in my default browser instead of a separate window<span class="hint">Takes effect the next time the program starts.</span></span></label>
@@ -1228,7 +1240,7 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
 <dialog class="tut" id="tut" aria-labelledby="tutTitle">
   <nav class="tut-topics" aria-label="Tutorial topics">
     <div class="head">// Briefing</div>
-    <div id="tutTopics" style="display:contents"></div>
+    <div id="tutTopics" class="contents"></div>
   </nav>
   <div class="tut-body" id="tutBody" tabindex="-1"></div>
   <div class="tut-foot">
