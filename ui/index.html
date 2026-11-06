@@ -441,7 +441,52 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
 .tut-foot .check { font-size: 13px; margin-right: auto; align-items: center; }
 .tut-foot .check input { margin: 0; }
 .tut-foot .count { color: var(--muted); font-family: var(--font-mono); font-size: 11.5px; }
+.tut-topics .grp { font-family: var(--font-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--faint); padding: 12px 12px 4px; }
+.tut-topics .grp:first-of-type { padding-top: 0; }
+.tut-body .tut-h3 { font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 2px 0 -4px; }
+.tut-body .goals { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.tut-body .goal { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 3px; padding: 11px 14px; border: 1px solid var(--line-strong); border-left: 3px solid var(--accent); background: var(--raised); }
+.tut-body .goal:hover { background: var(--accent-soft); }
+.tut-body .goal:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.tut-body .goal b { font-size: 14px; }
+.tut-body .goal small { color: var(--muted); font-size: 12.5px; }
+.tut-body .need { border: 1px dashed var(--line-strong); padding: 9px 14px; max-width: 66ch; font-size: 13.5px; }
+.tut-body .need ul { margin: 4px 0 0 18px; padding: 0; }
+.tut-body .term { all: unset; cursor: help; border-bottom: 1px dotted var(--accent); color: inherit; }
+.tut-body .term:hover { color: var(--accent-hi); }
+.tut-body .term:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.tut-body .setup-list { display: flex; flex-direction: column; gap: 6px; }
+.setup-item { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 12px; border: 1px solid var(--line); background: var(--raised); }
+.setup-item .dot { width: 9px; height: 9px; margin-top: 5px; background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+.setup-item.ok .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.setup-item b { font-size: 14px; }
+.setup-item small.for { display: block; color: var(--faint); font-family: var(--font-mono); font-size: 11px; margin-top: 1px; }
+.setup-item p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.setup-item p.how { color: var(--ink); }
+.setup-item p.now { font-size: 12px; color: var(--danger); }
+.setup-item.ok p { color: var(--muted); }
+.tut-body .qa { display: flex; flex-direction: column; gap: 6px; max-width: 70ch; }
+.tut-body .qa details { border: 1px solid var(--line); background: var(--raised); }
+.tut-body .qa summary { cursor: pointer; padding: 9px 12px; font-weight: 600; font-size: 14px; }
+.tut-body .qa summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.tut-body .qa details[open] summary { border-bottom: 1px solid var(--line); color: var(--accent-hi); }
+.tut-body .qa p { margin: 0; padding: 9px 12px 11px; font-size: 13.5px; color: var(--muted); }
+.tut-body .glossary { display: grid; grid-template-columns: minmax(130px, 180px) minmax(0, 1fr); gap: 0; margin: 0; max-width: 72ch; border-top: 1px solid var(--line); }
+.tut-body .glossary dt, .tut-body .glossary dd { margin: 0; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.tut-body .glossary dt { font-weight: 700; }
+.tut-body .glossary dd { color: var(--muted); }
+.tut-body .glossary .hl { background: var(--accent-soft); color: var(--ink); }
+.pagehead { position: relative; }
+.pagehead .howto { position: absolute; top: -4px; right: 0; }
+label.field.flash { animation: field-flash 1.6s ease-out 1; }
+@keyframes field-flash { 0%, 40% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 8px var(--accent-soft); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { label.field.flash { animation: none; outline: 2px solid var(--accent); outline-offset: 4px; } }
 @media (max-width: 700px) {
+  .tut-topics .grp { display: none; }
+  .setup-item { grid-template-columns: 10px minmax(0, 1fr); }
+  .setup-item > :last-child { grid-column: 2; justify-self: start; }
+  .tut-body .glossary { grid-template-columns: 1fr; }
+  .tut-body .glossary dt { border-bottom: 0; padding-bottom: 0; }
   dialog.tut[open] { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) auto; }
   .tut-topics { grid-row: auto; flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px; }
   .tut-topics .head { width: 100%; padding-bottom: 4px; }
@@ -1072,7 +1117,7 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
         <div class="pagehead">
           <div class="eyebrow">Manage // 09</div>
           <h1>Save tools</h1>
-          <p class="lead">Unlock your new skins and emblems straight away, get your save ready for the game without mods, and put a backup back. Close the game first. Before every change, both save files are backed up.</p>
+          <p class="lead">Unlock your new skins and emblems straight away, get your save ready for the game without mods, and put a backup back. Close the game first. Both save files are backed up before every change, and whenever the skin list changes.</p>
         </div>
         <div class="statgrid" id="svStats"></div>
         <div id="svProblems"></div>
@@ -1103,6 +1148,7 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
             <button class="btn small" id="svRefresh" type="button">Refresh</button>
           </div>
           <p class="hint">Backups are kept next to the game's SaveGames folder, in SkinStudioSaveBackups, where the game and Steam Cloud leave them alone. Only Campaign.sav is ever changed; the replays are not touched.</p>
+          <p class="hint">Your save is also backed up by itself whenever the skin list changes (a skin or emblem is built, imported, changed or taken out), unless the newest backup already has it as it is. The last 20 of those are kept; backups of every other kind are kept until you delete them.</p>
         </div>
       </section>
 
@@ -2259,142 +2305,315 @@ $('#seOpenWork').addEventListener('click', () => api('/api/open', { path: STATE.
 $('#seQuit').addEventListener('click', async () => { try { await api('/api/quit', {}); } catch (e) {} document.body.replaceChildren(el('p', { style: 'padding:40px;font-size:17px', text: 'The program has stopped. You can close this window.' })); });
 
 // ---------------------------------------------------------------- tutorial
-// One short page per screen. Every path and file name here is a made-up example.
-// "page" names the screen the "Open the ... screen" button goes to; "eg" is an example shown under a step.
+// Written for someone who has never modded a game before: plain words first, the program's own
+// terms explained (GLOSSARY; a term in a step is a link to its explanation), and the setup checks
+// shown live. Every path and file name here is a made-up example.
+// Topic fields: "id" (for links), "group" (starts a heading in the topic list), "page"/"mode" (the
+// screen the "Open the ... screen" button goes to), "short" (the topic in one sentence), "need" (what
+// has to be ready first), "steps" ("eg" is an example shown under a step), "tip", and "render" for
+// topics that are drawn by code (the goal chooser, the live setup list, the glossary).
+const GLOSSARY = [
+  ['Skin', `The paint job of an aircraft: its colours, markings and how shiny each part is. You choose skins in the game's hangar.`],
+  ['Emblem', `A small picture you can put on an aircraft's wings, tail or sides. You choose emblems in the hangar too.`],
+  ['Mod', `A small set of files the game loads on top of its own. Taking a mod out puts the game back as it was. Mods made here go into your mods folder.`],
+  ['Mod loader', `A free add-on for the game that makes it load mods. New skins need AC8 Mod Loader 1.1.0 or newer.`],
+  ['UE4SS', `A free add-on the mod loader runs in. Skin Studio puts two tiny helpers into it for you: SkinSlotText, which shows your new skins' names, and SkinStudioSaveBackup, which backs up your save each time the game starts.`],
+  ['Paks folder', `The folder inside the game's install where its own files are kept (…\\ACE COMBAT 8\\Game\\Content\\Paks). Skin Studio only reads it; it never changes the game's files.`],
+  ['AES key', `A long code (64 letters and numbers) that lets the game's files be read. Skin Studio does not include it. It stays in settings.json on this computer and is never put in a support report.`],
+  ['retoc', `A free tool that unpacks and packs the game's files. It comes with Skin Studio; there is nothing to do with it yourself.`],
+  ['Texture', `A picture the game wraps around a 3D model. One skin has a few: colour, finish (how metallic and rough each spot is) and a normal map (the small bumps and panel lines).`],
+  ['Tile (UDIM)', `Big skins are cut into squares numbered 1001, 1002 and so on, each covering part of the aircraft. Painting programs such as Substance Painter work with these squares directly.`],
+  ['Skin slot', `A place in the game's list of skins. "New skin slot" gives your skin a place of its own, so none of the game's skins is painted over.`],
+  ['Skin number', `Each skin of an aircraft has a number. The game's own skins use the low numbers; new skins get 601 and up.`],
+  ['Save (Campaign.sav)', `Your progress file. Skin Studio only changes it when you press a button on the Save tools screen, and always makes a backup copy first.`],
+  ['Backup', `A dated copy of both save files, kept in SkinStudioSaveBackups next to the game's SaveGames folder. "Put this back" on Save tools restores one.`],
+  ['Workspace', `The folder where Skin Studio keeps its own work: extracted pictures, finished mods and previews. It is next to the program unless you choose another.`],
+  ['BC7 and mipmaps', `Ways the game can store a texture. You can leave these boxes as they are; the Repack screen says what each one does.`],
+];
+// Words in steps that link to the glossary (the first time they appear in a topic).
+const TERMS = [
+  [/\bAES key\b/, 'AES key'], [/\bPaks folder\b/, 'Paks folder'], [/\bUE4SS\b/, 'UE4SS'], [/\bretoc\b/, 'retoc'],
+  [/\bmod loader\b/i, 'Mod loader'], [/\bUDIM\b/, 'Tile (UDIM)'], [/\bBC7\b/, 'BC7 and mipmaps'], [/\bmipmaps\b/, 'BC7 and mipmaps'],
+  [/\bworkspace\b/i, 'Workspace'], [/\bnormal map\b/, 'Texture'], [/\bskin numbers?\b/, 'Skin number'],
+];
+
+// The setup checks, in plain words. "field" is the box in Settings; "for" is what needs it.
+const SETUP = [
+  { check: 'paks', field: 'sePaks', title: `Where the game is installed`, for: `Extract, New skin slot, New emblem, Pilots`,
+    what: `The game's Paks folder, so Skin Studio can read skins out of the game.`,
+    how: `In Steam: right-click Ace Combat 8, choose Manage, then Browse local files. Open Game, then Content, then Paks, and choose that folder here.` },
+  { check: 'aes', field: 'seAes', title: `The game's AES key`, for: `Extract, New skin slot, New emblem, Pilots`,
+    what: `A 64-character code that lets the game's files be read. Paste it in once.`,
+    how: `Skin Studio does not include the key. Copy it from the modding guide you are following and paste it into the AES key box.` },
+  { check: 'mods', field: 'seMods', title: `Your mods folder`, for: `Installing skins, New skin slot, New emblem`,
+    what: `The folder your mod loader reads. Finished mods are put there for you.`,
+    how: `With AC8 Mod Loader it is …\\ACE COMBAT 8\\Game\\Binaries\\Win64\\ue4ss\\Mods\\IoStoreLoaderMod. Install the mod loader first if that folder is not there.` },
+  { check: 'ue4ss', field: 'seUe4ss', title: `UE4SS (comes with the mod loader)`, for: `The names of new skins, the backup at game start`,
+    what: `Found by itself once the mods folder is set, when the mods folder is inside ue4ss\\Mods.`,
+    how: `Usually nothing to do. If it stays red, choose the ue4ss\\Mods folder (the one with mods.txt in it).` },
+  { check: 'save', field: 'seSaveDir', title: `Your save folder`, for: `Save tools and save backups`,
+    what: `Found by itself on most computers once the game has been played.`,
+    how: `If it stays red, start the game once and come back, or choose …\\AppData\\Local\\BANDAI NAMCO Entertainment\\ACE COMBAT 8\\Saved\\SaveGames.` },
+  { check: 'retoc', field: 'seRetoc', title: `retoc (comes with Skin Studio)`, for: `Everything that reads or packs game files`,
+    what: `Should already be green. It is the retoc file in the same folder as this program.`,
+    how: `If it is red, keep the program's folder together: retoc must stay next to ACE8SkinStudio.` },
+  { check: 'workspace', field: 'seWork', title: `Workspace folder`, for: `Everything`,
+    what: `Where Skin Studio keeps its work. Green unless the folder cannot be used.`,
+    how: `If it is red, press "Use the folder next to the program" in Settings.` },
+];
+const setupMissing = () => STATE ? SETUP.filter(x => STATE.checks[x.check] && !STATE.checks[x.check].ok) : [];
+
 const TUTORIAL = [
-  { topic: 'Start here', title: 'How a skin gets into the game',
-    why: `This program does the file handling around your painting program. It gets a skin's pictures out of the game, and puts your painted ones back in: either in place of one of the game's skins, or as a new skin of its own.`,
-    flow: [['Extract', 0], ['Model', 0], ['Paint in your own program', 1], ['Repack or New skin slot', 0], ['Skin slots', 0], ['Play', 1]],
+  { id: 'start', group: 'Getting started', topic: 'Start here', title: 'Welcome to ACE8 Skin Studio',
+    why: `Skin Studio lets you put new paint jobs (skins) and emblems into Ace Combat 8, and install ones other people made. You do not need to know anything about game files: the program does that part. The game's own files are never changed, and your save is backed up before anything touches it.`,
+    render: renderGoals },
+  { id: 'setup', topic: 'First-time setup', title: 'First-time setup: tell Skin Studio where things are',
+    why: `This is done once. Each line turns green when it is right. You only need the lines for what you want to do; "Needed for" says which.`,
+    render: renderSetup },
+  { id: 'install', topic: 'Install a shared skin', page: 'slots', title: 'Install a skin someone else made',
+    short: `Got a skin mod as a .zip, for example from Nexus Mods? This puts it in the game next to your other skins.`,
+    need: [`The mods folder set in Settings, AC8 Mod Loader 1.1.0 or newer, and UE4SS.`],
     steps: [
-      { t: `Fill in Settings once: the game's Paks folder, the AES key and your mods folder. Coming from AC8 Skin Studio 1.x? One button there copies its settings.` },
-      { t: `Extract an aircraft's skin. You get one picture per UDIM tile, ready to paint on.` },
-      { t: `Prepare the aircraft's model, so your painting program shows only the skin.` },
-      { t: `Paint in Substance Painter or Blender, then export your pictures.` },
-      { t: `Repack turns those pictures into a mod that replaces a game skin. New skin slot adds them as an extra skin with its own name, description and icon. New emblem adds a picture of yours to the emblem list.` },
-      { t: `Skin slots shows every new skin and emblem, imports skin mods other people share, and makes a .zip of yours to share. Save tools unlocks them straight away and gets your save ready for the game without mods.` } ],
-    tip: `Split is a side tool. It cuts a wide skin picture you already have into tiles, and is only needed for pictures that did not come from Extract.` },
-  { topic: 'Extract', page: 'extract', title: 'Extract: get a skin out of the game',
-    why: `Pulls an aircraft's skin textures out of the game files and saves them as tiles you can paint on. The game files are never changed.`,
+      { t: `Download the skin mod's .zip file. You do not need to unzip it.`, eg: `NavyFeather.zip` },
+      { t: `Open the Skin slots screen and drop the .zip on "Import a skin mod", or press "Choose a .zip".` },
+      { t: `You now see its skins, and the skin numbers they will get. Nothing is installed yet. Press Install.` },
+      { t: `Start the game. New skins unlock the way the game's own do: when you finish a campaign mission.` },
+      { t: `Want it straight away instead? Close the game, open Save tools and press Unlock now. Your save is backed up first.` },
+      { t: `In the hangar, pick the aircraft and choose the new skin. It is marked new.` } ],
+    tip: `To take a skin mod out later, first choose another skin for that aircraft in the game, then press Remove on the Skin slots screen. Removed mods are kept in the workspace, so you can put them back.` },
+  { id: 'extract', group: 'Make your own', topic: 'Extract', page: 'extract', title: 'Extract: get a skin out of the game',
+    short: `Copies an aircraft's skin out of the game as pictures you can paint on. The game files are never changed.`,
+    need: [`The game's Paks folder and AES key set in Settings.`],
     steps: [
       { t: `Press "Find aircraft in the game files" once. It reads the game's file list and shows every aircraft.` },
       { t: `Type part of a name to narrow the list, then pick the aircraft.`, eg: `Typing f15 leaves PP0005_f15c in the list.` },
-      { t: `Press "Preview skins" to see what each skin folder looks like. It fetches only the colour texture of each skin, makes a small picture and deletes the full-size file again.` },
+      { t: `Press "Preview skins" to see what each skin folder looks like. It makes a small picture of each skin.` },
       { t: `Click the skins you want. Leave them all unpicked to take every skin.`, eg: `001   002   003   101` },
-      { t: `Press Extract. With "Make paint-ready tiles" ticked you get base colour, metallic, roughness, normal map and ambient occlusion, one picture per tile.`, eg: `workspace\\paint-ready\\PP0005_f15c\\001\\T_PP0005_f15c_001_C_BaseColor.1001.png` },
+      { t: `Press Extract. With "Make paint-ready tiles" ticked you get the colour, metallic, roughness, normal map and shadow (ambient occlusion) pictures, one per UDIM tile.`, eg: `workspace\\paint-ready\\PP0005_f15c\\001\\T_PP0005_f15c_001_C_BaseColor.1001.png` },
       { t: `Look under "Extracted skins". Each skin shows a preview, and "Open" takes you to its files.` } ],
     tip: `Folder numbers are not the order of skins in the game's menu. Use the previews to find the one you want.` },
-  { topic: 'Split', page: 'split', title: 'Split: cut a wide picture into tiles',
-    why: `A skin picture exported with FModel is one wide strip. Painting programs want one picture per tile, numbered 1001, 1002 and so on.`,
+  { id: 'split', topic: 'Split', page: 'split', title: 'Split: cut a wide picture into tiles',
+    short: `Only needed for skin pictures that did not come from Extract: it cuts one wide strip into numbered squares.`,
     steps: [
       { t: `Drop PNG or TGA pictures onto the page, or press "Choose pictures".`, eg: `T_PP0005_f15c_001_C.png` },
-      { t: `Check the preview. It shows where each cut falls and the number each tile gets. The count comes from the picture itself: five tiles, seven, or however many fit across it.` },
+      { t: `Check the preview. It shows where each cut falls and the number each tile gets. The count comes from the picture itself.` },
       { t: `Tick "Separate the packed channels" if a picture's name ends in _MRX or _NO and you want metallic, roughness, normal map and ambient occlusion as separate files.` },
-      { t: `Press Split. Each skin's tiles go into a folder of their own, so a skin's colour and finish tiles end up together and two skins never get mixed.`, eg: `workspace\\split\\T_PP0005_f15c_001\\T_PP0005_f15c_001_C.1001.png` },
+      { t: `Press Split. Each skin's tiles go into a folder of their own, so two skins never get mixed.`, eg: `workspace\\split\\T_PP0005_f15c_001\\T_PP0005_f15c_001_C.1001.png` },
       { t: `Press "Use in Repack" next to a folder to carry on with those tiles, or "Open folder" to see them.` } ] },
-  { topic: 'Model', page: 'model', title: 'Model: prepare the aircraft for painting',
-    why: `A model from the game also carries the cockpit, glass and weapons, each with its own textures. This keeps only the parts that wear the skin.`,
+  { id: 'model', topic: 'Model', page: 'model', title: 'Model: prepare the aircraft for painting',
+    short: `Makes a 3D model of the aircraft that only has the parts that wear the skin, so your painting program shows just those.`,
+    need: [`The aircraft's model exported from FModel as .glb (a free tool for looking inside game files).`],
     steps: [
-      { t: `In FModel, export the aircraft's model as glTF (.glb). To paint the doors, refuelling probe and pylons too, also export the models whose names end in GearOff, RefuelOff, DPTK or DPP. Pylon names often carry a number, such as DPP1, DPP2 and DPP3; add as many as you like.`, eg: `SM_PP0005_f15c.glb   SM_PP0005_f15c_GearOff.glb   SM_PP0005_f15c_DPP1.glb` },
+      { t: `In FModel, export the aircraft's model as glTF (.glb). To paint the doors, refuelling probe and pylons too, also export the models whose names end in GearOff, RefuelOff, DPTK or DPP.`, eg: `SM_PP0005_f15c.glb   SM_PP0005_f15c_GearOff.glb   SM_PP0005_f15c_DPP1.glb` },
       { t: `Drop the .glb files onto the page. Parts that wear the skin are ticked for you.` },
       { t: `Press "Save paint model".`, eg: `workspace\\models\\SM_PP0005_f15c_paint.glb` },
       { t: `In Substance Painter, create a new project from the saved file with "Use UV Tile workflow" switched on, then import the tiles from Extract.` } ] },
-  { topic: 'Repack', page: 'repack', title: 'Repack: turn your paint into a mod',
-    why: `Converts the pictures you exported after painting back into the game's format, puts them in the right folders and packs them into a mod.`,
+  { id: 'repack', topic: 'Repack', page: 'repack', mode: 'replace', title: 'Repack: paint over one of the game\'s skins',
+    short: `Turns your painted pictures into a mod that replaces one of the game's skins.`,
+    need: [`The skin you painted, extracted first (the program rebuilds the game's original files).`, `Your painted pictures, exported from your painting program.`],
     steps: [
-      { t: `Choose the skin to replace. It must be extracted first, because the program rebuilds the game's original files.` },
-      { t: `Drop your exported pictures, or the folder they are in. Use one picture per tile, with the tile number in each name, or one wide picture of the whole skin with no number; a wide picture does not need splitting first.`, eg: `MySkin_Base_color_1001.png  to  MySkin_Base_color_1005.png   or just   MySkin_Base_color.png` },
-      { t: `The names must say what each picture is: Substance Painter's channel names work, and so do the game's own endings (_C, _MRX, _NO), whichever skin they were named after.`, eg: `MySkin_Roughness_1001.png   T_PP0005_f15c_003_C.1001.png   T_PP0005_f15c_003_C.png` },
-      { t: `The table shows what each game texture will be built from: the file names and a small picture of every tile. Check it is the skin you mean. If the folder holds more than one set of pictures, choose which to use.` },
-      { t: `Tick the textures to rebuild. Colour is ticked for you. Below the list you can store the colour texture as BC7 for sharper markings, or with no mipmaps.` },
+      { t: `Choose the skin to replace.` },
+      { t: `Drop your exported pictures, or the folder they are in. Use one picture per tile, with the tile number in each name, or one wide picture of the whole skin with no number.`, eg: `MySkin_Base_color_1001.png  to  MySkin_Base_color_1005.png   or just   MySkin_Base_color.png` },
+      { t: `The names must say what each picture is. Substance Painter's channel names work, and so do the game's own endings (_C, _MRX, _NO).`, eg: `MySkin_Roughness_1001.png   T_PP0005_f15c_003_C.1001.png` },
+      { t: `The table shows what each game texture will be built from, with a small picture of every tile. Check it is the skin you mean.` },
+      { t: `Tick the textures to rebuild. Colour is ticked for you. You can leave the BC7 and mipmaps boxes as they are.` },
       { t: `Name the mod and press "Build mod". With a mods folder set in Settings it is copied there, and loads the next time the game starts.`, eg: `Mods\\MySkin\\MySkin_P.utoc   MySkin_P.ucas   MySkin_P.pak` } ],
-    tip: `Two mods that replace the same skin conflict, and the game shows only one. Repack warns you when that happens, and the Mods screen can remove one. Use modded files offline and in single player only.` },
-  { topic: 'New skin slot', page: 'repack', mode: 'slot', title: 'New skin slot: a skin of your own',
-    why: `Instead of painting over one of the game's skins, add your paint as an extra skin. It gets its own place in the skin list, its own name, description and icon, and every skin of the game stays as it was.`,
+    tip: `Two mods that replace the same skin clash, and the game shows only one. Repack warns you, and the Mods screen can remove one. Use modded files offline and in single player only.` },
+  { id: 'slot', topic: 'New skin slot', page: 'repack', mode: 'slot', title: 'New skin slot: add a skin of your own',
+    short: `Adds your paint as an extra skin with its own name, description and icon. None of the game's skins is changed.`,
+    need: [`Setup done: Paks folder, AES key, mods folder, AC8 Mod Loader 1.1.0 or newer and UE4SS.`],
     steps: [
-      { t: `In the menu, choose New skin slot. Choose the skin to start from: the one you painted on. The new skin copies its material, finish and normal map, and where emblems may go.`, eg: `PP0021_su57 / 001` },
-      { t: `Drop your painted pictures, as for Repack, and tick the textures to rebuild. Without pictures, the new skin keeps the original's look; only its name, description and icon are new.` },
+      { t: `Choose the skin to start from: the one you painted on. The new skin copies its material, finish and normal map, and where emblems may go.`, eg: `PP0021_su57 / 001` },
+      { t: `Drop your painted pictures, as for Repack, and tick the textures to rebuild. Without pictures the new skin keeps the original's look; only its name, description and icon are new.` },
       { t: `Give it a name and a description. These are what the game shows in the hangar.`, eg: `Navy Feather   /   Dark navy with white star roundels.` },
-      { t: `It unlocks the way the game unlocks its own first skins: when you finish a campaign mission. After that it stays in the hangar.` },
-      { t: `Choose the icon: keep the original, recolour the original in your paint's main colour or a colour you pick, or use a picture of your own (its middle square is used).` },
-      { t: `Choose a new skin mod or add it to one you made before, then press Build new skin. It is installed straight away and gets the first free skin number from 601 up.`, eg: `Mods\\NavyFeather\\NavyFeather_xkqdm_P.utoc` } ],
-    tip: `New skins need AC8 Mod Loader 1.1.0 or newer, which loads files that are new to the game, and SkinSlotText, the small UE4SS mod that shows their names. The program installs SkinSlotText for you.` },
-  { topic: 'New emblem', page: 'emblem', title: 'New emblem: an emblem of your own',
-    why: `Add your own picture to the game's emblem list, with its own name and description. It goes on any aircraft like the game's emblems, and every emblem of the game stays as it was.`,
+      { t: `Choose the icon: keep the original, recolour it in your paint's main colour or a colour you pick, or use a picture of your own.` },
+      { t: `Choose a new skin mod, or add it to one you made before, and press Build new skin. It is installed straight away and gets the first free skin number from 601 up.`, eg: `Mods\\NavyFeather\\NavyFeather_xkqdm_P.utoc` },
+      { t: `In the game, finish a campaign mission and the skin unlocks for good. Or close the game and press Unlock now on Save tools.` } ],
+    tip: `The program installs SkinSlotText for you: the small UE4SS helper that shows your skin's name in the game.` },
+  { id: 'emblem', topic: 'New emblem', page: 'emblem', title: 'New emblem: add an emblem of your own',
+    short: `Adds your own picture to the game's emblem list, with its own name and description.`,
+    need: [`Setup done: Paks folder, AES key and mods folder.`, `A picture: PNG with a see-through background works best.`],
     steps: [
-      { t: `Drop the picture on the page. A PNG with a see-through background works best: the see-through parts show the aircraft's paint. The whole picture is used, fitted into a square.`, eg: `NightOwl.png   (1024 x 1024, see-through around the owl)` },
+      { t: `Drop the picture on the page. The see-through parts show the aircraft's paint. The whole picture is used, fitted into a square.`, eg: `NightOwl.png   (1024 x 1024, see-through around the owl)` },
       { t: `Check the preview. The checks show where it is see-through.` },
       { t: `Give it a name and a description. These are what the game shows in the emblem list.`, eg: `Night Owl   /   A red moon over the sea.` },
       { t: `Choose a new skin mod or add it to one you made before. A skin mod can hold new skins, emblems or both.` },
-      { t: `Press Build new emblem. It is installed straight away and gets the first free emblem number from 601 up.` },
-      { t: `It unlocks when you finish a campaign mission, like the game's emblems. To have it straight away, close the game and press Unlock now on the Save tools screen.` } ],
+      { t: `Press Build new emblem. It is installed straight away.` },
+      { t: `It unlocks when you finish a campaign mission. To have it straight away, close the game and press Unlock now on the Save tools screen.` } ],
     tip: `"Change picture" and "Edit name" on the Skin slots screen change an emblem later; it keeps its number, so aircraft wearing it keep it.` },
-  { topic: 'Pilots', page: 'pilots', title: 'Pilots: helmets, portraits and names',
-    why: `Paint a pilot's helmet, change the portrait shown next to their radio messages (a photo of your own, another portrait's photo, new text), and give the people on the radio new names and callsigns.`,
+  { id: 'pilots', topic: 'Pilots', page: 'pilots', title: 'Pilots: helmets, portraits and names',
+    short: `Paint a pilot's helmet, change the portrait next to their radio messages, and rename the people on the radio.`,
+    need: [`The game's Paks folder and AES key set in Settings.`],
     steps: [
-      { t: `Press "Find pilots in the game files" once. It finds every pilot with a helmet and every radio portrait, and makes a small picture of each helmet.` },
-      { t: `Pick a pilot. The helmet is shown in parts, each with pictures of its own: Tasha's has two, the shell and the mask.`, eg: `Part 1  T_PI003_Helmet01_01      Part 2  T_PI003_Helmet01_02` },
-      { t: `Press "Get paint-ready pictures" for full-size base colour, metallic, roughness, ambient occlusion and normal map pictures of every part, and paint over them.`, eg: `workspace\\paint-ready\\Pilots\\PI003_Tasha\\T_PI003_Helmet01_01_BaseColor.png` },
-      { t: `Drop your painted pictures on the part they are for, or all of them at once when their names say the part. Whatever you leave out stays as the game's.` },
-      { t: `Click a radio portrait to change it. Use a picture of your own (drag it into place, scroll to zoom) or another portrait's photo, and keep the text or write new text in the game's own font. New portraits are kept when you close the program, so you can come back and add more.`, eg: `R. IVANOVA   /   ROSA   /   ENS   FCU NAVY` },
-      { t: `Under "Names on the radio", type a new name for anyone who talks on the radio, and a new callsign for the wingmen. Press "Save names": they need no building and show the next time the game starts.`, eg: `Tasha   name Rosa   callsign Rosebud` },
-      { t: `Baxter, Tasha, Coster and Kate also have a "Hangar name" box for the hangar's pilot list. Leave it empty and the hangar gets the new name in capitals. After playing, each saved name says whether the game showed it in your last game.`, eg: `Name Rosa   Hangar name (empty)   → the hangar shows ROSA` },
+      { t: `Press "Find pilots in the game files" once. It finds every pilot with a helmet and every radio portrait.` },
+      { t: `Pick a pilot. The helmet is shown in parts, each with pictures of its own.`, eg: `Part 1  T_PI003_Helmet01_01      Part 2  T_PI003_Helmet01_02` },
+      { t: `Press "Get paint-ready pictures" for full-size pictures of every part, and paint over them.`, eg: `workspace\\paint-ready\\Pilots\\PI003_Tasha\\T_PI003_Helmet01_01_BaseColor.png` },
+      { t: `Drop your painted pictures on the part they are for. Whatever you leave out stays as the game's.` },
+      { t: `Click a radio portrait to change it: a picture of your own (drag it into place, scroll to zoom) or another portrait's photo, with the text kept or new text in the game's own font.`, eg: `R. IVANOVA   /   ROSA   /   ENS   FCU NAVY` },
+      { t: `Under "Names on the radio", type a new name or callsign and press "Save names". Names need no building.`, eg: `Tasha   name Rosa   callsign Rosebud` },
       { t: `Name the mod and press "Build mod". The helmet and the portraits go into one mod.` } ],
-    tip: `Helmets and portraits replace the game's own files, so two mods that change the same helmet or portrait conflict; the Mods screen shows it. Use modded files offline and in single player only.` },
-  { topic: 'Skin slots', page: 'slots', title: 'Skin slots: share, import and keep them together',
-    why: `The game has one list of skins. This screen keeps one shared copy of it for every new skin you have, yours and other people's, so any number of skin mods work together.`,
+    tip: `Helmets and portraits replace the game's own files, so two mods that change the same one clash; the Mods screen shows it.` },
+  { id: 'slots', group: 'Look after your game', topic: 'Skin slots', page: 'slots', title: 'Skin slots: all your new skins in one place',
+    short: `Shows every new skin and emblem, yours and other people's, and keeps them working together.`,
     steps: [
       { t: `Each skin mod shows its skins with their icon, name and skin number. "Edit name" changes the name and description without building anything.` },
-      { t: `"Share as .zip" makes a file you can upload, for example to Nexus Mods. It carries the skins, their names and icons, and a README.`, eg: `workspace\\shared\\NavyFeather.zip` },
-      { t: `To install someone's skin mod, drop its .zip on "Import a skin mod". You see its skins and the numbers they will get before anything is installed.` },
-      { t: `When a skin wants a number another skin already has, it gets the next free one. Its name, description and icon stay with it, and skins that were there first keep their numbers.` },
-      { t: `Mods made with other tools that bring their own skin list are found too: their skins are copied into the shared list instead of hiding everyone else's.` } ],
-    tip: `Before taking out a skin mod, choose another skin for the aircraft in the game, so the game does not look for a skin that is gone.` },
-  { topic: 'Mods', page: 'mods', title: 'Mods: see what is installed',
-    why: `Lists the mods in your mods folder and the game files each one replaces. "My skin does not show up" is very often two mods replacing the same file.`,
+      { t: `"Share as .zip" makes a file you can upload, for example to Nexus Mods.`, eg: `workspace\\shared\\NavyFeather.zip` },
+      { t: `To install someone's skin mod, drop its .zip on "Import a skin mod". You see what it holds before anything is installed.` },
+      { t: `When a skin wants a number another skin already has, it gets the next free one. Its name, description and icon stay with it.` },
+      { t: `After a game update, press "Rebuild the skin list" before playing, so the game's own new skins are kept. The screen tells you when.` } ],
+    tip: `Before taking out a skin mod, choose another skin for the aircraft in the game, so the game does not look for a skin that is gone. Your save is backed up every time the skin list changes.` },
+  { id: 'mods', topic: 'Mods', page: 'mods', title: 'Mods: see what is installed',
+    short: `Lists every mod in your mods folder. "My skin does not show up" is very often two mods replacing the same thing.`,
     steps: [
       { t: `Each mod shows its size, its date and the game files it replaces.`, eg: `MySkin   3 files, 60.3 MB   Replaces T_PP0005_f15c_001_C` },
       { t: `A yellow box means another mod replaces the same files. The game shows only one of them, so remove the one you do not want.` },
-      { t: `"Remove" takes a mod out of the mods folder without deleting it. It is moved into the workspace, in the removed-mods folder. Close the game first.`, eg: `workspace\\removed-mods\\MySkin_20260101-120000` },
-      { t: `To bring a removed mod back, move its folder into your mods folder again.` } ],
-    tip: `The number next to "Mods" in the menu counts the mods that are in conflict. Mods made by other tools are listed too.` },
-  { topic: 'Save tools', page: 'save', title: 'Save tools: unlock, go back to vanilla, restore',
-    why: `Changes to your campaign save that the game itself does not offer: unlock new skins and emblems straight away, and take them out again before playing without mods. The save is always backed up first.`,
+      { t: `"Remove" takes a mod out of the mods folder without deleting it. Close the game first.`, eg: `workspace\\removed-mods\\MySkin_20260101-120000` },
+      { t: `To bring a removed mod back, move its folder into your mods folder again.` } ] },
+  { id: 'save', topic: 'Save tools', page: 'save', title: 'Save tools: unlock now, go back to no mods, restore',
+    short: `Unlock new skins straight away, or get your save ready for playing without mods. Your save is always backed up first.`,
+    need: [`The game closed. It writes its save when it closes, which would undo the change; the buttons wait until it is closed.`],
     steps: [
-      { t: `Close the game first. It writes its save when it closes, which would undo the change; the buttons wait until it is closed.` },
-      { t: `Unlock now puts every new skin and emblem in the game's lists into your save as unlocked, marked new. No mission needed.` },
-      { t: `Before playing the game without mods (or online), press "Prepare my save for the game without mods". The new skins and emblems come out of the unlocked lists, and any aircraft wearing one goes back to the game's own skin or no emblem. Nothing else in the save changes.` },
+      { t: `Unlock now puts every new skin and emblem into your save as unlocked, marked new. No mission needed.` },
+      { t: `Before playing the game without mods, press "Prepare my save for the game without mods". New skins and emblems come out of the save, and any aircraft wearing one goes back to the game's own skin. Nothing else changes.` },
       { t: `Every change first copies both save files into a dated backup. "Put this back" next to a backup restores it; the save as it is then is backed up too, so a restore can be undone.`, eg: `…\\ACE COMBAT 8\\Saved\\SkinStudioSaveBackups\\2026-10-15 18-30-00` },
-      { t: `Turn on the backup at game start and your save is also copied each time the game starts, keeping the last 20. It is a small UE4SS mod that only reads the save.` } ],
-    tip: `The save's checksum is worked out again after every change, and the new save is read back before it replaces the old one. If Steam reports a cloud conflict the next time the game starts, keep the files on this computer.` },
-  { topic: 'Settings', page: 'settings', title: 'Settings: set up once',
-    why: `Everything the program needs to reach the game. It is saved in settings.json next to the program.`,
+      { t: `Your save is also backed up by itself whenever the skin list changes: when you build, import or remove a skin mod.` },
+      { t: `Turn on "Backup at game start" and your save is also copied each time the game starts, keeping the last 20.` } ],
+    tip: `If Steam says the cloud files are in conflict the next time you start the game, keep the files on this computer.` },
+  { id: 'settings', topic: 'Settings', page: 'settings', title: 'Settings: everything in one place',
+    short: `Where the game, your mods and your save are, plus a few preferences. The "First-time setup" topic explains each line in plain words.`,
     steps: [
-      { t: `Game Paks folder: inside the game's own folder.`, eg: `C:\\Program Files (x86)\\Steam\\steamapps\\common\\ACE COMBAT 8\\Game\\Content\\Paks` },
-      { t: `AES key: the game's key, 64 characters, optionally starting with 0x. The program does not include it, and Extract cannot read the game files without it.`, eg: `0x0123456789ABCDEF…  (64 characters in all)` },
-      { t: `retoc program: the free tool that unpacks and packs the game's files. It comes with this program; leave the box empty.` },
-      { t: `Mods folder: the folder your mod loader reads, with one sub-folder per mod. New skins go there, and finished Repack mods can be copied there for you.`, eg: `…\\ACE COMBAT 8\\Game\\Binaries\\Win64\\ue4ss\\Mods\\IoStoreLoaderMod` },
-      { t: `UE4SS Mods folder: found by itself when the mods folder is inside it. It is where SkinSlotText goes, which shows the names of new skins.` } ],
-    tip: `Each setting shows a green dot when it is right. If you need help, "Copy a support report" under About copies your version, settings and the last task's log, ready to paste into a message. The AES key is never included.` },
+      { t: `Each setting shows a green dot when it is right, and a red one with what to do when it is not.` },
+      { t: `Coming from AC8 Skin Studio 1.x? "Use the settings of AC8 Skin Studio 1.x" copies them over.` },
+      { t: `Settings are saved by themselves when you leave a box, in settings.json next to the program.` },
+      { t: `"Copy a support report" under About copies your version, settings and the last task's log, ready to paste into a message to whoever helps you. The AES key is never included.` } ] },
+  { id: 'trouble', group: 'Help', topic: 'Something went wrong', title: 'When something does not work',
+    why: `The usual problems and what to do about each. Click a problem to see the answer.`,
+    render: renderTrouble },
+  { id: 'words', topic: 'Words you will see', title: 'Words you will see',
+    why: `What the program's words mean, in plain language.`,
+    render: renderGlossary },
 ];
+
+const TROUBLE = [
+  [`My new skin is not in the hangar`, `New skins unlock when you finish a campaign mission. To have them straight away, close the game and press Unlock now on Save tools. If it is still missing, open Skin slots: it says when the mod loader is too old (it must be 1.1.0 or newer) or when the skin list needs rebuilding.`],
+  [`The skin is there but has no paint or icon`, `The mod loader is older than 1.1.0. Older loaders do not load files that are new to the game. Update AC8 Mod Loader.`],
+  [`The skin's name shows as a code (SS_...)`, `SkinSlotText, which shows the names, is missing. It needs UE4SS: set the UE4SS Mods folder in Settings, then press "Rebuild the skin list" on Skin slots.`],
+  [`A button stays grey`, `The text next to it says what is missing. Click that text to go to the step that needs doing.`],
+  [`Extract says "Extracted 0 (6 failed)"`, `The game's files could not be read. Be online the first time (a library is downloaded once), and keep retoc in the same folder as this program.`],
+  [`My save looks wrong`, `Close the game, open Save tools, and press "Put this back" next to the backup made before the change. The save as it is now is backed up first, so this can be undone too.`],
+  [`The game was updated`, `Open Skin slots and press "Rebuild the skin list" before playing. If the game's key changed, put the new one in Settings.`],
+  [`I want to play without mods again`, `First press "Prepare my save for the game without mods" on Save tools, then take the mods out. When you put them back, press Unlock now.`],
+  [`I need help`, `Settings, About, "Copy a support report", and paste it into your message. It never holds the AES key, and your user name is taken out of folder paths.`],
+];
+
 let tutAt = 0;
+const tutIndex = id => Math.max(0, TUTORIAL.findIndex(t => t.id === id));
+function tutGo(id) { tutAt = tutIndex(id); renderTutorial(); $('#tutBody').focus(); }
+
+// explain wraps the program's words in links to their explanation, once per topic.
+function explain(text, seen) {
+  let best = null;
+  for (const [re, term] of TERMS) {
+    if (seen.has(term)) continue;
+    const m = re.exec(text);
+    if (m && (!best || m.index < best.m.index)) best = { m, term };
+  }
+  if (!best) return [text];
+  seen.add(best.term);
+  const def = (GLOSSARY.find(g => g[0] === best.term) || [])[1] || '';
+  const at = best.m.index, word = best.m[0];
+  return [text.slice(0, at),
+    el('button', { class: 'term', type: 'button', title: def, 'aria-label': word + ': what this means', onclick: () => { tutGo('words'); const d = $('#tutBody [data-term="' + best.term + '"]'); if (d) { d.classList.add('hl'); scrollTutTo(d); } } }, word),
+    ...explain(text.slice(at + word.length), seen)];
+}
+
+// scrollTutTo brings n into the middle of the tutorial's text, without moving the dialog itself.
+function scrollTutTo(n) {
+  const body = $('#tutBody');
+  body.scrollTop += n.getBoundingClientRect().top - body.getBoundingClientRect().top - body.clientHeight / 3;
+}
+
+function renderGoals(t, body) {
+  const miss = setupMissing();
+  const goals = [
+    { title: 'Install a skin someone else made', sub: 'A .zip from Nexus Mods or a friend', go: 'install' },
+    { title: 'Add my own extra skin', sub: 'Extract, paint, then New skin slot', go: 'slot' },
+    { title: 'Paint over one of the game\'s skins', sub: 'Extract, paint, then Repack', go: 'extract' },
+    { title: 'Add my own emblem', sub: 'One picture, a name, done', go: 'emblem' },
+    { title: 'Change pilots\' helmets, portraits or names', sub: 'Pilots screen', go: 'pilots' },
+    { title: 'Play without mods again', sub: 'Get your save ready first', go: 'save' },
+  ];
+  body.append(
+    miss.length ? el('div', { class: 'notice warn tut-setup-note' }, el('strong', { text: 'First, a little setup. ' }),
+      (miss.length === 1 ? '1 of ' : miss.length + ' of ') + SETUP.length + ' setup lines ' + (miss.length === 1 ? 'is' : 'are') + ' not done yet. It takes a few minutes and is done once. ',
+      el('button', { class: 'btn small', type: 'button', onclick: () => tutGo('setup') }, 'Show me')) :
+      el('div', { class: 'notice good tut-setup-note' }, el('strong', { text: 'Setup is done. ' }), 'Pick what you want to do below.'),
+    el('h3', { class: 'tut-h3', text: 'What do you want to do?' }),
+    el('div', { class: 'goals' }, goals.map(g => el('button', { class: 'goal', type: 'button', onclick: () => tutGo(g.go) }, el('b', { text: g.title }), el('small', { text: g.sub })))),
+    el('div', { class: 'flow', 'aria-label': 'How a skin of your own gets into the game' }, [['Extract', 0], ['Paint in your own program', 1], ['Repack or New skin slot', 0], ['Play', 1]].flatMap((f, i) => [i ? el('i', { text: 'then' }) : null, el('span', { class: f[1] ? 'out' : '', text: f[0] })])),
+    el('p', { class: 'tip', text: 'Never modded a game before? Start with "First-time setup", then "Install a skin someone else made". It is the quickest way to see a new skin in the game. Any underlined word can be clicked for a plain explanation.' }));
+}
+
+function renderSetup(t, body) {
+  if (!STATE) { body.append(el('p', { class: 'hint', text: 'Checking…' })); return; }
+  const rows = SETUP.map(x => {
+    const c = STATE.checks[x.check] || { ok: false, note: '' };
+    return el('div', { class: 'setup-item' + (c.ok ? ' ok' : '') },
+      el('span', { class: 'dot', role: 'img', 'aria-label': c.ok ? 'Done' : 'Not done yet' }),
+      el('div', {}, el('b', { text: x.title }), el('small', { class: 'for', text: 'Needed for: ' + x.for }),
+        el('p', { text: c.ok ? c.note : x.what }),
+        c.ok ? null : el('p', { class: 'how', text: x.how }),
+        c.ok ? null : el('p', { class: 'now', text: 'Now: ' + c.note })),
+      c.ok ? el('span', { class: 'chip blue', text: 'Done' }) : el('button', { class: 'btn small', type: 'button', onclick: () => goSetting(x.field) }, 'Set it'));
+  });
+  const left = setupMissing().length;
+  body.append(
+    el('p', { class: 'hint', text: left ? left + ' of ' + SETUP.length + ' still to do.' : 'Everything is set. You are ready to go.' }),
+    el('div', { class: 'setup-list' }, rows),
+    el('div', { class: 'row' }, el('button', { class: 'btn small', type: 'button', onclick: async () => { try { await refreshState(); } catch (e) {} renderTutorial(); } }, 'Check again'),
+      el('button', { class: 'btn small', type: 'button', onclick: () => { $('#tut').close(); showPage('settings'); } }, 'Open Settings')),
+    el('p', { class: 'tip', text: 'Used AC8 Skin Studio 1.x before? Settings has a button that copies its settings over, so you do not have to type them again.' }));
+}
+function goSetting(field) {
+  $('#tut').close();
+  showPage('settings');
+  const input = $('#' + field);
+  if (!input) return;
+  const box = input.closest('.field') || input;
+  box.scrollIntoView({ block: 'center' });
+  box.classList.remove('flash'); void box.offsetWidth; box.classList.add('flash');
+  input.focus();
+}
+
+function renderTrouble(t, body) {
+  body.append(el('div', { class: 'qa' }, TROUBLE.map(([q, a]) => el('details', {}, el('summary', { text: q }), el('p', { text: a })))));
+}
+function renderGlossary(t, body) {
+  body.append(el('dl', { class: 'glossary' }, GLOSSARY.flatMap(([w, d]) => [el('dt', { 'data-term': w, text: w }), el('dd', { 'data-term': w, text: d })])));
+}
+
 function renderTutorial() {
   const t = TUTORIAL[tutAt];
-  $('#tutTopics').replaceChildren(...TUTORIAL.map((x, i) => el('button', { type: 'button', 'aria-current': i === tutAt ? 'step' : null, onclick: () => { tutAt = i; renderTutorial(); $('#tutBody').focus(); } }, x.topic)));
+  $('#tutTopics').replaceChildren(...TUTORIAL.flatMap((x, i) => [x.group ? el('div', { class: 'grp', text: x.group }) : null,
+    el('button', { type: 'button', 'aria-current': i === tutAt ? 'step' : null, onclick: () => { tutAt = i; renderTutorial(); $('#tutBody').focus(); } }, x.topic)]).filter(Boolean));
   const body = $('#tutBody');
+  const seen = new Set();
   body.replaceChildren(...[
     el('h2', { id: 'tutTitle', text: t.title }),
-    el('p', { class: 'why', text: t.why }),
-    t.flow ? el('div', { class: 'flow', 'aria-hidden': 'true' }, t.flow.flatMap((f, i) => [i ? el('i', { text: 'then' }) : null, el('span', { class: f[1] ? 'out' : '', text: f[0] })])) : null,
-    el('ol', {}, t.steps.map(s => el('li', {}, el('span', {}, s.t, s.eg ? el('span', { class: 'eg', text: 'Example: ' + s.eg }) : null)))),
-    t.tip ? el('p', { class: 'tip', text: t.tip }) : null,
-    t.page ? el('div', {}, el('button', { class: 'btn small', type: 'button', onclick: () => { $('#tut').close(); showPage(t.page, t.mode); } }, 'Open the ' + t.topic + ' screen')) : null].filter(Boolean));
+    t.why ? el('p', { class: 'why', text: t.why }) : null,
+    t.short ? el('p', { class: 'why' }, el('strong', { text: 'In short: ' }), ...explain(t.short, seen)) : null,
+    t.need ? el('div', { class: 'need' }, el('span', { class: 'mono-label', text: 'Before you start' }), el('ul', {}, t.need.map(n => el('li', {}, ...explain(n, seen))))) : null,
+    t.steps ? el('ol', {}, t.steps.map(s => el('li', {}, el('span', {}, ...explain(s.t, seen), s.eg ? el('span', { class: 'eg', text: 'Example: ' + s.eg }) : null)))) : null,
+    t.tip ? el('p', { class: 'tip' }, ...explain(t.tip, seen)) : null].filter(Boolean));
+  if (t.render) t.render(t, body);
+  if (t.page) body.append(el('div', {}, el('button', { class: 'btn small', type: 'button', onclick: () => { $('#tut').close(); showPage(t.page, t.mode); } }, 'Open the ' + (t.page === 'slots' && t.id === 'install' ? 'Skin slots' : t.topic) + ' screen')));
   body.scrollTop = 0;
   $('#tutCount').textContent = (tutAt + 1) + ' of ' + TUTORIAL.length;
   $('#tutBack').disabled = tutAt === 0;
   $('#tutNext').textContent = tutAt === TUTORIAL.length - 1 ? 'Done' : 'Next';
 }
 function openTutorial(at) {
-  tutAt = at || 0;
+  tutAt = typeof at === 'string' ? tutIndex(at) : (at || 0);
   $('#tutHide').checked = !!(STATE && STATE.settings.hideTutorial);
   renderTutorial();
   const d = $('#tut');
@@ -2410,6 +2629,13 @@ $('#tutHide').addEventListener('change', async ev => {
 });
 $('#tut').addEventListener('click', ev => { if (ev.target === $('#tut')) $('#tut').close(); }); // a click on the dimmed area closes it
 $('#navTutorial').addEventListener('click', () => openTutorial(0));
+// Every screen gets a "How this works" button that opens the tutorial at its own topic.
+const PAGE_TOPIC = { extract: 'extract', split: 'split', model: 'model', emblem: 'emblem', pilots: 'pilots', slots: 'slots', mods: 'mods', save: 'save', settings: 'setup' };
+$$('.page').forEach(p => {
+  const name = p.id.replace('page-', ''), head = $('.pagehead', p);
+  if (!head || !(name in PAGE_TOPIC || name === 'repack')) return;
+  head.append(el('button', { class: 'btn small howto', type: 'button', onclick: () => openTutorial(name === 'repack' ? (repack.mode === 'slot' ? 'slot' : 'repack') : PAGE_TOPIC[name]) }, 'How this works'));
+});
 
 // ---------------------------------------------------------------- useful links
 async function showLinks() {
@@ -2566,6 +2792,15 @@ function startAnotherSkin() {
 }
 function aircraftNumber(name) { const m = /^[A-Za-z]+0*(\d+)_/.exec(name || ''); return m ? +m[1] : 0; }
 
+// savedLine says the game's save was backed up before the skin list changed (null when it was not
+// needed: no save yet, or the newest backup already had it).
+function savedLine(list) {
+  const b = list && list.saveBackup;
+  if (!b || !b.id) return null;
+  return el('p', { class: 'hint' }, 'Your game save was backed up first (' + (fmtWhen(b.when) || b.id) + '), so it can be put back as it was. ',
+    el('button', { class: 'linkbtn', type: 'button', onclick: () => showPage('save') }, 'See backups'));
+}
+
 function slotResultCard(res) {
   const box = el('div', { class: 'notice good results' });
   const head = el('div', { style: 'display:flex;gap:14px;align-items:center' },
@@ -2578,6 +2813,7 @@ function slotResultCard(res) {
   const moved = ((res.list && res.list.slots) || []).filter(p => p.moved);
   for (const p of moved) box.append(el('p', { class: 'hint', text: p.name + ' (' + p.modTitle + ') wanted skin ' + pad3(p.wanted) + ', which is taken, so it is skin ' + pad3(p.number) + '.' }));
   box.append(el('p', { class: 'hint', text: 'Building again now updates this skin. To make another skin, press "Start another skin".' }));
+  const saved = savedLine(res.list); if (saved) box.append(saved);
   box.append(el('div', { class: 'row', style: 'margin-top:8px' },
     el('button', { class: 'btn small', onclick: () => showPage('slots') }, 'Open Skin slots'),
     el('button', { class: 'btn small', onclick: () => exportMod(res.mod, $('#rpResult')) }, 'Share as a .zip'),
@@ -2725,6 +2961,7 @@ async function slotJob(path, body, okText) {
     if (res && res.movedTo) box.append(el('span', { class: 'path', text: res.movedTo }), ' ', openFolderBtn(res.movedTo));
     out.replaceChildren(box);
     const list = res && (res.list || (res.slots ? res : null));
+    const saved = savedLine(list); if (saved) box.append(saved);
     for (const p of (list && list.problems) || []) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: p }));
   } catch (e) { notice(out, 'error', e.message); }
   await loadSlots();
@@ -2821,6 +3058,7 @@ async function planImportUI() {
       const moved = ((res.list && res.list.slots) || []).filter(p => p.moved && (!m || p.mod === m.key));
       for (const p of moved) done.append(el('p', { class: 'hint', text: p.name + ' is skin ' + pad3(p.number) + ' of the ' + p.plane + ' (it wanted ' + pad3(p.wanted) + ').' }));
       if (plan.studio && (plan.skins.length || (plan.emblems || []).length)) done.append(el('p', { class: 'hint' }, 'New skins and emblems unlock when you finish a campaign mission, or straight away with ', el('button', { class: 'linkbtn', type: 'button', onclick: () => showPage('save') }, 'Unlock now'), ' on the Save tools screen.'));
+      const saved = savedLine(res.list); if (saved) done.append(saved);
       out.replaceChildren(done);
       for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: p }));
     } catch (e) { notice(out, 'error', e.message); }
@@ -2958,6 +3196,7 @@ function emblemResultCard(res) {
   for (const p of ((res.list && res.list.emblems) || []).filter(p => p.moved && p.mod === res.mod && p.emblem === res.emblem))
     box.append(el('p', { class: 'hint', text: 'It wanted number ' + p.wanted + ', which is taken, so it is number ' + p.number + '.' }));
   box.append(el('p', { class: 'hint', text: 'Building again now updates this emblem. To make another, press "Start another emblem".' }));
+  const saved = savedLine(res.list); if (saved) box.append(saved);
   box.append(el('div', { class: 'row', style: 'margin-top:8px' },
     el('button', { class: 'btn small', onclick: () => showPage('save') }, 'Unlock it now'),
     el('button', { class: 'btn small', onclick: () => showPage('slots') }, 'Open Skin slots'),
@@ -3734,7 +3973,7 @@ function renderSave() {
   // the list of backups
   const list = $('#svBackups');
   const bks = S.backups || [];
-  if (!bks.length) { list.replaceChildren(el('div', { class: 'svrow' }, el('span', { class: 'hint', text: 'No backups yet. One is made before every change, or press Back up now.' }))); }
+  if (!bks.length) { list.replaceChildren(el('div', { class: 'svrow' }, el('span', { class: 'hint', text: 'No backups yet. One is made before every change to your save and whenever the skin list changes, or press Back up now.' }))); }
   else list.replaceChildren(...bks.slice(0, 40).map(backupRow));
   if (bks.length > 40) list.append(el('div', { class: 'svrow' }, el('span', { class: 'hint', text: (bks.length - 40) + ' older backups are in the backups folder.' })));
   saveButtons();

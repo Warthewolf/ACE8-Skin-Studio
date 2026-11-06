@@ -668,6 +668,9 @@ type ListResult struct {
 	Installed string         `json:"installed"`
 	TextsDir  string         `json:"textsDir"`
 	Removed   bool           `json:"removed"` // no new skins are left, so the skin list mod was taken out
+	// SaveBackup is the backup of the game's save made before the list changed (nil when the save
+	// was already backed up as it is, or there is no save).
+	SaveBackup *saveBackup `json:"saveBackup,omitempty"`
 }
 
 func listInputDir(s Settings) string { return filepath.Join(s.skinListDir(), "input") }
@@ -749,6 +752,14 @@ func RebuildSkinList(j *Job, s Settings) (*ListResult, error) {
 		return nil, err
 	}
 	res := &ListResult{Slots: []PlacedSlot{}, Emblems: []PlacedEmblem{}, Adopted: []AdoptedMod{}, Problems: []string{}}
+	// The save never changes here, but which skins exist in the game does: back the save up first,
+	// so it can be put back as it was with the old list. A failure does not stop the change.
+	j.SetStep("Backing up your save", 0.02)
+	if b, err := backupBeforeListChange(j, s, j.Title); err != nil {
+		res.Problems = append(res.Problems, "Your save could not be backed up before the skin list changed ("+err.Error()+"). Back it up on the Save tools screen before playing.")
+	} else {
+		res.SaveBackup = b
+	}
 	mods, problems := scanSlotMods(s.ModsDir)
 	res.Problems = append(res.Problems, problems...)
 	adopted := findTableMods(s, mods)

@@ -64,7 +64,7 @@ function renderSave() {
   // the list of backups
   const list = $('#svBackups');
   const bks = S.backups || [];
-  if (!bks.length) { list.replaceChildren(el('div', { class: 'svrow' }, el('span', { class: 'hint', text: 'No backups yet. One is made before every change, or press Back up now.' }))); }
+  if (!bks.length) { list.replaceChildren(el('div', { class: 'svrow' }, el('span', { class: 'hint', text: 'No backups yet. One is made before every change to your save and whenever the skin list changes, or press Back up now.' }))); }
   else list.replaceChildren(...bks.slice(0, 40).map(backupRow));
   if (bks.length > 40) list.append(el('div', { class: 'svrow' }, el('span', { class: 'hint', text: (bks.length - 40) + ' older backups are in the backups folder.' })));
   saveButtons();

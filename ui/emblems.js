@@ -122,6 +122,7 @@ function emblemResultCard(res) {
   for (const p of ((res.list && res.list.emblems) || []).filter(p => p.moved && p.mod === res.mod && p.emblem === res.emblem))
     box.append(el('p', { class: 'hint', text: 'It wanted number ' + p.wanted + ', which is taken, so it is number ' + p.number + '.' }));
   box.append(el('p', { class: 'hint', text: 'Building again now updates this emblem. To make another, press "Start another emblem".' }));
+  const saved = savedLine(res.list); if (saved) box.append(saved);
   box.append(el('div', { class: 'row', style: 'margin-top:8px' },
     el('button', { class: 'btn small', onclick: () => showPage('save') }, 'Unlock it now'),
     el('button', { class: 'btn small', onclick: () => showPage('slots') }, 'Open Skin slots'),

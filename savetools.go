@@ -92,18 +92,24 @@ type saveBackup struct {
 	When   time.Time `json:"when"`
 	Reason string    `json:"reason"`
 	Auto   bool      `json:"auto"`
-	Files  []string  `json:"files"` // Campaign.sav, System.sav
+	Kind   string    `json:"kind,omitempty"` // backupListChange for the ones made when the skin list changed
+	Files  []string  `json:"files"`          // Campaign.sav, System.sav
 	Bytes  int64     `json:"bytes"`
 }
 
 type backupInfo struct {
 	When    time.Time `json:"when"`
 	Reason  string    `json:"reason"`
+	Kind    string    `json:"kind,omitempty"`
 	Program string    `json:"program"`
 }
 
 // makeSaveBackup copies both saves into a new dated folder.
 func makeSaveBackup(s Settings, reason string) (saveBackup, error) {
+	return makeSaveBackupKind(s, reason, "")
+}
+
+func makeSaveBackupKind(s Settings, reason, kind string) (saveBackup, error) {
 	from := s.saveGamesDir()
 	root := s.saveBackupsDir()
 	if from == "" || root == "" {
@@ -122,7 +128,7 @@ func makeSaveBackup(s Settings, reason string) (saveBackup, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return saveBackup{}, fmt.Errorf("the backup folder could not be made (%v)", err)
 	}
-	b := saveBackup{ID: name, When: now, Reason: reason}
+	b := saveBackup{ID: name, When: now, Reason: reason, Kind: kind}
 	for _, f := range []string{campaignSave, systemSave} {
 		data, err := os.ReadFile(filepath.Join(from, f))
 		if errors.Is(err, fs.ErrNotExist) {
@@ -147,7 +153,7 @@ func makeSaveBackup(s Settings, reason string) (saveBackup, error) {
 		os.RemoveAll(dir)
 		return saveBackup{}, fmt.Errorf("there is no save in %s to back up", from)
 	}
-	info, _ := json.MarshalIndent(backupInfo{When: now, Reason: reason, Program: appName + " " + appVersion}, "", "  ")
+	info, _ := json.MarshalIndent(backupInfo{When: now, Reason: reason, Kind: kind, Program: appName + " " + appVersion}, "", "  ")
 	os.WriteFile(filepath.Join(dir, saveBackupInfo), info, 0o644)
 	return b, nil
 }
@@ -182,7 +188,7 @@ func listSaveBackups(s Settings) []saveBackup {
 		}
 		var info backupInfo
 		if raw, err := os.ReadFile(filepath.Join(dir, saveBackupInfo)); err == nil && json.Unmarshal(raw, &info) == nil {
-			b.Reason = info.Reason
+			b.Reason, b.Kind = info.Reason, info.Kind
 			if !info.When.IsZero() {
 				b.When = info.When
 			}
@@ -240,6 +246,93 @@ func (s Settings) backupPath(id, file string) (string, error) {
 		return "", errors.New("unknown backup")
 	}
 	return filepath.Join(root, id, file), nil
+}
+
+// ------------------------------------------------------------------ backups when the skin list changes
+
+// Whenever the shared skin list changes (a skin or emblem is built, changed, imported or taken out,
+// or the list is rebuilt), the save is backed up first, so the save as it was with the old list can
+// always be put back. These backups are marked with their own kind; the newest listChangeKeep of
+// them are kept and older ones of that kind are deleted. Backups of every other kind are never
+// deleted by the program.
+const (
+	backupListChange = "skin-list"
+	listChangeReason = "before the skin list changed"
+	listChangeKeep   = 20
+)
+
+// backupBeforeListChange backs the save up before the skin list changes. what says what is being
+// done ("Build new skin"). Nothing is made when there is no save yet, or when the newest backup
+// already holds exactly these save files. It returns the backup made (nil when none was needed).
+func backupBeforeListChange(j *Job, s Settings, what string) (*saveBackup, error) {
+	dir := s.saveGamesDir()
+	if dir == "" {
+		return nil, nil
+	}
+	if _, err := os.Stat(filepath.Join(dir, campaignSave)); err != nil {
+		return nil, nil // no save yet: the game has not been played here, or its folder is not set
+	}
+	if newestBackupIsCurrent(s) {
+		j.Log("Your save is already backed up as it is now.")
+		return nil, nil
+	}
+	reason := listChangeReason
+	if what != "" {
+		reason += " (" + strings.ToLower(what[:1]) + what[1:] + ")"
+	}
+	b, err := makeSaveBackupKind(s, reason, backupListChange)
+	if err != nil {
+		return nil, err
+	}
+	j.Log("Backed up your save to %s before changing the skin list.", filepath.Join(s.saveBackupsDir(), b.ID))
+	pruneListChangeBackups(s, listChangeKeep)
+	return &b, nil
+}
+
+// newestBackupIsCurrent tells whether the newest dated backup holds the same save files as the
+// save folder now (the game-start backups do not count: they are overwritten in turn).
+func newestBackupIsCurrent(s Settings) bool {
+	for _, b := range listSaveBackups(s) {
+		if b.Auto {
+			continue
+		}
+		for _, f := range []string{campaignSave, systemSave} {
+			now, errNow := os.ReadFile(filepath.Join(s.saveGamesDir(), f))
+			p, err := s.backupPath(b.ID, f)
+			if err != nil {
+				return false
+			}
+			was, errWas := os.ReadFile(p)
+			if (errNow == nil) != (errWas == nil) || !bytes.Equal(now, was) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+// pruneListChangeBackups deletes the oldest backups made when the skin list changed, keeping keep.
+func pruneListChangeBackups(s Settings, keep int) {
+	root := s.saveBackupsDir()
+	if root == "" {
+		return
+	}
+	n := 0
+	for _, b := range listSaveBackups(s) { // newest first
+		if b.Auto || b.Kind != backupListChange {
+			continue
+		}
+		if n++; n <= keep {
+			continue
+		}
+		if b.ID == "" || b.ID != filepath.Base(b.ID) || b.ID == "." || b.ID == ".." {
+			continue
+		}
+		if err := os.RemoveAll(filepath.Join(root, b.ID)); err != nil {
+			logf("an old save backup could not be deleted: %v", err)
+		}
+	}
 }
 
 // replaceFile writes data next to path and then puts it in path's place.

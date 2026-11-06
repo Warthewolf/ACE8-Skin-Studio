@@ -130,6 +130,15 @@ function startAnotherSkin() {
 }
 function aircraftNumber(name) { const m = /^[A-Za-z]+0*(\d+)_/.exec(name || ''); return m ? +m[1] : 0; }
 
+// savedLine says the game's save was backed up before the skin list changed (null when it was not
+// needed: no save yet, or the newest backup already had it).
+function savedLine(list) {
+  const b = list && list.saveBackup;
+  if (!b || !b.id) return null;
+  return el('p', { class: 'hint' }, 'Your game save was backed up first (' + (fmtWhen(b.when) || b.id) + '), so it can be put back as it was. ',
+    el('button', { class: 'linkbtn', type: 'button', onclick: () => showPage('save') }, 'See backups'));
+}
+
 function slotResultCard(res) {
   const box = el('div', { class: 'notice good results' });
   const head = el('div', { style: 'display:flex;gap:14px;align-items:center' },
@@ -142,6 +151,7 @@ function slotResultCard(res) {
   const moved = ((res.list && res.list.slots) || []).filter(p => p.moved);
   for (const p of moved) box.append(el('p', { class: 'hint', text: p.name + ' (' + p.modTitle + ') wanted skin ' + pad3(p.wanted) + ', which is taken, so it is skin ' + pad3(p.number) + '.' }));
   box.append(el('p', { class: 'hint', text: 'Building again now updates this skin. To make another skin, press "Start another skin".' }));
+  const saved = savedLine(res.list); if (saved) box.append(saved);
   box.append(el('div', { class: 'row', style: 'margin-top:8px' },
     el('button', { class: 'btn small', onclick: () => showPage('slots') }, 'Open Skin slots'),
     el('button', { class: 'btn small', onclick: () => exportMod(res.mod, $('#rpResult')) }, 'Share as a .zip'),
@@ -289,6 +299,7 @@ async function slotJob(path, body, okText) {
     if (res && res.movedTo) box.append(el('span', { class: 'path', text: res.movedTo }), ' ', openFolderBtn(res.movedTo));
     out.replaceChildren(box);
     const list = res && (res.list || (res.slots ? res : null));
+    const saved = savedLine(list); if (saved) box.append(saved);
     for (const p of (list && list.problems) || []) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: p }));
   } catch (e) { notice(out, 'error', e.message); }
   await loadSlots();
@@ -385,6 +396,7 @@ async function planImportUI() {
       const moved = ((res.list && res.list.slots) || []).filter(p => p.moved && (!m || p.mod === m.key));
       for (const p of moved) done.append(el('p', { class: 'hint', text: p.name + ' is skin ' + pad3(p.number) + ' of the ' + p.plane + ' (it wanted ' + pad3(p.wanted) + ').' }));
       if (plan.studio && (plan.skins.length || (plan.emblems || []).length)) done.append(el('p', { class: 'hint' }, 'New skins and emblems unlock when you finish a campaign mission, or straight away with ', el('button', { class: 'linkbtn', type: 'button', onclick: () => showPage('save') }, 'Unlock now'), ' on the Save tools screen.'));
+      const saved = savedLine(res.list); if (saved) done.append(saved);
       out.replaceChildren(done);
       for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: p }));
     } catch (e) { notice(out, 'error', e.message); }
