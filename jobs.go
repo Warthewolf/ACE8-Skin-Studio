@@ -10,6 +10,7 @@ import (
 	"io"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -186,10 +187,8 @@ var reANSI = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]`)
 
 // runTool runs an external program and feeds its output to the job log line by line.
 func runTool(j *Job, exe string, args []string, onLine func(string)) error {
-	if isRetoc(exe) && needsOodle(args) {
-		if err := ensureOodle(j, exe, getSettings().PaksDir); err != nil {
-			return err
-		}
+	if err := beforeRetoc(j, exe, args); err != nil {
+		return err
 	}
 	cmd := exec.CommandContext(j.ctx, exe, args...)
 	hideWindow(cmd)
@@ -197,6 +196,9 @@ func runTool(j *Job, exe string, args []string, onLine func(string)) error {
 	cmd.Stdout, cmd.Stderr = pw, pw
 	if err := cmd.Start(); err != nil {
 		pw.Close()
+		if isRetoc(exe) {
+			return errors.New(retocStartProblem(exe, err))
+		}
 		return fmt.Errorf("%s could not be started (%v). Check that the file is still there; antivirus programs sometimes remove or block it", exeBase(exe), err)
 	}
 	done := make(chan struct{})
@@ -238,14 +240,27 @@ func runTool(j *Job, exe string, args []string, onLine func(string)) error {
 	return nil
 }
 
+// beforeRetoc checks that retoc can run on this computer, and gives it Oodle when the command needs
+// it. Other programs pass straight through.
+func beforeRetoc(j *Job, exe string, args []string) error {
+	if !isRetoc(exe) {
+		return nil
+	}
+	if p := retocProblem(exe); p != "" {
+		return errors.New(p)
+	}
+	if needsOodle(args) {
+		return ensureOodle(j, exe, getSettings().PaksDir)
+	}
+	return nil
+}
+
 // runToolTTY runs a tool whose error output goes to a pipe it takes for a terminal (ttyPipe), so
 // it keeps the messages it would otherwise drop, and passes each line of everything it prints to
 // onLine (with the progress display's own lines among them).
 func runToolTTY(j *Job, exe string, args []string, onLine func(string)) error {
-	if isRetoc(exe) && needsOodle(args) {
-		if err := ensureOodle(j, exe, getSettings().PaksDir); err != nil {
-			return err
-		}
+	if err := beforeRetoc(j, exe, args); err != nil {
+		return err
 	}
 	tr, tw, err := ttyPipe()
 	if err != nil {
@@ -322,12 +337,21 @@ func explainToolFailure(tail []string, packing bool) string {
 		return false
 	}
 	switch {
+	case has("glibc_", "error while loading shared libraries"):
+		if p := retocLinuxProblem(strings.Join(tail, "\n")); p != "" {
+			return p
+		}
+		return "retoc could not start on this computer."
+	case has("cannot execute binary file", "exec format error"):
+		return "retoc is not a program for this computer. Download the right retoc for it from " + retocReleases + "."
 	case has("os error 112", "no space left", "not enough space", "disk full", "disk is full"):
 		return "The disk is full. One aircraft's textures take roughly 2 to 4 GB; free some space, or move the workspace folder in Settings."
 	case has("os error 32", "being used by another process"):
 		return "A file is in use by another program. Close the game (and FModel, if it is open) and try again."
-	case has("os error 5", "access is denied", "permission denied"):
+	case has("os error 5", "access is denied") || (runtime.GOOS == "windows" && has("permission denied")):
 		return "Windows refused access to a file. Use a workspace folder you can write to (not inside Program Files), and check that your antivirus is not blocking retoc."
+	case has("permission denied", "os error 13", "read-only file system", "os error 30"):
+		return "retoc was not allowed to write a file. Use a workspace folder in your home folder, and keep retoc in a folder you can write to (it keeps Oodle next to itself)."
 	case has("invalid aes key"):
 		return "retoc does not accept the AES key. Check it in Settings: it must be 64 hexadecimal characters, optionally starting with 0x."
 	case has("missing encryption key", "no aes key"):
@@ -335,6 +359,9 @@ func explainToolFailure(tail []string, packing bool) string {
 	case has("invalid eiostoretocversion", "unrecognized toc magic", "invalid eiocontainerflags", "unknown compression method"):
 		return "This version of retoc does not understand the game's files. The game has probably updated; get the newest retoc from github.com/trumank/retoc/releases."
 	case has("oodle") && !has("oodle decompression failed"):
+		if runtime.GOOS != "windows" {
+			return "retoc could not load the Oodle library it needs to read the game's files (" + oodleName + ", kept next to retoc). Check that you are online for the first extraction and that retoc is in a folder you can write to."
+		}
 		return "retoc could not load the Oodle library it needs. It downloads that file the first time it runs, so check that you are online and that your antivirus has not blocked it."
 	case packing && has("pkg_cooked", "pkg_filtereditoronly", "uncooked"):
 		return "retoc refused one of the files because it is not in the game's cooked format."

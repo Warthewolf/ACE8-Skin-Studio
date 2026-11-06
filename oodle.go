@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -77,6 +78,12 @@ func fileSHA256(b []byte) string {
 func ensureOodle(j *Job, retoc string, paks string) error {
 	oodleMu.Lock()
 	defer oodleMu.Unlock()
+	// retoc looks for the library next to its own file (Rust's current_exe), which on Linux is the
+	// file a symbolic link points to, not the link: a retoc installed with cargo or a package is often
+	// a link.
+	if real, err := filepath.EvalSymlinks(retoc); err == nil {
+		retoc = real
+	}
 	dst := filepath.Join(filepath.Dir(retoc), oodleName)
 	if st, err := os.Stat(dst); err == nil && st.Size() > 100_000 {
 		return nil
@@ -121,6 +128,10 @@ func ensureOodle(j *Job, retoc string, paks string) error {
 }
 
 func oodleWriteProblem(dst string, err error) error {
+	if runtime.GOOS != "windows" {
+		return fmt.Errorf("retoc needs the file %s next to it, but it could not be put in %s (%v). "+
+			"Copy retoc into a folder you can write to, such as this program's folder, and choose that copy in Settings", oodleName, filepath.Dir(dst), err)
+	}
 	return fmt.Errorf("retoc needs the file %s next to it, but it could not be put in %s (%v). "+
 		"Put retoc in a folder you can write to, such as next to this program, and choose it again in Settings", oodleName, filepath.Dir(dst), err)
 }

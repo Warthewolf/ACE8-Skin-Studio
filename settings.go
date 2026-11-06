@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -142,9 +143,9 @@ func (s Settings) previewTmp() string  { return filepath.Join(s.Workspace, "prev
 func (s Settings) findRetoc() string {
 	cands := []string{s.RetocPath}
 	if s.RetocPath != "" {
-		cands = append(cands, filepath.Join(s.RetocPath, exeName)) // a folder was given
+		cands = append(cands, retocCandidates(s.RetocPath)...) // a folder was given
 	}
-	cands = append(cands, filepath.Join(dataDir, exeName), filepath.Join(dataDir, "retoc", exeName))
+	cands = append(cands, retocCandidates(dataDir)...)
 	for _, c := range cands {
 		if c == "" {
 			continue
@@ -196,6 +197,9 @@ func workspaceProblem(dir string) string {
 		return "The workspace folder is a file, not a folder."
 	}
 	if os.IsPermission(err) {
+		if runtime.GOOS != "windows" {
+			return "This program is not allowed to write to the workspace folder (a folder owned by another user, or a read-only drive?)."
+		}
 		return "Windows does not let this program write to the workspace folder (a protected folder such as Program Files?)."
 	}
 	return "The workspace folder cannot be used (" + err.Error() + ")."
@@ -208,10 +212,12 @@ func (s Settings) checks() map[string]check {
 	} else {
 		out["workspace"] = check{true, "Folder ready"}
 	}
-	if r := s.findRetoc(); r != "" {
-		out["retoc"] = check{true, r}
+	if r := s.findRetoc(); r == "" {
+		out["retoc"] = check{false, retocMissingNote()}
+	} else if p := retocProblem(r); p != "" {
+		out["retoc"] = check{false, p}
 	} else {
-		out["retoc"] = check{false, "retoc was not found. Download it and choose " + exeName + " here, or put " + exeName + " next to this program."}
+		out["retoc"] = check{true, r}
 	}
 	switch {
 	case s.PaksDir == "":

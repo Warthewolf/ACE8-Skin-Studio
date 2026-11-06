@@ -243,11 +243,6 @@ func platformPaksDir() string {
 	return ""
 }
 
-// ttyPipe is only needed (and made) on Windows; see os_windows.go.
-func ttyPipe() (r, w *os.File, err error) {
-	return nil, nil, errors.New("not available on this system")
-}
-
 // Oodle for retoc (see oodle.go). The game's own copy is for Windows, so it cannot stand in here.
 const (
 	oodleName         = "liboo2corelinux64.so.9"
