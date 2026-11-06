@@ -13,7 +13,8 @@ Use modded files offline and in single player only.
 
 What you need
 -------------
-- Windows 10 or 11.
+- Windows 10 or 11. (On Linux and the Steam Deck, see LINUX.txt, which
+  comes with the Linux package.)
 - retoc.exe, the free tool that unpacks and packs the game's containers.
   It is included in this folder and is found automatically as long as it
   stays next to ACE8SkinStudio.exe. retoc is by Truman Kilen and Archengius

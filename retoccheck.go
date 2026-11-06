@@ -33,9 +33,9 @@ const retocReleases = "https://github.com/trumank/retoc/releases"
 // retocLinuxAsset is the file to download from retoc's releases for this computer.
 func retocLinuxAsset() string {
 	if runtime.GOARCH == "arm64" {
-		return "retoc-aarch64-unknown-linux-gnu.tar.xz"
+		return "retoc_cli-aarch64-unknown-linux-gnu.tar.xz"
 	}
-	return "retoc-x86_64-unknown-linux-gnu.tar.xz"
+	return "retoc_cli-x86_64-unknown-linux-gnu.tar.xz"
 }
 
 // retocBuildFromSource is how to get a retoc made for this very Linux.
@@ -91,7 +91,7 @@ func checkRetocFile(path string, st os.FileInfo) string {
 	kind := programKind(head)
 	if runtime.GOOS == "windows" {
 		if kind == "linux" || kind == "linux-arm" {
-			return "The retoc chosen in Settings is the Linux version. Windows needs retoc.exe, from " + retocReleases + " (retoc-x86_64-pc-windows-msvc.zip)."
+			return "The retoc chosen in Settings is the Linux version. Windows needs retoc.exe, from " + retocReleases + " (retoc_cli-x86_64-pc-windows-msvc.zip)."
 		}
 		return ""
 	}
@@ -236,7 +236,7 @@ func retocStartProblem(path string, err error) string {
 	switch {
 	case errors.Is(err, syscall.ENOEXEC) || strings.Contains(err.Error(), "exec format error"):
 		if runtime.GOOS == "windows" {
-			return "retoc.exe could not be started: it is not a Windows program. Download retoc-x86_64-pc-windows-msvc.zip from " + retocReleases + "."
+			return "retoc.exe could not be started: it is not a Windows program. Download retoc_cli-x86_64-pc-windows-msvc.zip from " + retocReleases + "."
 		}
 		return "retoc could not be started: it is not a program for this computer. Download " + retocLinuxAsset() + " from " + retocReleases + " and choose the file retoc in it."
 	case errors.Is(err, os.ErrPermission):
@@ -254,11 +254,13 @@ func retocStartProblem(path string, err error) string {
 }
 
 // retocCandidates are the places retoc is looked for in a folder: the folder itself, and the
-// folders its downloads unpack to (retoc, retoc-x86_64-unknown-linux-gnu, ...).
+// folders its downloads unpack to (retoc, retoc_cli-x86_64-unknown-linux-gnu, ...).
 func retocCandidates(dir string) []string {
 	out := []string{filepath.Join(dir, exeName), filepath.Join(dir, "retoc", exeName)}
-	if ms, _ := filepath.Glob(filepath.Join(dir, "retoc-*", exeName)); len(ms) > 0 {
-		out = append(out, ms...)
+	for _, pattern := range []string{"retoc_cli-*", "retoc-*"} {
+		if ms, _ := filepath.Glob(filepath.Join(dir, pattern, exeName)); len(ms) > 0 {
+			out = append(out, ms...)
+		}
 	}
 	return out
 }
@@ -267,9 +269,9 @@ func retocCandidates(dir string) []string {
 func retocMissingNote() string {
 	if runtime.GOOS != "windows" {
 		if _, err := os.Stat(filepath.Join(dataDir, "retoc.exe")); err == nil {
-			return "retoc.exe next to this program is the Windows version, which does not run on Linux. Download " + retocLinuxAsset() + " from " + retocReleases + ", unpack it, and put the file retoc next to this program."
+			return "retoc.exe next to this program is the Windows version, which does not run on Linux. The Linux package of Skin Studio comes with retoc for Linux: get it again, or download " + retocLinuxAsset() + " from " + retocReleases + ", unpack it, and put the file retoc next to this program."
 		}
-		return "retoc was not found. Download " + retocLinuxAsset() + " from " + retocReleases + ", unpack it, and put the file retoc next to this program, or choose it here."
+		return "retoc was not found. It comes with Skin Studio, next to the program: get the Linux package again, or download " + retocLinuxAsset() + " from " + retocReleases + ", unpack it, and put the file retoc next to this program (or choose it here)."
 	}
-	return "retoc was not found. Download it and choose " + exeName + " here, or put " + exeName + " next to this program."
+	return "retoc was not found. It comes with Skin Studio, next to the program: get the package again (antivirus programs sometimes remove it), or download it from " + retocReleases + " and choose " + exeName + " here."
 }

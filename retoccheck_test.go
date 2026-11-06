@@ -109,7 +109,7 @@ func TestFindRetocInReleaseFolder(t *testing.T) {
 	old := dataDir
 	dataDir = t.TempDir()
 	t.Cleanup(func() { dataDir = old })
-	sub := filepath.Join(dataDir, "retoc-x86_64-unknown-linux-gnu")
+	sub := filepath.Join(dataDir, "retoc_cli-x86_64-unknown-linux-gnu")
 	os.MkdirAll(sub, 0o755)
 	want := filepath.Join(sub, exeName)
 	os.WriteFile(want, []byte("#!/bin/sh\n"), 0o755)

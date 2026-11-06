@@ -58,15 +58,25 @@ With LLVM 18 the result is byte for byte the shipped `SkinSlotText.dll` (compare
 
 1. Set the version: `appVersion` in `settings.go`, the first line of `README.txt`, and a new section at the top of `CHANGELOG.txt`.
 2. Build the page and both programs as above; run the tests.
-3. Make the packages:
+3. Make the packages, each with the retoc for its system:
+
+```sh
+python3 tools/package.py            # builds the page and both programs, fetches retoc, writes dist/
+```
 
 | Package | Contents |
 |---|---|
-| `ACE8SkinStudio-<v>.zip` | `ACE8SkinStudio/`: `ACE8SkinStudio.exe`, `retoc.exe`, `retoc-LICENSE.txt`, `README.txt`, `CHANGELOG.txt` |
-| `ACE8SkinStudio-<v>-with-UE4SS-and-ModLoader-1.1.0.zip` | The above, plus `Win64/` (UE4SS and AC8 Mod Loader, ready to copy into `Game/Binaries/Win64`) and `START HERE.txt` |
-| `ACE8SkinStudio-<v>-linux-x86_64.tar.gz` / `.zip` | `ACE8SkinStudio/`: the Linux program (executable), `LINUX.txt`, `README.txt`, `CHANGELOG.txt`, `retoc-LICENSE.txt` (retoc for Linux is downloaded by the player) |
-| `ACE8SkinStudio-<v>-source.zip` | This repository's files |
+| `ACE8SkinStudio-<v>.zip` | `ACE8SkinStudio/`: `ACE8SkinStudio.exe`, **`retoc.exe`** (Windows), `retoc-LICENSE.txt`, `README.txt`, `CHANGELOG.txt` |
+| `ACE8SkinStudio-<v>-with-UE4SS-and-ModLoader-1.1.0.zip` | The above, plus `Win64/` (UE4SS and AC8 Mod Loader, ready to copy into `Game/Binaries/Win64`) and `START HERE.txt`. Made when you pass `--bundle-win64 <Win64 folder> --start-here <START HERE.txt>` |
+| `ACE8SkinStudio-<v>-linux-x86_64.tar.gz` / `.zip` | `ACE8SkinStudio/`: the Linux program and **`retoc`** (Linux x86-64), both executable (the `.zip` keeps that for `unzip`), `LINUX.txt`, `README.txt`, `CHANGELOG.txt`, `retoc-LICENSE.txt` |
+| `ACE8SkinStudio-<v>-source.zip` | This repository at `HEAD` (`git archive`) |
 
-4. Check before publishing: **no `settings.json`** (it holds the AES key) and no Steam files in any package, and the source package builds and passes its tests on its own.
+What the script does about retoc:
+- It takes the retoc release named by `RETOC_DEFAULT` in `tools/package.py` (or `--retoc <tag>`) from [retoc's releases](https://github.com/trumank/retoc/releases): `retoc_cli-x86_64-pc-windows-msvc.zip` for Windows and `retoc_cli-x86_64-unknown-linux-gnu.tar.xz` for Linux. Without internet, download those two (and their `.sha256` files) by hand and pass `--retoc-dir <folder>`.
+- Each archive is checked against the `.sha256` the release publishes and against **`tools/retoc-lock.json`**. The first time a release is used its hashes are written there; after that a download that differs is refused. Commit the lock file with the release.
+- The program taken from each archive must be the right kind (a Windows program for the Windows package, a Linux x86-64 program for the Linux one), or nothing is packed. Each finished package is read back: exactly one retoc, the right one, executable on Linux, and no retoc for the other system.
+- retoc's Linux build needs glibc 2.34 or newer (it is built on Ubuntu 22.04). Skin Studio explains this to players on older Linux and how to build retoc for it (see `LINUX.txt`).
+
+4. Check before publishing: **no `settings.json`** (it holds the AES key) and no Steam files in any package, and the source package builds and passes its tests on its own. The script refuses to pack `settings.json`, Oodle or `.sav` files.
 
 Do not ship **Oodle** (`oo2core_9_win64.dll`): it is not ours to redistribute. retoc and Skin Studio fetch it on the player's computer.

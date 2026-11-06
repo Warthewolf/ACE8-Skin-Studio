@@ -1,0 +1,72 @@
+ACE8 Skin Studio for Linux
+==========================
+
+The same program as on Windows, for Ace Combat 8 running through Proton
+(x86-64 Linux, Steam Deck included). README.txt describes every screen;
+this file covers what is different on Linux.
+
+Use modded files offline and in single player only.
+
+
+Starting it
+-----------
+1. Unpack the .tar.gz somewhere with a short path, for example
+   ~/ACE8SkinStudio. (The .tar.gz keeps the programs runnable. From the
+   .zip, if it does not start: chmod +x ACE8SkinStudio retoc)
+2. Run ./ACE8SkinStudio, or double-click it in your file manager.
+   The window opens in Chrome, Chromium, Edge or Brave when one is
+   installed, otherwise in your default browser.
+
+
+retoc comes with it
+-------------------
+retoc, the free tool that unpacks and packs the game's files, is the file
+"retoc" next to ACE8SkinStudio. Keep the two together. Leave the "retoc
+program" box in Settings empty.
+
+retoc also needs Oodle for Linux (liboo2corelinux64.so.9). Skin Studio
+downloads it next to retoc the first time you extract, so be online then.
+
+Do not use retoc.exe on Linux: it is the Windows version and does not run.
+
+If Settings says retoc is made for a newer Linux ("needs glibc 2.34"):
+retoc's ready-made build runs on Ubuntu 22.04, Debian 12, Fedora 36,
+Linux Mint 21 and newer. On an older Linux, build retoc for it with Rust
+(https://rustup.rs):
+    cargo install --git https://github.com/trumank/retoc retoc_cli
+then choose ~/.cargo/bin/retoc in Settings.
+
+
+Found by itself
+---------------
+- The game's Paks folder in any Steam library, Flatpak Steam included:
+  .../steamapps/common/ACE COMBAT 8/Game/Content/Paks
+- The game's save folder inside Proton's prefix:
+  .../steamapps/compatdata/<game>/pfx/drive_c/users/steamuser/AppData/
+  Local/BANDAI NAMCO Entertainment/ACE COMBAT 8/Saved/SaveGames
+- Whether the game is running (the Save tools need it closed).
+
+
+Mods folder and UE4SS under Proton
+----------------------------------
+Set the Mods folder in Settings to:
+  .../steamapps/common/ACE COMBAT 8/Game/Binaries/Win64/ue4ss/Mods/
+  IoStoreLoaderMod
+
+UE4SS loads under Proton only when Wine is told to use its DLL. In Steam,
+the game's Properties, Launch options, for current UE4SS (dwmapi.dll):
+  WINEDLLOVERRIDES="dwmapi=n,b" %command%
+
+
+Choosing files
+--------------
+The Browse buttons use zenity (GNOME) or kdialog (KDE, and the Steam
+Deck's desktop mode). Without either, type or paste paths.
+
+
+Something wrong?
+----------------
+Settings checks retoc and says what is wrong in plain words. "Copy a
+support report" under Settings > About copies what is needed to help you
+(the AES key is never included). Any issues please contact
+@voidcallsreaper on Discord.
