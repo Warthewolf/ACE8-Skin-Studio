@@ -138,6 +138,9 @@ func buildReport() string {
 		line("  retoc: NOT FOUND (setting: %s)", orNone(s.RetocPath))
 	} else {
 		line("  retoc: %s (%s)", retoc, rv)
+		if p := retocProblem(retoc); p != "" {
+			line("  retoc PROBLEM: %s", p)
+		}
 		if fileExists(filepath.Join(filepath.Dir(retoc), oodleName)) {
 			line("  Oodle (%s): next to retoc", oodleName)
 		} else {
@@ -150,6 +153,9 @@ func buildReport() string {
 		line("  Extra raw folders: %s", strings.Join(s.ExtraRawDirs, "; "))
 	}
 	window := "own window (Edge)"
+	if runtime.GOOS != "windows" {
+		window = "own window (Chromium-based browser, or the default browser when there is none)"
+	}
 	if s.DefaultBrowser {
 		window = "default browser"
 	}

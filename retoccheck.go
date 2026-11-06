@@ -124,6 +124,30 @@ func checkRetocFile(path string, st os.FileInfo) string {
 	return retocProbe(path)
 }
 
+// retocSuitsHere tells from a file's first bytes whether it can be a retoc for this computer.
+func retocSuitsHere(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	head := make([]byte, 64)
+	n, _ := f.Read(head)
+	f.Close()
+	switch programKind(head[:n]) {
+	case "windows":
+		return runtime.GOOS == "windows"
+	case "linux":
+		return runtime.GOOS == "linux" && runtime.GOARCH == "amd64"
+	case "linux-arm":
+		return runtime.GOOS == "linux" && runtime.GOARCH == "arm64"
+	case "mac":
+		return runtime.GOOS == "darwin"
+	case "script":
+		return runtime.GOOS != "windows"
+	}
+	return false
+}
+
 // programKind tells what a file is from its first bytes: windows, linux, linux-arm, mac, script or "".
 func programKind(head []byte) string {
 	switch {

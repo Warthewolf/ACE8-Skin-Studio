@@ -169,3 +169,29 @@ func TestTTYPipeIsATerminal(t *testing.T) {
 		t.Fatalf("lines %q", got)
 	}
 }
+
+// A Windows retoc.exe still chosen in Settings on Linux gives way to a Linux retoc next to the
+// program; with no other retoc, it is the one found, so Settings can say what is wrong with it.
+func TestFindRetocPrefersOneForThisComputer(t *testing.T) {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		t.Skip("Linux x86-64 only")
+	}
+	old := dataDir
+	dataDir = t.TempDir()
+	t.Cleanup(func() { dataDir = old })
+	t.Setenv("PATH", "")
+	win := filepath.Join(dataDir, "retoc.exe")
+	os.WriteFile(win, []byte("MZ\x90\x00 windows"), 0o644)
+	s := Settings{RetocPath: win}
+	if got := s.findRetoc(); got != win {
+		t.Fatalf("only retoc.exe: found %q", got)
+	}
+	if c := s.checks()["retoc"]; c.OK || !strings.Contains(c.Note, "Windows version") {
+		t.Fatalf("Settings check: %+v", c)
+	}
+	linux := filepath.Join(dataDir, "retoc")
+	os.WriteFile(linux, elfHeader(0x3E), 0o755)
+	if got := s.findRetoc(); got != linux {
+		t.Fatalf("with a Linux retoc too: found %q", got)
+	}
+}

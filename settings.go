@@ -146,18 +146,26 @@ func (s Settings) findRetoc() string {
 		cands = append(cands, retocCandidates(s.RetocPath)...) // a folder was given
 	}
 	cands = append(cands, retocCandidates(dataDir)...)
+	if p, err := exec.LookPath("retoc"); err == nil {
+		cands = append(cands, p)
+	}
+	// The first one made for this computer; when none is, the first one there, so Settings can say
+	// what is wrong with it (the Windows retoc.exe chosen on Linux, for example).
+	first := ""
 	for _, c := range cands {
 		if c == "" {
 			continue
 		}
 		if st, err := os.Stat(c); err == nil && !st.IsDir() {
-			return c
+			if retocSuitsHere(c) {
+				return c
+			}
+			if first == "" {
+				first = c
+			}
 		}
 	}
-	if p, err := exec.LookPath("retoc"); err == nil {
-		return p
-	}
-	return ""
+	return first
 }
 
 var reAES = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{64}$`)
@@ -168,6 +176,19 @@ type check struct {
 }
 
 // checks reports what is set up and what is still missing, in plain words.
+// hostPath writes a Windows path hint the way this system writes paths: on Linux with /, and the
+// save folder as it is inside Proton's prefix.
+func hostPath(p string) string {
+	if runtime.GOOS == "windows" {
+		return p
+	}
+	p = strings.ReplaceAll(p, `\`, "/")
+	if strings.HasPrefix(p, "…/BANDAI NAMCO") {
+		p = "…/steamapps/compatdata/<game>/pfx/drive_c/users/steamuser/AppData/Local" + strings.TrimPrefix(p, "…")
+	}
+	return p
+}
+
 // defaultWorkspace is the workspace folder used when none is chosen: next to the program.
 func defaultWorkspace() string { return filepath.Join(dataDir, "workspace") }
 
@@ -221,7 +242,7 @@ func (s Settings) checks() map[string]check {
 	}
 	switch {
 	case s.PaksDir == "":
-		out["paks"] = check{false, "Choose the game's Paks folder (…\\ACE COMBAT 8\\Game\\Content\\Paks)."}
+		out["paks"] = check{false, "Choose the game's Paks folder (" + hostPath(`…\ACE COMBAT 8\Game\Content\Paks`) + ")."}
 	default:
 		n := 0
 		if es, err := os.ReadDir(s.PaksDir); err == nil {
@@ -256,7 +277,7 @@ func (s Settings) checks() map[string]check {
 		}
 	}
 	if d := s.saveGamesDir(); d == "" {
-		out["save"] = check{false, "Not found. Choose the game's SaveGames folder (…\\BANDAI NAMCO Entertainment\\ACE COMBAT 8\\Saved\\SaveGames)."}
+		out["save"] = check{false, "Not found. Choose the game's SaveGames folder (" + hostPath(`…\BANDAI NAMCO Entertainment\ACE COMBAT 8\Saved\SaveGames`) + ")."}
 	} else if _, err := os.Stat(filepath.Join(d, campaignSave)); err == nil {
 		out["save"] = check{true, "Found: " + d}
 	} else if s.SaveDir != "" {
@@ -269,7 +290,7 @@ func (s Settings) checks() map[string]check {
 	} else if s.UE4SSMods != "" {
 		out["ue4ss"] = check{false, "That folder does not hold UE4SS's mods (mods.txt)."}
 	} else {
-		out["ue4ss"] = check{false, "Not found yet. New skins need it for their names; it is found by itself when the mods folder is inside ue4ss\\Mods."}
+		out["ue4ss"] = check{false, "Not found yet. New skins need it for their names; it is found by itself when the mods folder is inside " + hostPath(`ue4ss\Mods`) + "."}
 	}
 	switch {
 	case s.ModsDir == "":
