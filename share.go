@@ -22,6 +22,7 @@ package main
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -133,6 +134,11 @@ func doExportMod(j *Job, s Settings, key string) (any, error) {
 		return nil, err
 	}
 	m := im.Manifest
+	// The folder's own name, not the one its skinstudio.json gives, and only icons where this
+	// program keeps them: that file may have been copied in by hand from someone else's zip, and
+	// both end up in file paths here and in the zip.
+	m.Folder = filepath.Base(im.Dir)
+	keepOwnIconFiles(m)
 	j.SetStep("Making a skin list with only this mod's skins", 0.1)
 	in, err := standaloneTables(j, s, im)
 	if err != nil {
@@ -302,9 +308,11 @@ func humanSize(n int64) string {
 
 // pkgSource is a zip or folder being imported.
 type pkgSource struct {
-	zr    *zip.ReadCloser
-	dir   string
-	files []string // slash paths
+	zr     *zip.ReadCloser
+	dir    string
+	files  []string             // slash paths
+	byName map[string]*zip.File // a zip's files by slash path (the first of two with the same name)
+	has    map[string]bool      // a folder's files
 }
 
 func openSource(p string) (*pkgSource, error) {
@@ -312,7 +320,7 @@ func openSource(p string) (*pkgSource, error) {
 	if err != nil {
 		return nil, errors.New("that file or folder does not exist")
 	}
-	src := &pkgSource{}
+	src := &pkgSource{byName: map[string]*zip.File{}, has: map[string]bool{}}
 	if st.IsDir() {
 		src.dir = p
 		count := 0
@@ -323,9 +331,10 @@ func openSource(p string) (*pkgSource, error) {
 			if count++; count > 20000 {
 				return filepath.SkipAll
 			}
-			if !d.IsDir() {
+			if d.Type().IsRegular() { // not folders, and not links, which could lead outside the folder
 				rel, _ := filepath.Rel(p, f)
 				src.files = append(src.files, filepath.ToSlash(rel))
+				src.has[filepath.ToSlash(rel)] = true
 			}
 			return nil
 		})
@@ -338,10 +347,32 @@ func openSource(p string) (*pkgSource, error) {
 	src.zr = zr
 	for _, f := range zr.File {
 		if !f.FileInfo().IsDir() {
-			src.files = append(src.files, strings.ReplaceAll(f.Name, `\`, "/"))
+			name := strings.ReplaceAll(f.Name, `\`, "/")
+			src.files = append(src.files, name)
+			if src.byName[name] == nil {
+				src.byName[name] = f
+			}
 		}
 	}
 	return src, nil
+}
+
+// size gives how large a file of the zip or folder says it is (-1 when it is not there).
+func (src *pkgSource) size(name string) int64 {
+	if src.dir != "" {
+		if !src.has[name] || !safeRel(name) {
+			return -1
+		}
+		st, err := os.Stat(filepath.Join(src.dir, filepath.FromSlash(name)))
+		if err != nil {
+			return -1
+		}
+		return st.Size()
+	}
+	if f := src.byName[name]; f != nil {
+		return int64(min(f.UncompressedSize64, 1<<62))
+	}
+	return -1
 }
 
 func (src *pkgSource) Close() {
@@ -350,16 +381,46 @@ func (src *pkgSource) Close() {
 	}
 }
 
+// safeRel tells whether a slash path from a zip or folder being imported stays inside it, on
+// Windows too: no absolute path, drive letter or "..", no backslash (a folder separator there), no
+// part that Windows changes (it can drop dots and spaces at the end of a name, so ".. " or "..."
+// could become "..") or reads as a device (CON, NUL, COM1 ...), and no control characters. Zips
+// come from strangers.
 func safeRel(p string) bool {
-	if p == "" || strings.HasPrefix(p, "/") || strings.Contains(p, ":") {
+	if p == "" || strings.HasPrefix(p, "/") || strings.ContainsAny(p, `:\`) {
 		return false
 	}
+	for _, c := range p {
+		if c < 0x20 || c == 0x7F {
+			return false
+		}
+	}
 	for _, part := range strings.Split(p, "/") {
-		if part == ".." {
+		if part == "." {
+			continue
+		}
+		if part == ".." || strings.HasSuffix(part, ".") || strings.HasSuffix(part, " ") || windowsDevice(part) {
 			return false
 		}
 	}
 	return true
+}
+
+// windowsDevice tells whether Windows reads a file name as a device (with any ending: "nul.txt" is NUL too).
+func windowsDevice(name string) bool {
+	base, _, _ := strings.Cut(name, ".")
+	base = strings.ToUpper(strings.TrimRight(base, " "))
+	switch base {
+	case "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$":
+		return true
+	}
+	if len(base) >= 4 && (strings.HasPrefix(base, "COM") || strings.HasPrefix(base, "LPT")) {
+		switch base[3:] {
+		case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "¹", "²", "³":
+			return true
+		}
+	}
+	return false
 }
 
 func (src *pkgSource) open(name string) (io.ReadCloser, error) {
@@ -367,12 +428,14 @@ func (src *pkgSource) open(name string) (io.ReadCloser, error) {
 		return nil, errors.New("unsafe path in the archive")
 	}
 	if src.dir != "" {
+		// only the plain files found when the folder was opened: a link to somewhere else is not one
+		if !src.has[name] {
+			return nil, os.ErrNotExist
+		}
 		return os.Open(filepath.Join(src.dir, filepath.FromSlash(name)))
 	}
-	for _, f := range src.zr.File {
-		if strings.ReplaceAll(f.Name, `\`, "/") == name {
-			return f.Open()
-		}
+	if f := src.byName[name]; f != nil {
+		return f.Open()
 	}
 	return nil, os.ErrNotExist
 }
@@ -744,86 +807,25 @@ func doImport(j *Job, s Settings, p string) (any, error) {
 	defer src.Close()
 	installed := []string{}
 	if plan.Studio {
-		m := plan.Manifest
-		m.Folder = plan.Folder
 		dest := filepath.Join(s.ModsDir, plan.Folder)
-		// an update replaces the old files of the same mod
-		if plan.Update {
-			if es, err := os.ReadDir(dest); err == nil {
-				for _, e := range es {
-					if modFileExts[strings.ToLower(filepath.Ext(e.Name()))] {
-						if err := os.Remove(filepath.Join(dest, e.Name())); err != nil {
-							return nil, fmt.Errorf("the old copy could not be replaced (%v). If the game is running, close it and try again", err)
-						}
-					}
-				}
-			}
-		}
-		j.SetStep("Copying the mod into the mods folder", 0.2)
-		for _, c := range plan.Containers {
-			for _, f := range c.Files {
-				if err := src.extract(f, filepath.Join(dest, path.Base(f))); err != nil {
-					return nil, fmt.Errorf("could not copy %s (%v). If the game is running, close it and try again", path.Base(f), err)
-				}
-			}
-		}
-		// the skins' materials and icons always go into a slotfiles folder, also from an older zip
-		slot := map[string][]byte{}
-		switch {
-		case plan.SlotDir != "":
-			for _, f := range src.files {
-				if len(f) <= len(plan.SlotDir) || f[:len(plan.SlotDir)] != plan.SlotDir {
-					continue
-				}
-				rel := f[len(plan.SlotDir):]
-				if !isSlotFile(rel) || m.slot(path.Dir(rel)) == nil {
-					continue
-				}
-				b, err := src.read(f, maxSlotFile)
-				if err != nil {
-					return nil, fmt.Errorf("could not read %s (%v)", f, err)
-				}
-				slot[rel] = b
-			}
-		case plan.SlotZip != "":
-			b, err := src.read(plan.SlotZip, 256<<20)
-			if err == nil {
-				slot, err = slotFilesFromZip(b)
-			}
-			if err != nil {
-				return nil, fmt.Errorf("could not read %s (%v)", slotFilesZip, err)
-			}
-			for rel := range slot {
-				if m.slot(path.Dir(rel)) == nil {
-					delete(slot, rel)
-				}
-			}
-		}
-		if err := writeSlotFolder(filepath.Join(dest, slotFilesFolder), slot); err != nil {
-			return nil, fmt.Errorf("could not copy the skins' materials and icons (%v)", err)
-		}
-		os.Remove(filepath.Join(dest, slotFilesZip)) // from an older copy of the mod
-		for _, sk := range plan.Skins {
-			if sk.Icon != "" {
-				copyFile(sk.Icon, filepath.Join(dest, "icons", sk.Key+".png"))
-			}
-		}
-		for _, e := range plan.Emblems {
-			if e.Icon != "" {
-				copyFile(e.Icon, filepath.Join(dest, "icons", e.Key+".png"))
-			}
-		}
-		if err := writeManifest(filepath.Join(dest, manifestName), m); err != nil {
+		if err := installStudioMod(j, src, plan, dest); err != nil {
 			return nil, err
 		}
 		installed = append(installed, dest)
 	} else {
 		j.SetStep("Copying the mod files into the mods folder", 0.2)
+		var made []string // folders made here, taken away again if a copy fails: no half mod is left
 		for _, c := range plan.Containers {
 			dest := filepath.Join(s.ModsDir, c.Folder)
+			if _, err := os.Stat(dest); errors.Is(err, os.ErrNotExist) {
+				made = append(made, dest)
+			}
 			for _, f := range c.Files {
 				if err := src.extract(f, filepath.Join(dest, path.Base(f))); err != nil {
-					return nil, fmt.Errorf("could not copy %s (%v)", path.Base(f), err)
+					for _, d := range made {
+						os.RemoveAll(d)
+					}
+					return nil, fmt.Errorf("could not copy %s (%v), so the mod was not installed", path.Base(f), err)
 				}
 			}
 			installed = append(installed, dest)
@@ -831,8 +833,10 @@ func doImport(j *Job, s Settings, p string) (any, error) {
 		if dir := s.textsDir(); dir != "" {
 			for _, t := range plan.Texts {
 				name := path.Base(t)
-				if strings.HasPrefix(name, textFilePrefix) {
-					name = "Imported_" + name // never mistaken for one of this program's own files
+				// never in place of one of this program's own files (SkinStudio_<mod>.ini,
+				// SkinStudioNames.ini, SkinStudioRepack_<mod>.ini), whatever the letter case
+				if strings.HasPrefix(strings.ToLower(name), "skinstudio") {
+					name = "Imported_" + name
 				}
 				src.extract(t, filepath.Join(dir, name))
 			}
@@ -855,4 +859,209 @@ func doImport(j *Job, s Settings, p string) (any, error) {
 		res["setup"] = slotSetupProblems(s)
 	}
 	return res, nil
+}
+
+// installStudioMod copies a mod made by ACE8 Skin Studio into dest: its container, its skins'
+// materials and icons, and skinstudio.json. Everything new is copied in first under a temporary
+// name and only then takes the old files' place, so an import that fails part-way (a full disk, a
+// damaged zip, the game holding the files open) leaves an installed copy as it was, and leaves no
+// half-copied new one.
+func installStudioMod(j *Job, src *pkgSource, plan *ImportPlan, dest string) error {
+	m := plan.Manifest
+	m.Folder = plan.Folder
+	keepOwnIconFiles(m)
+	slot, err := importSlotFiles(src, plan)
+	if err != nil {
+		return err
+	}
+	_, statErr := os.Stat(dest)
+	fresh := errors.Is(statErr, os.ErrNotExist)
+	if err := os.MkdirAll(dest, 0o755); err != nil {
+		return err
+	}
+	const newExt, oldExt = ".new", ".old" // endings the mod loader and the mods list ignore
+	var staged, aside, placed []string    // final paths: new one waiting, old one moved aside, new one in place
+	done := false
+	defer func() {
+		if done {
+			return
+		}
+		for _, p := range placed {
+			os.RemoveAll(p)
+		}
+		for _, p := range aside {
+			os.Rename(p+oldExt, p)
+		}
+		for _, p := range staged {
+			os.RemoveAll(p + newExt)
+		}
+		if fresh {
+			os.RemoveAll(dest)
+		}
+	}()
+	inUse := func(err error) error {
+		return fmt.Errorf("the old copy could not be replaced (%v). If the game is running, close it and try again", err)
+	}
+	// 1. the new files, under temporary names (the skins' materials and icons always go into a
+	// slotfiles folder, also from an older zip)
+	j.SetStep("Copying the mod into the mods folder", 0.2)
+	for _, c := range plan.Containers {
+		for _, f := range c.Files {
+			final := filepath.Join(dest, path.Base(f))
+			staged = append(staged, final)
+			if err := src.extract(f, final+newExt); err != nil {
+				return fmt.Errorf("could not copy %s (%v). If the game is running, close it and try again", path.Base(f), err)
+			}
+		}
+	}
+	sf := filepath.Join(dest, slotFilesFolder)
+	staged = append(staged, sf)
+	if err := writeSlotFolder(sf+newExt, slot); err != nil {
+		return fmt.Errorf("could not copy the skins' materials and icons (%v)", err)
+	}
+	mf := filepath.Join(dest, manifestName)
+	staged = append(staged, mf)
+	if err := writeManifest(mf+newExt, m); err != nil {
+		return err
+	}
+	// 2. the old copy's container, slot files (or the slotfiles.zip of an older one) and
+	// skinstudio.json make room
+	es, _ := os.ReadDir(dest)
+	for _, e := range es {
+		n := e.Name()
+		if !modFileExts[strings.ToLower(filepath.Ext(n))] && n != slotFilesFolder && !strings.EqualFold(n, slotFilesZip) && n != manifestName {
+			continue
+		}
+		p := filepath.Join(dest, n)
+		os.RemoveAll(p + oldExt) // left by an import that was cut off
+		if err := os.Rename(p, p+oldExt); err != nil {
+			return inUse(err)
+		}
+		aside = append(aside, p)
+	}
+	// 3. the new files take their place
+	for _, p := range staged {
+		if _, err := os.Lstat(p + newExt); errors.Is(err, os.ErrNotExist) {
+			continue // nothing new of this: a mod without slot files has no slotfiles folder
+		}
+		if err := os.Rename(p+newExt, p); err != nil {
+			return inUse(err)
+		}
+		placed = append(placed, p)
+	}
+	done = true
+	for _, p := range aside {
+		os.RemoveAll(p + oldExt)
+	}
+	// 4. pictures of the icons, for showing
+	for _, sk := range plan.Skins {
+		if sk.Icon != "" {
+			copyFile(sk.Icon, filepath.Join(dest, "icons", sk.Key+".png"))
+		}
+	}
+	for _, e := range plan.Emblems {
+		if e.Icon != "" {
+			copyFile(e.Icon, filepath.Join(dest, "icons", e.Key+".png"))
+		}
+	}
+	return nil
+}
+
+// A skin of a mod made here has a material, a damage material and an icon in its slot files: six
+// small files, well under a megabyte. A zip that brings much more is not read, so a small zip of
+// highly compressible files cannot fill the computer's memory.
+const (
+	maxSlotFilesPerSkin = 16
+	maxSlotFilesBytes   = 128 << 20
+)
+
+// importSlotFiles reads the skins' materials and icons a zip or folder brings (only those of the
+// skins its skinstudio.json lists), from its slotfiles folder or an older zip's slotfiles.zip.
+func importSlotFiles(src *pkgSource, plan *ImportPlan) (map[string][]byte, error) {
+	m := plan.Manifest
+	maxFiles := maxSlotFilesPerSkin * max(1, len(m.Slots))
+	tooMuch := fmt.Errorf("it holds more of the skins' materials and icons than a skin mod needs (more than %d files or %d MB), so it was not installed", maxFiles, maxSlotFilesBytes>>20)
+	slot := map[string][]byte{}
+	switch {
+	case plan.SlotDir != "":
+		var names []string
+		total := int64(0)
+		for _, f := range src.files {
+			if len(f) <= len(plan.SlotDir) || f[:len(plan.SlotDir)] != plan.SlotDir {
+				continue
+			}
+			rel := f[len(plan.SlotDir):]
+			if !isSlotFile(rel) || m.slot(path.Dir(rel)) == nil {
+				continue
+			}
+			names = append(names, f)
+			total += min(max(0, src.size(f)), maxSlotFile+1)
+		}
+		if len(names) > maxFiles || total > maxSlotFilesBytes {
+			return nil, tooMuch
+		}
+		read := int64(0)
+		for _, f := range names {
+			b, err := src.read(f, min(maxSlotFile, maxSlotFilesBytes-read))
+			if err != nil {
+				return nil, fmt.Errorf("could not read %s (%v)", f, err)
+			}
+			read += int64(len(b))
+			slot[f[len(plan.SlotDir):]] = b
+		}
+	case plan.SlotZip != "":
+		b, err := src.read(plan.SlotZip, 256<<20)
+		if err == nil {
+			var files int
+			var total uint64
+			if files, total, err = slotZipContents(b); err == nil && (files > maxFiles || total > maxSlotFilesBytes) {
+				return nil, tooMuch
+			}
+		}
+		if err == nil {
+			slot, err = slotFilesFromZip(b)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("could not read %s (%v)", slotFilesZip, err)
+		}
+		for rel := range slot {
+			if m.slot(path.Dir(rel)) == nil {
+				delete(slot, rel)
+			}
+		}
+	}
+	return slot, nil
+}
+
+// slotZipContents says how many files slotFilesFromZip would read from a slotfiles.zip, and how
+// many bytes they hold, before any is read. (A zip entry cannot give more bytes than it says it holds.)
+func slotZipContents(b []byte) (files int, total uint64, err error) {
+	zr, err := zip.NewReader(bytes.NewReader(b), int64(len(b)))
+	if err != nil {
+		return 0, 0, err
+	}
+	for _, f := range zr.File {
+		if isSlotFile(strings.ReplaceAll(f.Name, `\`, "/")) && f.UncompressedSize64 <= maxSlotFile {
+			files++
+			total += f.UncompressedSize64
+		}
+	}
+	return files, total, nil
+}
+
+// keepOwnIconFiles makes every icon picture a manifest names the one place this program keeps
+// it: icons/<key>.png in the mod's folder. A manifest can come from someone else's zip, and a
+// path it names that leads anywhere else (outside the mod, say) must never be read, or copied into
+// a mod or a shared zip.
+func keepOwnIconFiles(m *ModManifest) {
+	for i := range m.Slots {
+		if m.Slots[i].IconFile != "" {
+			m.Slots[i].IconFile = "icons/" + m.Slots[i].Key + ".png"
+		}
+	}
+	for i := range m.Emblems {
+		if m.Emblems[i].IconFile != "" {
+			m.Emblems[i].IconFile = "icons/" + m.Emblems[i].Key + ".png"
+		}
+	}
 }

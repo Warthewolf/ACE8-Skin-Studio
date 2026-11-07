@@ -61,7 +61,16 @@ func OpenZenContainer(utoc string) (*ZenContainer, error) {
 	methodCount, methodLen := u32(36), u32(40)
 	c := &ZenContainer{ucas: strings.TrimSuffix(utoc, ".utoc") + ".ucas", ids: info.ChunkIDs, names: info.Names, blockSize: int64(u32(44))}
 	seeds, noHash := u32(84), u32(96)
+	// the tables below must all be in the file (each count is checked first, so the sum cannot wrap around)
+	for _, n := range []int{seeds, noHash, nblocks, methodCount, methodLen} {
+		if n > len(b) {
+			return nil, errors.New("unexpected container layout")
+		}
+	}
 	o := headerSize + entries*12
+	if o+entries*10+seeds*4+noHash*4+nblocks*12+methodCount*methodLen > len(b) {
+		return nil, errors.New("the container's table of contents is cut short")
+	}
 	for i := 0; i < entries; i++ {
 		e := b[o+i*10:]
 		c.offs = append(c.offs, be40(e))
@@ -103,6 +112,9 @@ func (c *ZenContainer) FindPackage(suffix string) int {
 
 // ReadChunk gives a chunk's bytes.
 func (c *ZenContainer) ReadChunk(i int) ([]byte, error) {
+	if i < 0 || i >= len(c.offs) || i >= len(c.lens) {
+		return nil, errors.New("that part of the container is not there")
+	}
 	off, n := c.offs[i], c.lens[i]
 	if n > 256<<20 {
 		return nil, errors.New("this part of the container is too large to read here")
@@ -138,11 +150,14 @@ func (c *ZenContainer) ReadChunk(i int) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			data, err = io.ReadAll(zr)
+			// never more than the block says it holds, however much the data would unpack to
+			data, err = io.ReadAll(io.LimitReader(zr, int64(blk.size)))
 			if err != nil {
 				return nil, err
 			}
-		default:
+		case method == "":
+			return nil, fmt.Errorf("the container uses compression method %d, which it does not list, so this program cannot read it", blk.method)
+		default: // method is only set for a method the container lists
 			return nil, fmt.Errorf("the container is compressed with %s, which this program cannot read", c.methods[blk.method-1])
 		}
 		if len(data) < blk.size {
@@ -150,6 +165,9 @@ func (c *ZenContainer) ReadChunk(i int) ([]byte, error) {
 		}
 		data = data[:blk.size]
 		if skip > 0 {
+			if skip > int64(len(data)) {
+				return nil, errors.New("a block of the container is cut short")
+			}
 			data = data[skip:]
 			skip = 0
 		}
@@ -247,13 +265,18 @@ func ParseZenPackage(b []byte) (zp *ZenPackage, err error) {
 }
 
 // readZenSkinTables reads the skin list and unlock list a container holds (either may be nil).
-func readZenSkinTables(utoc string, sc *Schema) (*SkinTable, *UnlockTable, error) {
+func readZenSkinTables(utoc string, sc *Schema) (st *SkinTable, ut *UnlockTable, err error) {
+	// The container is another mod's. Whatever is wrong with it is that mod's problem, given back
+	// as an error, and never stops the program building the merged skin list for the others.
+	defer func() {
+		if r := recover(); r != nil {
+			st, ut, err = nil, nil, fmt.Errorf("unexpected container layout (%v)", r)
+		}
+	}()
 	c, err := OpenZenContainer(utoc)
 	if err != nil {
 		return nil, nil, err
 	}
-	var st *SkinTable
-	var ut *UnlockTable
 	if i := c.FindPackage("Datatables/Information/DT_Skin"); i >= 0 {
 		data, err := c.ReadChunk(i)
 		if err != nil {

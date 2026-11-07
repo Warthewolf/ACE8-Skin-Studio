@@ -106,14 +106,15 @@ func latin1(b []byte) []rune {
 	return r
 }
 
-// fstrBytes encodes an FString the way the engine does: Latin-1 when every character fits, UTF-16 otherwise.
+// fstrBytes encodes an FString the way the engine does: one byte per character when every
+// character is plain ASCII, UTF-16 otherwise (the engine stores "é" or "×" as UTF-16 too).
 func fstrBytes(s string) []byte {
 	if s == "" {
 		return []byte{0, 0, 0, 0}
 	}
 	narrow := true
 	for _, r := range s {
-		if r > 0xFF {
+		if r > 0x7F {
 			narrow = false
 			break
 		}
@@ -190,6 +191,9 @@ func ParsePackage(ua, ue []byte) (p *Package, err error) {
 	o += 16 // package guid
 	ng := int(le32(ua, o))
 	o += 4
+	if ng < 0 || ng > (len(ua)-o)/8 { // each generation takes 8 bytes of the header
+		return nil, fmt.Errorf("the package lists %d generations", ng)
+	}
 	for i := 0; i < ng; i++ {
 		p.gensAt = append(p.gensAt, o)
 		o += 8
@@ -247,23 +251,39 @@ func ParsePackage(ua, ue []byte) (p *Package, err error) {
 		p.nameHashes = append(p.nameHashes, h)
 	}
 	p.namesEnd = o
+	if p.NamesFromExportData < 0 || p.NamesFromExportData > nameCount {
+		return nil, fmt.Errorf("the package says %d names are used by its data, but it has %d", p.NamesFromExportData, nameCount)
+	}
+	// The import and export tables come after the name map (writing the package again moves them
+	// with it), and an import's outer is 0 or another import, never itself.
 	ic, io := int(p.sumInt("ImportCount")), int(p.sumInt("ImportOffset"))
+	if ic > 0 && io < p.namesEnd {
+		return nil, errors.New("the package's imports overlap its header")
+	}
 	for i := 0; i < ic; i++ {
 		at := io + 32*i
-		p.Imports = append(p.Imports, PkgImport{
+		imp := PkgImport{
 			ClassPackage: FNameRef{le32(ua, at), le32(ua, at+4)},
 			ClassName:    FNameRef{le32(ua, at+8), le32(ua, at+12)},
 			Outer:        le32(ua, at+16),
 			ObjectName:   FNameRef{le32(ua, at+20), le32(ua, at+24)},
-			at:           at})
+			at:           at}
+		if imp.Outer < -int32(ic) || imp.Outer == -int32(i+1) {
+			return nil, fmt.Errorf("import %d of the package refers to an import that is not there", i+1)
+		}
+		p.Imports = append(p.Imports, imp)
 	}
 	ec, eo := int(p.sumInt("ExportCount")), int(p.sumInt("ExportOffset"))
+	if ec > 0 && eo < p.namesEnd {
+		return nil, errors.New("the package's exports overlap its header")
+	}
 	for i := 0; i < ec; i++ {
 		at := eo + 96*i
 		e := PkgExport{ClassIndex: le32(ua, at), SuperIndex: le32(ua, at+4), TemplateIndex: le32(ua, at+8), OuterIndex: le32(ua, at+12),
 			ObjectName: FNameRef{le32(ua, at+16), le32(ua, at+20)}, SerialSize: le64(ua, at+28), SerialOffset: le64(ua, at+36), at: at}
+		// written so that a made-up size (negative, or so large the sum wraps around) cannot pass
 		start := e.SerialOffset - int64(p.totalHeader)
-		if start < 0 || start+e.SerialSize > int64(len(ue)) {
+		if start < 0 || start > int64(len(ue)) || e.SerialSize < 0 || e.SerialSize > int64(len(ue))-start {
 			return nil, fmt.Errorf("export %d lies outside the .uexp file", i+1)
 		}
 		p.Exports = append(p.Exports, e)
@@ -299,9 +319,11 @@ func (p *Package) NameText(r FNameRef) string {
 }
 
 // ObjectPath is the full path of an import or export: imports give "/Game/X/Y.Y", exports "Y".
+// A chain of outers that loops (each import leads to the next, the last back to the first) stops
+// after as many steps as there are imports: the path is then wrong, but it ends.
 func (p *Package) ImportPath(i int) string {
 	var parts []string
-	for idx := int32(-(i + 1)); idx < 0; {
+	for idx, steps := int32(-(i + 1)), 0; idx < 0 && int(-idx-1) < len(p.Imports) && steps <= len(p.Imports); steps++ {
 		imp := p.Imports[-idx-1]
 		parts = append([]string{p.NameText(imp.ObjectName)}, parts...)
 		idx = imp.Outer
@@ -367,7 +389,14 @@ type PackageEdit struct {
 }
 
 // Write returns new .uasset and .uexp bytes.
-func (p *Package) Write(ed PackageEdit) ([]byte, []byte, error) {
+func (p *Package) Write(ed PackageEdit) (newUA, newUE []byte, err error) {
+	// ParsePackage checks what this relies on; anything else unexpected in a package from another
+	// mod is an error for that package, never a crash
+	defer func() {
+		if r := recover(); r != nil {
+			newUA, newUE, err = nil, nil, fmt.Errorf("unexpected package layout in %s (%v)", p.Name, r)
+		}
+	}()
 	ua := p.UAsset
 	names := p.Names
 	if ed.Names != nil {

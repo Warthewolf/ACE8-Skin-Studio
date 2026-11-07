@@ -258,6 +258,15 @@ func pathsInList(st *SkinTable) listPaths {
 	return out
 }
 
+// safeGamePath tells whether a game path (/Game/A/B) names a place inside the game's content: no
+// "..", no backslash or colon (folder and drive separators on Windows), no empty part. The slot
+// files of a shared mod, and the skin lists of other mods, are other people's files, and these
+// paths become places files are written to.
+func safeGamePath(p string) bool {
+	rest, ok := strings.CutPrefix(p, "/Game/")
+	return ok && safeRel(rest) && !strings.Contains(rest, "//") && !strings.HasSuffix(rest, "/")
+}
+
 // numberedSlotFiles writes a skin's material slot under root (raw files, ready to pack): its
 // material and damage material in <aircraft>/Materials/<number>/, its icon next to the game's icons,
 // all named after its number. It gives the material and icon paths for the skin's row ("" where the
@@ -290,7 +299,13 @@ func numberedSlotFiles(s Settings, root string, tmpl *SkinRow, im InstalledSlotM
 	}
 	var moves []move
 	keep := "" // why the files keep the paths they were made with
+	own := slotAssetDir(im.Manifest.Key, sl.Key)
 	for _, p := range pkgs {
+		// only the skin's own files, in its own folder: one written under the path it was made with
+		// must not land anywhere else (or replace one of the game's files)
+		if !safeGamePath(p.Name) || !strings.HasPrefix(p.Name, own) || strings.Contains(p.Name[len(own):], "/") {
+			return "", "", nil, fmt.Errorf("its slot files hold %q, which is not one of the skin's own files", p.Name)
+		}
 		obj := packageBaseName(p.Name)
 		mv := move{p: p, oldObj: obj}
 		switch {
@@ -352,6 +367,11 @@ func numberedSlotFiles(s Settings, root string, tmpl *SkinRow, im InstalledSlotM
 		outs = nil
 		for _, mv := range moves {
 			outs = append(outs, out{mv.p.Name, mv.p.UAsset, mv.p.UExp})
+		}
+	}
+	for _, o := range outs {
+		if !safeGamePath(o.at) { // the paths of the skin it is based on, which may come from another mod's list
+			return "", "", notes, fmt.Errorf("%q is not a place in the game's content", o.at)
 		}
 	}
 	placedAt := map[string]string{} // made-with path -> where it was written

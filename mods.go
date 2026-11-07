@@ -15,8 +15,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 	"unicode/utf16"
 )
@@ -62,9 +64,16 @@ func parseTOC(b []byte) (*tocInfo, error) {
 	if info.Encrypted || dirSize == 0 || flags&8 == 0 {
 		return info, nil // ids only: the names are encrypted or absent
 	}
+	// In a real container each of these counts is far smaller than the file. A larger one is a
+	// damaged or made-up header, whose sums could even wrap around; only the ids are kept then.
+	for _, n := range []int{seeds, noHash, blocks, methodCount, methodLen} {
+		if n > len(b) {
+			return info, nil
+		}
+	}
 	o += entries*12 + entries*10 + seeds*4 + noHash*4 + blocks*12 + methodCount*methodLen
 	if flags&4 != 0 { // signed: two signatures and one hash per block come first
-		if o+4 > len(b) {
+		if o < 0 || o+4 > len(b) {
 			return info, nil
 		}
 		sig := u32(o)
@@ -142,7 +151,7 @@ func readDirectoryIndex(d []byte, info *tocInfo) {
 		pos += 12
 	}
 	ns := i32()
-	if !ok || ns < 0 || ns > 4_000_000 {
+	if !ok || ns < 0 || ns > 4_000_000 || ns*4 > len(d)-pos { // every name takes at least 4 bytes
 		return
 	}
 	names := make([]string, ns)
@@ -159,30 +168,40 @@ func readDirectoryIndex(d []byte, info *tocInfo) {
 		}
 		return names[i]
 	}
-	steps := 0
-	var walk func(di uint32, path string)
-	walk = func(di uint32, path string) {
-		for di != none && int(di) < len(dirs) && steps < 8_000_000 {
-			steps++
+	// Each folder and file is read once: a table whose links lead back to a folder or file already
+	// read (made up, or damaged) would otherwise go round forever, or so deep that the program runs
+	// out of stack, which stops it outright. The depth and the length of a path are limited too; the
+	// game's own paths are a dozen folders and about a hundred characters.
+	const maxDepth, maxPath = 64, 1024
+	seenDir, seenFile := make([]bool, len(dirs)), make([]bool, len(files))
+	var walk func(di uint32, path string, depth int)
+	walk = func(di uint32, path string, depth int) {
+		for di != none && int(di) < len(dirs) && !seenDir[di] {
+			seenDir[di] = true
 			e := dirs[di]
+			di = e.nextSibling
 			here := path
 			if n := name(e.name); n != "" {
+				if len(path)+len(n) >= maxPath {
+					continue
+				}
 				here = path + n + "/"
 			}
-			for f := e.firstFile; f != none && int(f) < len(files) && steps < 8_000_000; f = files[f].nextFile {
-				steps++
-				if int(files[f].userData) < len(info.ChunkIDs) {
-					info.Names[int(files[f].userData)] = here + name(files[f].name)
+			for f := e.firstFile; f != none && int(f) < len(files) && !seenFile[f]; f = files[f].nextFile {
+				seenFile[f] = true
+				if n := name(files[f].name); int(files[f].userData) < len(info.ChunkIDs) && len(here)+len(n) <= maxPath {
+					info.Names[int(files[f].userData)] = here + n
 				}
 			}
-			walk(e.firstChild, here)
-			di = e.nextSibling
+			if depth < maxDepth {
+				walk(e.firstChild, here, depth+1)
+			}
 		}
 	}
 	if mount != "" && !strings.HasSuffix(mount, "/") {
 		mount += "/"
 	}
-	walk(0, mount)
+	walk(0, mount, 0)
 }
 
 // gameFileLabel turns a container path into the form shown to people:
@@ -428,8 +447,13 @@ func removeMod(s Settings, name string, loose bool) (string, error) {
 	if err := os.MkdirAll(dest, 0o755); err != nil {
 		return "", err
 	}
-	for _, f := range mod.Files {
+	for i, f := range mod.Files {
 		if err := moveFile(filepath.Join(mod.Dir, f.Name), filepath.Join(dest, f.Name)); err != nil {
+			// all of its files go, or none: the ones already moved are put back
+			for _, back := range mod.Files[:i] {
+				moveFile(filepath.Join(dest, back.Name), filepath.Join(mod.Dir, back.Name))
+			}
+			os.Remove(dest)
 			return "", inUse(err)
 		}
 	}
@@ -444,24 +468,59 @@ func safeFolder(n string) string {
 	return n
 }
 
+// otherDrive tells whether a rename failed only because the two places are on different drives.
+// Any other failure (on Windows, most often a file the game holds open) must not lead to a copy
+// and a delete: the delete would take away every file that is not open and leave the rest.
+func otherDrive(err error) bool {
+	var errno syscall.Errno
+	if !errors.As(err, &errno) {
+		return false
+	}
+	if runtime.GOOS == "windows" {
+		return errno == 17 // ERROR_NOT_SAME_DEVICE
+	}
+	return errno == syscall.EXDEV
+}
+
 // moveFile renames a file, or copies and deletes it when the two places are on different drives.
 func moveFile(src, dst string) error {
-	if err := os.Rename(src, dst); err == nil {
-		return nil
+	err := os.Rename(src, dst)
+	if err == nil || !otherDrive(err) {
+		return err
 	}
 	if err := copyFile(src, dst); err != nil {
 		os.Remove(dst)
 		return err
 	}
-	return os.Remove(src)
+	if err := os.Remove(src); err != nil {
+		os.Remove(dst) // the original stays where it was
+		return err
+	}
+	return nil
 }
 
 func moveDir(src, dst string) error {
-	if err := os.Rename(src, dst); err == nil {
-		return nil
+	err := os.Rename(src, dst)
+	if err == nil || !otherDrive(err) {
+		return err
 	}
 	// Different drive: copy everything first, and only then remove the original.
-	err := filepath.WalkDir(src, func(p string, d os.DirEntry, err error) error {
+	if err := copyTreeTo(src, dst, false); err != nil {
+		os.RemoveAll(dst)
+		return err
+	}
+	if err := os.RemoveAll(src); err != nil {
+		// something in it could not be deleted: what was deleted is put back, so the mod stays whole
+		copyTreeTo(dst, src, true)
+		os.RemoveAll(dst)
+		return err
+	}
+	return nil
+}
+
+// copyTreeTo copies a folder's files into another folder; with onlyMissing, files already there are kept.
+func copyTreeTo(src, dst string, onlyMissing bool) error {
+	return filepath.WalkDir(src, func(p string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -469,14 +528,13 @@ func moveDir(src, dst string) error {
 		if err != nil {
 			return err
 		}
+		to := filepath.Join(dst, rel)
 		if d.IsDir() {
-			return os.MkdirAll(filepath.Join(dst, rel), 0o755)
+			return os.MkdirAll(to, 0o755)
 		}
-		return copyFile(p, filepath.Join(dst, rel))
+		if _, err := os.Lstat(to); onlyMissing && err == nil {
+			return nil
+		}
+		return copyFile(p, to)
 	})
-	if err != nil {
-		os.RemoveAll(dst)
-		return err
-	}
-	return os.RemoveAll(src)
 }
