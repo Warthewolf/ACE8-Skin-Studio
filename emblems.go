@@ -198,6 +198,7 @@ type EmblemAssign struct {
 	Emblem   string `json:"emblem"`
 	Number   int    `json:"number"`
 	UnlockID int64  `json:"unlockId"`
+	StartID  int64  `json:"startId,omitempty"` // the experimental start rule (see giveStartIDs)
 }
 
 // PlacedEmblem is where one emblem ended up.
@@ -211,6 +212,7 @@ type PlacedEmblem struct {
 	Wanted   int    `json:"wanted"`
 	Moved    bool   `json:"moved"`
 	UnlockID int64  `json:"unlockId"`
+	StartID  int64  `json:"startId,omitempty"`
 	EmblemID int64  `json:"emblemId"`
 	Problem  string `json:"problem,omitempty"`
 }
@@ -370,6 +372,13 @@ func addEmblemRows(sc *Schema, et *SkinTable, ut *UnlockTable, placed []PlacedEm
 			}
 		}
 		et.Rows = append(et.Rows, SkinRow{Key: emblemRowKey(p.EmblemID), Obj: o})
+		if p.StartID != 0 {
+			e, err := ut.NewStartEntry(p.StartID, p.EmblemID)
+			if err != nil {
+				return err
+			}
+			unlocks = append(unlocks, e)
+		}
 		u, err := ut.NewUnlockEntry(p.UnlockID, p.EmblemID)
 		if err != nil {
 			return err
@@ -415,6 +424,9 @@ func addEmblemsToList(j *Job, s Settings, root string, mods []InstalledSlotMod, 
 		return nil, nil, err
 	}
 	placed, assign, refs := assignEmblemNumbers(et, ut, mods, old)
+	if s.UnlockAtStart {
+		giveEmblemStartIDs(ut, old, placed, assign)
+	}
 	if err := addEmblemRows(et.sc, et, ut, placed, refs); err != nil {
 		return nil, nil, err
 	}
@@ -711,6 +723,55 @@ func keepEmblemRecords(old SkinListState, now []EmblemAssign) ([]EmblemAssign, [
 	var ids []int64
 	for _, a := range out {
 		ids = append(ids, a.UnlockID)
+		if a.StartID != 0 {
+			ids = append(ids, a.StartID)
+		}
 	}
 	return out, mergeIDs(old.EmblemRetired, ids)
+}
+
+// giveEmblemStartIDs is giveStartIDs for emblems, in the emblem unlock list's own ids.
+func giveEmblemStartIDs(ut *UnlockTable, old SkinListState, placed []PlacedEmblem, assign []EmblemAssign) {
+	base := ut.UsedIDs()
+	taken := ut.UsedIDs()
+	for _, id := range old.EmblemRetired {
+		taken[id] = true
+	}
+	prev := map[string]EmblemAssign{}
+	for _, a := range old.Emblems {
+		prev[a.Mod+"/"+a.Emblem] = a
+		taken[a.UnlockID], taken[a.StartID] = true, true
+	}
+	at := map[string]int{}
+	for i, a := range assign {
+		taken[a.UnlockID] = true
+		at[a.Mod+"/"+a.Emblem] = i
+	}
+	last := ut.lastLowID() + unlockRoom
+	next := func() int64 {
+		for x := last + 1; x <= ut.MaxID(); x++ {
+			if !taken[x] {
+				taken[x] = true
+				return x
+			}
+		}
+		return 0
+	}
+	for i := range placed {
+		p := &placed[i]
+		if p.Problem != "" {
+			continue
+		}
+		k := p.Mod + "/" + p.Emblem
+		id := int64(0)
+		if a, ok := prev[k]; ok && a.StartID > ut.MinID() && a.StartID < ut.cutoff && !base[a.StartID] && a.Number == p.Number {
+			id = a.StartID
+		} else {
+			id = next()
+		}
+		p.StartID = id
+		if j, ok := at[k]; ok {
+			assign[j].StartID = id
+		}
+	}
 }

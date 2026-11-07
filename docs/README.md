@@ -10,6 +10,7 @@
 | [Architecture](architecture.md) | Developers | How the program is put together, file by file |
 | [Game file formats](game-formats.md) | Developers | What the program knows about Ace Combat 8's files |
 | [How new skin slots work](skin-slots.md) | Developers | The merged skin list, numbering, material slots, sharing |
+| [New skins as DLC? (research)](dlc-research.md) | Players and developers | Why new skins cannot be shipped as DLC, what keeps your save safe, and the start-rule experiment with its in-game test |
 | [Building and releasing](building.md) | Developers | Building for Windows and Linux, tests, release packages |
 | [Contributing](../CONTRIBUTING.md) | Developers | How changes are made and checked |
 

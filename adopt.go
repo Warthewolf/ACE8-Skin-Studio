@@ -211,6 +211,9 @@ func adoptLists(j *Job, st *SkinTable, ut *UnlockTable, mods []InstalledSlotMod,
 	}
 	for _, a := range old.Assign {
 		ad.reservedIDs[a.UnlockID] = true // ids ever given out are never given to another skin
+		if a.StartID != 0 {
+			ad.reservedIDs[a.StartID] = true
+		}
 		if a.UnlockID2 != 0 {
 			ad.reservedIDs[a.UnlockID2] = true
 		}

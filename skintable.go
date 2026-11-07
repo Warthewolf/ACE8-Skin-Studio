@@ -386,6 +386,21 @@ const (
 	UnlockMission = "mission"
 )
 
+// NewStartEntry makes an entry that unlocks skin (or emblem) id with no conditions at all: the
+// way the game's own feature unlock list unlocks its music player (rule 1800010). It is the
+// experimental start rule (see giveStartIDs and docs/dlc-research.md). It is not the "Always"
+// condition, which the game never uses and which unlocked nothing (2.0.3).
+func (u *UnlockTable) NewStartEntry(entryID int64, id int64) (*Obj, error) {
+	e, err := u.NewUnlockEntry(entryID, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := e.Set(u.sc, "ConditionEntryList", []any{}); err != nil {
+		return nil, err
+	}
+	return e, nil
+}
+
 // NewUnlockEntry makes an entry that unlocks skin (or emblem) id the way the game unlocks its own
 // first skins and its emblems: when a campaign mission is finished.
 func (u *UnlockTable) NewUnlockEntry(entryID int64, skinID int64) (*Obj, error) {

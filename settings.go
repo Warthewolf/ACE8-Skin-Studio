@@ -37,6 +37,9 @@ type Settings struct {
 	HideTutorial   bool     `json:"hideTutorial"`  // true once "Don't show this when the program starts" is ticked
 	SaveDir        string   `json:"saveDir"`       // the game's SaveGames folder (found by itself when empty)
 	SaveBackupOff  bool     `json:"saveBackupOff"` // the game-start save backup was taken out, so it is not put back
+	// UnlockAtStart gives every new skin and emblem a second unlock rule with no conditions, which
+	// the game may act on at start (an experiment, see docs/dlc-research.md)
+	UnlockAtStart bool `json:"unlockAtStart"`
 	// Tex is how colour textures were last asked to be stored (the Repack screen's boxes)
 	Tex TexOptions `json:"tex"`
 }

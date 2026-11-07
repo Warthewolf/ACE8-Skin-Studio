@@ -272,6 +272,9 @@ type SlotAssign struct {
 	// UnlockID2 was the second rule of a skin "unlocked from the start" (2.0.0 to 2.0.2); kept so
 	// that id is never given out again.
 	UnlockID2 int64 `json:"unlockId2,omitempty"`
+	// StartID is the skin's experimental start rule (a rule with no conditions; see giveStartIDs),
+	// 0 when the experiment is off.
+	StartID int64 `json:"startId,omitempty"`
 }
 
 // SkinListState is kept next to the skin list mod (and a copy in the workspace).
@@ -368,6 +371,7 @@ type PlacedSlot struct {
 	Moved     bool   `json:"moved"` // it wanted another number, which was taken
 	UnlockID  int64  `json:"unlockId"`
 	UnlockID2 int64  `json:"unlockId2,omitempty"`
+	StartID   int64  `json:"startId,omitempty"` // the experimental start rule (see giveStartIDs)
 	SkinID    int64  `json:"skinId"`
 	Problem   string `json:"problem,omitempty"`
 	// Material and Icon are the skin's own material and icon as written for its number ("" = the
@@ -405,6 +409,9 @@ func assignNumbers(st *SkinTable, ut *UnlockTable, mods []InstalledSlotMod, old 
 		retired[a.UnlockID] = true
 		if a.UnlockID2 != 0 {
 			retired[a.UnlockID2] = true
+		}
+		if a.StartID != 0 {
+			retired[a.StartID] = true
 		}
 	}
 	// An id a skin had before stays its own while it keeps its number; a new one is one nobody ever
@@ -574,6 +581,13 @@ func addSlotRows(sc *Schema, st *SkinTable, ut *UnlockTable, placed []PlacedSlot
 				return err
 			}
 			unlocks = append(unlocks, e)
+			if p.StartID != 0 {
+				e, err := ut.NewStartEntry(p.StartID, p.SkinID)
+				if err != nil {
+					return err
+				}
+				unlocks = append(unlocks, e)
+			}
 		}
 		st.Insert(a, rows...)
 	}
@@ -887,6 +901,9 @@ func RebuildSkinList(j *Job, s Settings) (*ListResult, error) {
 	}
 	// the adopted skins are in the tables now, so their numbers count as taken
 	placed, assign, refs := assignNumbers(st, ut, mods, old)
+	if s.UnlockAtStart {
+		giveStartIDs(ut, old, placed, assign)
+	}
 	in := listInputDir(s)
 	os.RemoveAll(in)
 	j.SetStep("Making the skins' material slots", 0.2)
@@ -957,6 +974,9 @@ func RebuildSkinList(j *Job, s Settings) (*ListResult, error) {
 			retired[a.UnlockID] = true
 			if a.UnlockID2 != 0 {
 				retired[a.UnlockID2] = true
+			}
+			if a.StartID != 0 {
+				retired[a.StartID] = true
 			}
 		}
 	}
@@ -1071,4 +1091,58 @@ func putListLast(s Settings, tableMods []AdoptedMod) {
 	}
 	keep = append(keep, "+"+skinListMod)
 	os.WriteFile(p, []byte(strings.Join(keep, "\r\n")+"\r\n"), 0o644)
+}
+
+// giveStartIDs gives every placed skin an experimental start rule id: an unlock rule with no
+// conditions, next to its mission rule (see docs/dlc-research.md). The game unlocks one of its own
+// features with such a rule; if it does the same for skins, new skins are unlocked by the game at
+// start, without a mission and without Skin Studio changing the save. If it does not, the mission
+// rule still unlocks them. A skin keeps its start rule id while it keeps its number, as its mission
+// rule id; ids are never shared with another rule or given out twice.
+func giveStartIDs(ut *UnlockTable, old SkinListState, placed []PlacedSlot, assign []SlotAssign) {
+	base := ut.UsedIDs()
+	taken := ut.UsedIDs()
+	for _, list := range [][]int64{old.Retired, old.Foreign, experimentIDs} {
+		for _, id := range list {
+			taken[id] = true
+		}
+	}
+	prev := map[string]SlotAssign{}
+	for _, a := range old.Assign {
+		prev[a.Mod+"/"+a.Slot] = a
+		taken[a.UnlockID], taken[a.UnlockID2], taken[a.StartID] = true, true, true
+	}
+	at := map[string]int{}
+	for i, a := range assign {
+		taken[a.UnlockID] = true
+		at[a.Mod+"/"+a.Slot] = i
+	}
+	last := ut.lastLowID() + unlockRoom
+	next := func() int64 {
+		for x := last + 1; x <= ut.MaxID(); x++ {
+			if !taken[x] {
+				taken[x] = true
+				return x
+			}
+		}
+		return 0
+	}
+	for i := range placed {
+		p := &placed[i]
+		if p.Problem != "" {
+			continue
+		}
+		k := p.Mod + "/" + p.Slot
+		id := int64(0)
+		if a, ok := prev[k]; ok && a.StartID > ut.MinID() && a.StartID < oldUnlockStart && !base[a.StartID] &&
+			a.Aircraft == p.Aircraft && a.Number == p.Number {
+			id = a.StartID
+		} else {
+			id = next()
+		}
+		p.StartID = id
+		if j, ok := at[k]; ok {
+			assign[j].StartID = id
+		}
+	}
 }

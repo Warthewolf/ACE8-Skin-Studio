@@ -716,13 +716,13 @@ func readGameIDs(j *Job, s Settings) gameIDs {
 func ourRuleIDs(st SkinListState) map[int64]bool {
 	out := map[int64]bool{}
 	for _, a := range st.Assign {
-		out[a.UnlockID], out[a.UnlockID2] = true, true
+		out[a.UnlockID], out[a.UnlockID2], out[a.StartID] = true, true, true
 	}
 	for _, id := range st.Retired {
 		out[id] = true
 	}
 	for _, a := range st.Emblems {
-		out[a.UnlockID] = true
+		out[a.UnlockID], out[a.StartID] = true, true
 	}
 	for _, id := range st.EmblemRetired {
 		out[id] = true

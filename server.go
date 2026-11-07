@@ -1079,6 +1079,7 @@ func routes() http.Handler {
 	slotRoutes(api)
 	linkRoutes(api)
 	saveRoutes(api)
+	skinReportRoutes(api)
 	pilotNameRoutes(api)
 	api("/api/job", func(w http.ResponseWriter, r *http.Request) {
 		j := jobs.Get(r.URL.Query().Get("id"))
