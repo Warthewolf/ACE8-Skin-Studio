@@ -128,3 +128,36 @@ func TestPortraitsInBuiltMods(t *testing.T) {
 		t.Fatal("expected an error for a mod not built here")
 	}
 }
+
+// The workspace may be in a folder whose name holds [ ] (which file patterns treat specially):
+// portraits in built mods are still found, and old photos are still taken away.
+func TestPortraitsWithBracketsInPath(t *testing.T) {
+	s := Settings{Workspace: filepath.Join(t.TempDir(), "ACE8 Skin Studio [2.4.5]", "workspace")}
+	port := "Live/Content/UI/Texture/HUD/SubtitleSpeakerPortrait/" + portraitPrefix
+	writeMod(t, filepath.Join(s.modsOut(), "Portraits", "packed"), "Portraits_P", 1, []string{port + "Evans.uasset"})
+	if got := portraitsInMods(s); len(got) != 1 || got[0].Mod != "Portraits" {
+		t.Fatalf("found %+v", got)
+	}
+	inbox := filepath.Join(s.inboxDir(), "b")
+	os.MkdirAll(inbox, 0o755)
+	pic := filepath.Join(inbox, "p.png")
+	SaveImage(pic, NewImg(428, 540), SaveRGBA)
+	jpg, png := filepath.Join(inbox, "me.jpg"), filepath.Join(inbox, "me.png")
+	os.WriteFile(jpg, []byte("jpeg"), 0o644)
+	os.WriteFile(png, []byte("png"), 0o644)
+	name := portraitPrefix + "Evans"
+	for _, photo := range []string{jpg, png} {
+		if _, err := savePortrait(s, savePortraitReq{Name: name, Picture: pic, Photo: photo}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if fileExists(filepath.Join(s.myPortraitsDir(), name+".photo.jpg")) {
+		t.Fatal("the old photo was left when the new one is another kind of picture")
+	}
+	if err := removeSavedPortrait(s, name); err != nil {
+		t.Fatal(err)
+	}
+	if es, _ := os.ReadDir(s.myPortraitsDir()); len(es) != 0 {
+		t.Fatalf("left after taking it out: %v", es)
+	}
+}

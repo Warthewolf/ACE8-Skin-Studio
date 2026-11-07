@@ -168,10 +168,11 @@ func copyIfOther(src, dst string) error {
 }
 
 // removePhotos deletes a portrait's kept photos, all but keep.
+// (The folder is listed rather than searched with a pattern: its path may hold [ or *.)
 func removePhotos(dir, name, keep string) {
-	ms, _ := filepath.Glob(filepath.Join(dir, name+".photo.*"))
-	for _, m := range ms {
-		if !strings.EqualFold(m, keep) {
+	es, _ := os.ReadDir(dir)
+	for _, e := range es {
+		if m := filepath.Join(dir, e.Name()); !e.IsDir() && strings.HasPrefix(e.Name(), name+".photo.") && !strings.EqualFold(m, keep) {
 			os.Remove(m)
 		}
 	}
@@ -204,7 +205,15 @@ func builtModTOCs(s Settings) map[string]string {
 		if !e.IsDir() {
 			continue
 		}
-		ms, _ := filepath.Glob(filepath.Join(s.modsOut(), e.Name(), "packed", "*.utoc"))
+		// listed, not searched with a pattern: the workspace's path may hold [ or *
+		packed := filepath.Join(s.modsOut(), e.Name(), "packed")
+		fs, _ := os.ReadDir(packed)
+		var ms []string
+		for _, f := range fs {
+			if !f.IsDir() && strings.HasSuffix(f.Name(), ".utoc") {
+				ms = append(ms, filepath.Join(packed, f.Name()))
+			}
+		}
 		if len(ms) == 1 {
 			out[e.Name()] = ms[0]
 		}

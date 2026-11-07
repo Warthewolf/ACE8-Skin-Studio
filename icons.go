@@ -99,6 +99,9 @@ func LoadPicture(path string) (*Img, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := checkPictureBytes(b); err != nil {
+		return nil, fmt.Errorf("%s: %v", filepath.Base(path), err)
+	}
 	im, _, err := image.Decode(bytes.NewReader(b))
 	if err != nil {
 		return nil, fmt.Errorf("%s is not a PNG, JPEG or TGA picture", filepath.Base(path))

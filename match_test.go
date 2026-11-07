@@ -124,3 +124,58 @@ func TestClashingSets(t *testing.T) {
 		t.Fatalf("tiles should win over a wide picture: %+v", s)
 	}
 }
+
+// A project or mesh name that holds a channel word (Gunmetal: "metal", Breakthrough: "rough",
+// Aozora: "_ao") does not decide the channel: the word at the end of the name does.
+func TestChannelWordInProjectName(t *testing.T) {
+	for name, want := range map[string]string{
+		"Gunmetal_Su57_BaseColor.1001.png":      ChBase,
+		"Gunmetal_Su57_Metallic.1001.png":       ChMetallic,
+		"Gunmetal_Su57_Roughness.1001.png":      ChRoughness,
+		"Gunmetal_Su57_Normal_DirectX.1001.png": ChNormal,
+		"Gunmetal_Su57_Mixed_AO.1001.png":       ChAO,
+		"Breakthrough_Normal_DirectX.png":       ChNormal,
+		"Su57_Aozora_Base_color.png":            ChBase,
+		"Su57_Aozora_Roughness.png":             ChRoughness,
+		"T_PP0018_fa36_001_NO_AO.1001.png":      ChAO,
+		"T_PP0018_fa36_001_MRX_Metallic.png":    ChMetallic,
+		"T_OP0045_ladn_Body_01_MROS_BlueMask":   ChBlue,
+	} {
+		if ch, _, _ := classify(name); ch != want {
+			t.Errorf("%s: %q, want %q", name, ch, want)
+		}
+	}
+	uexp, _ := synthVT(2, 1, 64, 32, 4, "PF_DXT1", 8)
+	vt, err := ParseVTex(uexp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var files []string
+	for _, ch := range []string{"BaseColor", "Metallic", "Roughness", "Normal_DirectX", "Mixed_AO"} {
+		files = append(files, tileNames("D:/p", "Gunmetal_Su57_"+ch, 2, ".png")...)
+	}
+	sets := FindPainted(files, nil, nil)
+	for kind, tex := range map[Kind]string{KindColour: "T_X_001_C", KindFinish: "T_X_001_MRX", KindNormal: "T_X_001_NO"} {
+		if rec := PlanRecipe(kind, tex, vt, sets); !rec.Ready {
+			t.Errorf("%s: %s", tex, rec.Missing)
+		}
+	}
+}
+
+// A set short of a tile says which one, and does not count tiles the texture does not have.
+func TestMissingTileNamed(t *testing.T) {
+	uexp, _ := synthVT(4, 1, 64, 32, 4, "PF_DXT1", 8)
+	vt, err := ParseVTex(uexp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := []string{"D:/p/Su57_paint_BaseColor.1001.png", "D:/p/Su57_paint_BaseColor.1002.png", "D:/p/Su57_paint_BaseColor.1003.png", "D:/p/Su57_paint_BaseColor.1005.png"}
+	rec := PlanRecipe(KindColour, "T_X_001_C", vt, FindPainted(files, nil, nil))
+	if want := "base colour: only 3 of 4 tiles found; tile 1004 is missing (tile 1005 is not part of this texture)"; rec.Ready || rec.Missing != want {
+		t.Fatalf("got %q, want %q", rec.Missing, want)
+	}
+	rec = PlanRecipe(KindColour, "T_X_001_C", vt, FindPainted(files[:2], nil, nil))
+	if want := "base colour: only 2 of 4 tiles found; tiles 1003 and 1004 are missing"; rec.Missing != want {
+		t.Fatalf("got %q, want %q", rec.Missing, want)
+	}
+}

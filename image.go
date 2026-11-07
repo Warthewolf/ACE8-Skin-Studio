@@ -76,8 +76,15 @@ func LoadImage(path string) (*Img, error) {
 	}
 	defer f.Close()
 	br := bufio.NewReaderSize(f, 1<<20)
-	head, _ := br.Peek(8)
+	head, _ := br.Peek(33)
 	if bytes.HasPrefix(head, []byte("\x89PNG\r\n\x1a\n")) {
+		var size int64
+		if st, err := f.Stat(); err == nil {
+			size = st.Size()
+		}
+		if err := pngSizeProblem(head, size); err != nil {
+			return nil, fmt.Errorf("%s: %v", filepath.Base(path), err)
+		}
 		im, err := png.Decode(br)
 		if err != nil {
 			return nil, fmt.Errorf("%s: not a readable PNG (%v)", filepath.Base(path), err)
@@ -96,6 +103,51 @@ func LoadImage(path string) (*Img, error) {
 		return im, nil
 	}
 	return nil, fmt.Errorf("%s: only PNG and TGA images are supported", filepath.Base(path))
+}
+
+// maxPicturePixels is the largest picture that is opened: about 537 million pixels (2 GB in
+// memory), for example 32768 x 16384. A header that says more comes from a damaged file.
+const maxPicturePixels = 1 << 29
+
+// sizeProblem says why a picture of w x h pixels cannot be opened, or returns nil.
+func sizeProblem(w, h int64) error {
+	if w > maxPicturePixels || h > maxPicturePixels || w*h > maxPicturePixels {
+		return fmt.Errorf("the picture is %d x %d, which is too large to open (the file may be damaged)", w, h)
+	}
+	return nil
+}
+
+// pngSizeProblem reads a PNG's size from its first 33 bytes and says why it cannot be opened: a
+// size too large to hold, or more pixels than a file of size bytes can carry (a damaged or cut
+// short file). It is checked before the picture is decoded, because decoding sets aside memory
+// for the whole picture before reading any of it.
+func pngSizeProblem(head []byte, size int64) error {
+	if len(head) < 33 || string(head[12:16]) != "IHDR" {
+		return nil // the decoder explains a damaged header itself
+	}
+	w := int64(head[16])<<24 | int64(head[17])<<16 | int64(head[18])<<8 | int64(head[19])
+	h := int64(head[20])<<24 | int64(head[21])<<16 | int64(head[22])<<8 | int64(head[23])
+	if err := sizeProblem(w, h); err != nil {
+		return err
+	}
+	channels := map[byte]int64{0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[head[25]]
+	// PNG data is deflate-compressed, which shrinks at most about 1032 to 1.
+	if bits := w * h * int64(head[24]) * channels; size > 0 && bits/8 > size*1032+1<<16 {
+		return fmt.Errorf("the picture's header says %d x %d, but the file is far too small to hold that; it may be cut short or damaged", w, h)
+	}
+	return nil
+}
+
+// checkPictureBytes refuses a PNG or JPEG whose header gives a size that cannot be opened,
+// before it is decoded.
+func checkPictureBytes(b []byte) error {
+	if bytes.HasPrefix(b, []byte("\x89PNG\r\n\x1a\n")) {
+		return pngSizeProblem(b[:min(len(b), 33)], int64(len(b)))
+	}
+	if c, _, err := image.DecodeConfig(bytes.NewReader(b)); err == nil {
+		return sizeProblem(int64(c.Width), int64(c.Height))
+	}
+	return nil
 }
 
 // ImageSize reads only the header of a PNG or TGA and returns its size.
@@ -265,6 +317,7 @@ func decodeTGA(d []byte) (*Img, error) {
 		return nil, errors.New("not a TGA image (file too short)")
 	}
 	idLen, cmapType, typ := int(d[0]), int(d[1]), int(d[2])
+	cmapFirst := int(d[3]) | int(d[4])<<8 // the number of the colour map's first entry
 	cmapLen := int(d[5]) | int(d[6])<<8
 	cmapBits := int(d[7])
 	w := int(d[12]) | int(d[13])<<8
@@ -301,11 +354,16 @@ func decodeTGA(d []byte) (*Img, error) {
 	default:
 		return nil, fmt.Errorf("TGA with %d bits per pixel (type %d) is not supported", bpp, typ)
 	}
+	if err := sizeProblem(int64(w), int64(h)); err != nil {
+		return nil, err
+	}
+	// The data must be able to hold every pixel before memory is set aside for them: all of
+	// them as they are, or, compressed, at least one packet (a byte and a pixel) per 128 pixels.
+	if !rle && w*h*bytesPP > len(d)-p || rle && (w*h+127)/128*(1+bytesPP) > len(d)-p {
+		return nil, errors.New("TGA pixel data is cut short")
+	}
 	raw := make([]byte, w*h*bytesPP)
 	if !rle {
-		if p+len(raw) > len(d) {
-			return nil, errors.New("TGA pixel data is cut short")
-		}
 		copy(raw, d[p:])
 	} else {
 		o := 0
@@ -344,6 +402,17 @@ func decodeTGA(d []byte) (*Img, error) {
 	topDown := desc&0x20 != 0
 	rightLeft := desc&0x10 != 0
 	hasAlpha := desc&0x0f != 0
+	// A 16-bit pixel's top bit is its alpha when the header says it has one. Some programs say so
+	// but leave the bit clear everywhere; such a picture is taken as opaque, not as invisible.
+	alpha16 := false
+	if bpp == 16 && typ == 2 && hasAlpha {
+		for i := 1; i < len(raw); i += 2 {
+			if raw[i]&0x80 != 0 {
+				alpha16 = true
+				break
+			}
+		}
+	}
 	for y := 0; y < h; y++ {
 		sy := y
 		if !topDown {
@@ -366,16 +435,23 @@ func decodeTGA(d []byte) (*Img, error) {
 					a = s[1]
 				}
 			case typ == 1:
-				e := cmap[int(s[0])*cmapBytes:]
+				i := int(s[0]) - cmapFirst
+				if i < 0 || i >= cmapLen {
+					return nil, errors.New("TGA colour index outside its colour map")
+				}
+				e := cmap[i*cmapBytes:]
 				b, g, r = e[0], e[1], e[2]
 				if cmapBytes == 4 {
 					a = e[3]
 				}
 			case bytesPP == 2:
+				// 5 bits for each colour, widened to 8 so that 31 becomes 255
 				v := uint16(s[0]) | uint16(s[1])<<8
-				r = uint8((v>>10)&31) << 3
-				g = uint8((v>>5)&31) << 3
-				b = uint8(v&31) << 3
+				r5, g5, b5 := uint8(v>>10)&31, uint8(v>>5)&31, uint8(v)&31
+				r, g, b = r5<<3|r5>>2, g5<<3|g5>>2, b5<<3|b5>>2
+				if alpha16 && v&0x8000 == 0 {
+					a = 0
+				}
 			default:
 				b, g, r = s[0], s[1], s[2]
 				if bytesPP == 4 && hasAlpha {

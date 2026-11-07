@@ -833,10 +833,38 @@ func copyFile(src, dst string) error {
 	return out.Close()
 }
 
+// installProblem says why a mod built here and called mod cannot go into the mods folder: the
+// folder of that name there holds something else, such as new skins or emblems made here (they
+// would be taken out together, and rebuilding them deletes the other files), the merged skin list,
+// or another mod's files. The folder of an earlier build of the same mod is fine.
+func installProblem(s Settings, mod string) error {
+	other := func(what string) error {
+		return fmt.Errorf("your mods folder already has a folder called %s, which holds %s. Give this mod another name", mod, what)
+	}
+	if strings.EqualFold(mod, skinListMod) {
+		return other("the merged skin list")
+	}
+	dest := filepath.Join(s.ModsDir, mod)
+	if _, err := os.Stat(filepath.Join(dest, manifestName)); err == nil {
+		return other("a skin mod made here (new skin slots or emblems)")
+	}
+	es, _ := os.ReadDir(dest)
+	for _, e := range es {
+		ext := filepath.Ext(e.Name())
+		if !e.IsDir() && modFileExts[strings.ToLower(ext)] && !strings.EqualFold(strings.TrimSuffix(e.Name(), ext), mod+"_P") {
+			return other("another mod (" + e.Name() + ")")
+		}
+	}
+	return nil
+}
+
 // installBuiltMod copies a packed replacement mod into its own folder in the mods folder, and
 // notes in res where it went and which installed mods replace the same game files.
 func installBuiltMod(j *Job, s Settings, mod string, files []string, res map[string]any) error {
 	dest := filepath.Join(s.ModsDir, mod)
+	if err := installProblem(s, mod); err != nil {
+		return fmt.Errorf("the mod was built, but it was not copied into the mods folder: %v", err)
+	}
 	if err := installFiles(dest, files); err != nil {
 		return fmt.Errorf("the mod was built, but %v", err)
 	}
@@ -868,6 +896,9 @@ func doBuild(j *Job, s Settings, r planReq) (any, error) {
 	if r.Install {
 		if c := s.checks()["mods"]; !c.OK {
 			return nil, errors.New("to install automatically, set your mods folder in Settings (" + c.Note + ")")
+		}
+		if err := installProblem(s, mod); err != nil {
+			return nil, err
 		}
 	}
 	rows, _, err := doPlan(r)
@@ -948,13 +979,14 @@ func doBuild(j *Job, s Settings, r planReq) (any, error) {
 	if j.Cancelled() {
 		return nil, errors.New("cancelled")
 	}
+	var texts string // the skin's new name and description, written once the mod is ready
 	if r.Extras.wanted() {
 		j.SetStep("Changing the skin's name, description and icon", 0.86)
-		ns, err := applySkinExtras(j, s, r, mod, input, paintColour)
+		ns, t, err := applySkinExtras(j, s, r, mod, input, paintColour)
 		if err != nil {
 			return nil, err
 		}
-		notes = append(notes, ns...)
+		notes, texts = append(notes, ns...), t
 	}
 	j.SetStep("Packing the mod", 0.88)
 	outFiles, err := packFolder(j, s, input, packed, mod+"_P")
@@ -970,6 +1002,9 @@ func doBuild(j *Job, s Settings, r planReq) (any, error) {
 		if err := installBuiltMod(j, s, mod, outFiles, res); err != nil {
 			return res, err
 		}
+	}
+	if err := writeReplaceTexts(j, s, mod, texts, r.Install); err != nil {
+		return res, fmt.Errorf("the mod was built, but the skin's new name and description could not be written (%v)", err)
 	}
 	cleanInbox(s, r.Cleanup)
 	j.Log("Mod %s is ready: %s", mod, packed)

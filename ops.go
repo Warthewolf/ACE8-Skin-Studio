@@ -335,19 +335,25 @@ var channelWords = []struct {
 }
 
 // classify works out which channel a painted file holds, from its name.
+// Painters put the channel last (<mesh>_<texture set>_<channel>), so when a name holds the words
+// of several channels, as Gunmetal_Su57_Roughness does ("metal"), the one nearest the end wins.
 func classify(name string) (ch string, opengl bool, skip bool) {
 	n := strings.ToLower(strings.TrimSuffix(filepath.Base(name), filepath.Ext(name)))
 	if strings.Contains(n, "height") || strings.Contains(n, "emissive") || strings.Contains(n, "opacity") {
 		return "", false, true
 	}
+	at := -1
 	for _, cw := range channelWords {
 		for _, w := range cw.words {
-			if strings.Contains(n, w) {
-				return cw.ch, strings.Contains(n, "opengl"), false
+			if i := strings.LastIndex(n, w); i > at {
+				ch, at = cw.ch, i
 			}
 		}
 	}
-	return "", false, false
+	if ch == "" {
+		return "", false, false
+	}
+	return ch, strings.Contains(n, "opengl"), false
 }
 
 // FindPainted sorts a list of picture files into channels and tiles.
@@ -795,6 +801,21 @@ func loadSet(s *PaintSet, t *VTex) (*Img, []string, error) {
 	return full, notes, nil
 }
 
+// tileList names tile numbers in a sentence with its verb: "tile 1004 is", "tiles 1004 and 1005 are".
+func tileList(tiles []int, one, many string) string {
+	words := make([]string, len(tiles))
+	for i, u := range tiles {
+		words[i] = strconv.Itoa(u)
+	}
+	switch len(words) {
+	case 0:
+		return "no tile " + one
+	case 1:
+		return "tile " + words[0] + " " + one
+	}
+	return "tiles " + strings.Join(words[:len(words)-1], ", ") + " and " + words[len(words)-1] + " " + many
+}
+
 // clashText explains that several groups of files compete for one channel.
 func clashText(s *PaintSet) string {
 	list := s.Clash
@@ -999,7 +1020,30 @@ func planRecipe(kind Kind, texName string, t *VTex, sets map[string]*PaintSet) (
 		if len(s.Clash) > 0 {
 			return label + ": " + clashText(s)
 		}
-		return fmt.Sprintf("%s: only %d of %d tiles found", label, len(s.Tiles), need)
+		// only the texture's own tiles count; the missing ones are named, and any others found
+		// (stray paint in a tile the texture does not have) are said not to be part of it
+		var missing, other []int
+		inside := map[int]bool{}
+		for by := 0; by < t.BlocksH; by++ {
+			for bx := 0; bx < t.BlocksW; bx++ {
+				u := udimNumber(bx, by)
+				inside[u] = true
+				if _, ok := s.Tiles[u]; !ok {
+					missing = append(missing, u)
+				}
+			}
+		}
+		for u := range s.Tiles {
+			if !inside[u] {
+				other = append(other, u)
+			}
+		}
+		sort.Ints(other)
+		msg := fmt.Sprintf("%s: only %d of %d tiles found; %s missing", label, need-len(missing), need, tileList(missing, "is", "are"))
+		if len(other) > 0 {
+			msg += fmt.Sprintf(" (%s not part of this texture)", tileList(other, "is", "are"))
+		}
+		return msg
 	}
 	if s := sets["tex:"+texName]; s != nil { // a ready-made replacement always wins
 		if setComplete(s, t) {

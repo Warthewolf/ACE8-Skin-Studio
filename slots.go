@@ -726,13 +726,60 @@ func packFolder(j *Job, s Settings, input, outDir, name string) ([]string, error
 }
 
 // installFiles copies files into a folder of the mods folder, replacing what is there.
+// A mod's files (.utoc, .ucas, .pak) only work together, so either all of them are replaced or
+// none: the new files are first copied in under other names, then the old ones are moved aside,
+// and only then do the new ones get their real names. If anything fails on the way, the new
+// files are taken out again and the old ones put back.
 func installFiles(dest string, files []string) error {
 	if err := os.MkdirAll(dest, 0o755); err != nil {
 		return err
 	}
-	for _, f := range files {
-		if err := copyFile(f, filepath.Join(dest, filepath.Base(f))); err != nil {
-			return fmt.Errorf("could not copy %s into the mods folder (%v). If the game is running, close it and try again", filepath.Base(f), err)
+	type step struct {
+		src, name, target  string
+		movedOld, placedIn bool
+	}
+	steps := make([]*step, len(files))
+	for i, f := range files {
+		steps[i] = &step{src: f, name: filepath.Base(f), target: filepath.Join(dest, filepath.Base(f))}
+	}
+	part := func(st *step) string { return st.target + ".part" }
+	old := func(st *step) string { return st.target + ".old" }
+	fail := func(what string, st *step, err error) error {
+		for _, st := range steps {
+			os.Remove(part(st))
+			if st.placedIn {
+				os.Remove(st.target)
+			}
+			if st.movedOld {
+				os.Rename(old(st), st.target)
+			}
+		}
+		return fmt.Errorf("could not %s %s in the mods folder (%v). Nothing there was changed. If the game is running, close it and try again", what, st.name, err)
+	}
+	// the new files, under other names: nothing there has changed yet
+	for _, st := range steps {
+		if err := copyFile(st.src, part(st)); err != nil {
+			return fail("put", st, err)
+		}
+	}
+	// the old files are moved aside (this is what fails while the game has them open)
+	for _, st := range steps {
+		if _, err := os.Lstat(st.target); err == nil {
+			if err := os.Rename(st.target, old(st)); err != nil {
+				return fail("replace", st, err)
+			}
+			st.movedOld = true
+		}
+	}
+	for _, st := range steps {
+		if err := os.Rename(part(st), st.target); err != nil {
+			return fail("replace", st, err)
+		}
+		st.placedIn = true
+	}
+	for _, st := range steps {
+		if st.movedOld {
+			os.Remove(old(st))
 		}
 	}
 	return nil

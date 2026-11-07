@@ -30,6 +30,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf16"
 )
 
 const (
@@ -406,28 +407,52 @@ func nameClashes(s Settings, names map[string]string) []string {
 			inTexts = append(inTexts, e.Name())
 		}
 	}
-	sort.Slice(inTexts, func(i, j int) bool { return strings.ToUpper(inTexts[i]) < strings.ToUpper(inTexts[j]) })
+	sort.Slice(inTexts, func(i, j int) bool { return textFileLess(inTexts[i], inTexts[j]) })
 	for _, n := range inTexts {
 		if strings.EqualFold(n, namesTextFile) {
 			break // files after ours lose to it
 		}
 		files = append(files, filepath.Join(dir, n))
 	}
+	// each line is read as SkinSlotText reads it: blank space is spaces, tabs, carriage returns
+	// and the byte order mark some editors put at the start of a file
+	const blank = " \t\r\ufeff"
 	for _, p := range files {
 		b, err := os.ReadFile(p)
-		if err != nil {
+		if err != nil || len(b) == 0 || len(b) > 4<<20 { // SkinSlotText skips such files too
 			continue
 		}
 		for _, line := range strings.Split(string(b), "\n") {
-			line = strings.TrimSpace(line)
-			k, _, ok := strings.Cut(line, "=")
-			if ok && !strings.HasPrefix(line, ";") && !strings.HasPrefix(line, "#") && ours[strings.TrimSpace(k)] {
+			line = strings.Trim(line, blank)
+			if line == "" || line[0] == ';' || line[0] == '#' || line[0] == '[' {
+				continue
+			}
+			if k, _, ok := strings.Cut(line, "="); ok && ours[strings.TrimRight(k, blank)] {
 				out = append(out, filepath.Base(p))
 				break
 			}
 		}
 	}
 	return out
+}
+
+// textFileLess puts text files in the order SkinSlotText reads them: letter by letter (in
+// UTF-16, as Windows gives the names), with only A to Z made lower case. So "_Radio.ini" comes
+// before "SkinStudioNames.ini", and "SkinStudio_x.ini" before it too.
+func textFileLess(a, b string) bool {
+	x, y := utf16.Encode([]rune(a)), utf16.Encode([]rune(b))
+	low := func(c uint16) uint16 {
+		if c >= 'A' && c <= 'Z' {
+			return c + 32
+		}
+		return c
+	}
+	for i := 0; i < len(x) && i < len(y); i++ {
+		if p, q := low(x[i]), low(y[i]); p != q {
+			return p < q
+		}
+	}
+	return len(x) < len(y)
 }
 
 // ------------------------------------------------------------------ saving

@@ -8,6 +8,31 @@ import (
 	"time"
 )
 
+// The text files that win over the names typed here are found the way SkinSlotText reads them:
+// in its file order (only A to Z made lower case, so "_" comes before letters), and with a byte
+// order mark at the start of a file taken as blank space.
+func TestNameClashesLikeSkinSlotText(t *testing.T) {
+	s := namesEnv(t)
+	dir := s.textsDir()
+	os.MkdirAll(dir, 0o755)
+	write := func(name, text string) { os.WriteFile(filepath.Join(dir, name), []byte(text), 0o644) }
+	write(namesTextFile, "[Text]\r\nLIVE_Tasha=Rosa\r\n")
+	write("_Radio.ini", "LIVE_Tasha=Other\r\n")                // read before ours
+	write("SkinStudio_x.ini", "LIVE_Tasha=Other\r\n")          // read before ours too
+	write("AAA_Bom.ini", "\ufeffLIVE_Tasha = Bom\r\n")         // a byte order mark, then the key
+	write("Zed.ini", "LIVE_Tasha=Late\r\n")                    // read after ours: loses to it
+	write("Notes.ini", "; LIVE_Tasha=x\r\n[LIVE_Tasha=x]\r\n") // a comment and a section line
+	got := nameClashes(s, map[string]string{"name:LIVE_Tasha": "Rosa"})
+	if strings.Join(got, " ") != "_Radio.ini AAA_Bom.ini SkinStudio_x.ini" {
+		t.Fatalf("clashes %v", got)
+	}
+	for _, c := range [][2]string{{"_Radio.ini", "SkinStudioNames.ini"}, {"SkinStudio_x.ini", "SkinStudioNames.ini"}, {"a.ini", "B.ini"}, {"B.ini", "c.ini"}, {"[x].ini", "a.ini"}, {"a.ini", "ab.ini"}} {
+		if !textFileLess(c[0], c[1]) || textFileLess(c[1], c[0]) {
+			t.Errorf("%s should come before %s", c[0], c[1])
+		}
+	}
+}
+
 func TestSpeakerLabelsAndKeys(t *testing.T) {
 	for in, want := range map[string]string{
 		"LIVE_Tasha": "Tasha", "LIVE_Harrier_A": "Harrier A", "LIVE_Ground _Forces_B": "Ground Forces B", "LIVE_Coster＆AWACS": "Coster & AWACS",
