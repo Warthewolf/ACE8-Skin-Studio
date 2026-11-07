@@ -1137,6 +1137,7 @@ function updateButtons() {
   safely(emblemButtons);
   if (SAVE) safely(saveButtons);
   safely(slotsButtons);
+  safely(unlocksButtons);
 }
 
 // ---------------------------------------------------------------- settings

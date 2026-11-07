@@ -14,11 +14,13 @@
    blue for what is selected. "Day" keeps the same layout on a pale grid. */
 :root {
   --bg: #070b13; --bg2: #0b1220; --panel: rgba(12, 19, 32, .82); --panel-solid: #0d1524; --raised: rgba(22, 33, 52, .9); --field: #0a111d;
-  --ink: #e4ebf5; --muted: #8592a6; --faint: #5b6779;
+  --ink: #e4ebf5; --muted: #8592a6; --faint: #7a879c;
   --line: rgba(150, 178, 215, .16); --line-strong: rgba(170, 196, 230, .32); --line-soft: rgba(150, 178, 215, .09);
   --grid: rgba(140, 170, 210, .065); --grid-dot: rgba(190, 212, 245, .28);
   --accent: #ff7a1a; --accent-hi: #ff9a4a; --accent-ink: #160900; --accent-soft: rgba(255, 122, 26, .13);
-  --blue: #4c9dff; --blue-soft: rgba(76, 157, 255, .14);
+  /* --accent-text: orange for small text; --accent-press: a primary button under the pointer */
+  --accent-text: #ff7a1a; --accent-press: #ff9a4a;
+  --blue: #4c9dff; --blue-soft: rgba(76, 157, 255, .14); --blue-ink: #04101f;
   --danger: #ff5a52; --danger-soft: rgba(255, 90, 82, .12); --ok: #3fd29b; --ok-soft: rgba(63, 210, 155, .11); --focus: #6fb1ff;
   --tile-empty: #111b2b; --shadow: 0 18px 60px rgba(0, 0, 0, .55);
   --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -29,24 +31,26 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     --bg: #dfe6ef; --bg2: #e9eef5; --panel: rgba(247, 250, 253, .9); --panel-solid: #f7fafd; --raised: #ffffff; --field: #ffffff;
-    --ink: #0d1726; --muted: #4f5d72; --faint: #7a8699;
+    --ink: #0d1726; --muted: #4f5d72; --faint: #5a6578;
     --line: rgba(30, 55, 95, .18); --line-strong: rgba(30, 55, 95, .36); --line-soft: rgba(30, 55, 95, .09);
     --grid: rgba(40, 70, 115, .08); --grid-dot: rgba(40, 70, 115, .3);
-    --accent: #e35d00; --accent-hi: #c44f00; --accent-ink: #ffffff; --accent-soft: rgba(227, 93, 0, .1);
-    --blue: #1660d0; --blue-soft: rgba(22, 96, 208, .1);
-    --danger: #c22a22; --danger-soft: rgba(194, 42, 34, .09); --ok: #13804f; --ok-soft: rgba(19, 128, 79, .09); --focus: #1660d0;
+    --accent: #e35d00; --accent-hi: #a84300; --accent-ink: #160900; --accent-soft: rgba(227, 93, 0, .1);
+    --accent-text: #a84300; --accent-press: #f27321;
+    --blue: #1660d0; --blue-soft: rgba(22, 96, 208, .1); --blue-ink: #ffffff;
+    --danger: #c22a22; --danger-soft: rgba(194, 42, 34, .09); --ok: #0e6e43; --ok-soft: rgba(19, 128, 79, .09); --focus: #1660d0;
     --tile-empty: #d3dbe6; --shadow: 0 18px 50px rgba(20, 35, 60, .25); --foot-bg: rgba(255, 255, 255, .55);
     color-scheme: light;
   }
 }
 :root[data-theme="light"] {
   --bg: #dfe6ef; --bg2: #e9eef5; --panel: rgba(247, 250, 253, .9); --panel-solid: #f7fafd; --raised: #ffffff; --field: #ffffff;
-  --ink: #0d1726; --muted: #4f5d72; --faint: #7a8699;
+  --ink: #0d1726; --muted: #4f5d72; --faint: #5a6578;
   --line: rgba(30, 55, 95, .18); --line-strong: rgba(30, 55, 95, .36); --line-soft: rgba(30, 55, 95, .09);
   --grid: rgba(40, 70, 115, .08); --grid-dot: rgba(40, 70, 115, .3);
-  --accent: #e35d00; --accent-hi: #c44f00; --accent-ink: #ffffff; --accent-soft: rgba(227, 93, 0, .1);
-  --blue: #1660d0; --blue-soft: rgba(22, 96, 208, .1);
-  --danger: #c22a22; --danger-soft: rgba(194, 42, 34, .09); --ok: #13804f; --ok-soft: rgba(19, 128, 79, .09); --focus: #1660d0;
+  --accent: #e35d00; --accent-hi: #a84300; --accent-ink: #160900; --accent-soft: rgba(227, 93, 0, .1);
+  --accent-text: #a84300; --accent-press: #f27321;
+  --blue: #1660d0; --blue-soft: rgba(22, 96, 208, .1); --blue-ink: #ffffff;
+  --danger: #c22a22; --danger-soft: rgba(194, 42, 34, .09); --ok: #0e6e43; --ok-soft: rgba(19, 128, 79, .09); --focus: #1660d0;
   --tile-empty: #d3dbe6; --shadow: 0 18px 50px rgba(20, 35, 60, .25); --foot-bg: rgba(255, 255, 255, .55);
   color-scheme: light;
 }
@@ -74,11 +78,12 @@ code, .path { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: a
 [hidden] { display: none !important; }
 ::selection { background: var(--accent); color: var(--accent-ink); }
 .mono-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+label.mono-label select, label.mono-label input:not([type=checkbox]):not([type=radio]) { font-family: var(--font-ui); font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--ink); }
 
 .app { display: grid; grid-template-columns: 236px minmax(0, 1fr); height: 100%; }
 
 /* ---------- rail ---------- */
-.rail { background: linear-gradient(180deg, rgba(8, 13, 22, .92), rgba(8, 13, 22, .78)); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 20px 14px 14px; gap: 20px; overflow-y: auto; backdrop-filter: blur(6px); }
+.rail { background: linear-gradient(180deg, rgba(8, 13, 22, .92), rgba(8, 13, 22, .78)); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 20px 14px 0; gap: 20px; overflow-y: auto; backdrop-filter: blur(6px); }
 :root[data-theme="light"] .rail { background: linear-gradient(180deg, rgba(247, 250, 253, .94), rgba(238, 243, 249, .88)); }
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .rail { background: linear-gradient(180deg, rgba(247, 250, 253, .94), rgba(238, 243, 249, .88)); } }
 /* the name sits over the lower part of the logo, with a halo in the background colour so it reads
@@ -88,7 +93,6 @@ code, .path { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: a
 .brand .wordmark { position: absolute; left: 0; right: 0; bottom: 2px; align-items: center; text-align: center;
   text-shadow: 0 0 2px var(--bg), 0 0 6px var(--bg), 0 0 12px var(--bg), 0 1px 1px var(--bg); }
 .brand .wordmark span { color: var(--ink); font-weight: 400; }
-@media (max-height: 820px) { .brand { max-width: 150px; } .brand .wordmark b { font-size: 19px; } .brand .wordmark span { font-size: 10px; } }
 .wordmark { display: flex; flex-direction: column; line-height: 1; font-family: var(--font-head); }
 .wordmark b { font-weight: 700; font-size: 23px; letter-spacing: .14em; }
 .wordmark span { font-weight: 300; font-size: 11.5px; letter-spacing: .34em; margin-top: 5px; color: var(--muted); }
@@ -101,10 +105,14 @@ code, .path { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: a
 .nav .group:first-child { padding-top: 0; }
 .nav .sep { height: 1px; background: var(--line); margin: 12px 8px; }
 .nav .badge { margin-left: auto; min-width: 20px; height: 18px; padding: 0 6px; background: var(--accent); color: var(--accent-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; letter-spacing: 0; }
-.nav .badge.blue { background: var(--blue); color: #fff; }
-.rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 14px; padding: 0 4px; }
+.nav .badge.blue { background: var(--blue); color: var(--blue-ink); }
+.rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 14px; padding: 12px 4px 14px;
+  position: sticky; bottom: 0; z-index: 1; background: var(--rail-solid, #090e18); border-top: 1px solid var(--line); }
+:root[data-theme="light"] .rail-foot { --rail-solid: #eef3f9; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .rail-foot { --rail-solid: #eef3f9; } }
 .setup-status { all: unset; cursor: pointer; font-size: 12.5px; line-height: 1.35; display: flex; gap: 8px; align-items: flex-start; padding: 9px 10px; border: 1px solid var(--line); background: var(--panel); }
 .setup-status:hover { border-color: var(--line-strong); }
+.setup-status:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .setup-status .dot { width: 8px; height: 8px; margin-top: 4px; flex: none; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .setup-status.bad .dot { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
 .seg-label { margin-bottom: 6px; }
@@ -113,6 +121,16 @@ code, .path { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: a
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); font-weight: 700; }
 .seg button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+/* short screens: a smaller logo and a tighter menu */
+@media (max-height: 940px) {
+  .rail { gap: 14px; padding-top: 14px; }
+  .brand { max-width: 150px; } .brand .wordmark b { font-size: 19px; } .brand .wordmark span { font-size: 10px; }
+  .nav button { padding-top: 6px; padding-bottom: 6px; }
+  .nav .group { padding-top: 10px; }
+  .rail-foot { gap: 10px; padding-top: 10px; }
+  .setup-status { padding: 7px 10px; }
+}
+@media (max-height: 760px) { .brand { max-width: 116px; } .nav button { padding-top: 5px; padding-bottom: 5px; } .seg-label { display: none; } }
 
 /* ---------- main ---------- */
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
@@ -124,29 +142,47 @@ code, .path { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: a
 .hud .val { font-family: var(--font-head); font-size: 13.5px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 340px; }
 .hud .val.bad { color: var(--danger); }
 .hud .val.good { color: var(--blue); }
-.hud .val.warn { color: var(--accent); }
+.hud .val.warn { color: var(--accent-text); }
 .hud .grow { flex: 1; }
+.hud button.cell { background: none; border: 0; border-left: 1px solid var(--line); font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.hud button.cell:first-child { border-left: 0; }
+.hud button.cell:hover .val { text-decoration: underline; text-underline-offset: 3px; }
+.hud button.cell:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.hud .mono-label { white-space: nowrap; }
 .scroll { flex: 1; overflow-y: auto; padding: 30px 40px 70px; }
 .page { max-width: 940px; display: flex; flex-direction: column; gap: 22px; }
 .pagehead { display: flex; flex-direction: column; gap: 6px; }
-.eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .2em; color: var(--accent); text-transform: uppercase; }
+.eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .2em; color: var(--accent-text); text-transform: uppercase; }
 .lead { color: var(--muted); max-width: 70ch; margin-top: 4px; }
 .block { position: relative; background: var(--panel); border: 1px solid var(--line); padding: 20px 22px 22px; display: flex; flex-direction: column; gap: 14px; }
 .block::before, .block::after { content: ""; position: absolute; width: 12px; height: 12px; border: 2px solid var(--accent); pointer-events: none; }
 .block::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
 .block::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
 .block > h2 { display: flex; align-items: baseline; gap: 12px; }
-.block > h2 .step { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--accent); letter-spacing: .08em; }
+.block > h2 .step { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--accent-text); letter-spacing: .08em; }
 .block.flash { animation: flashblock 1.8s ease-out; }
 @keyframes flashblock { 0%, 35% { box-shadow: 0 0 0 2px var(--accent), 0 0 28px var(--accent-soft); border-color: var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .block.flash { animation: none; outline: 2px solid var(--accent); } }
 .linkbtn { background: none; border: 0; padding: 0; font: inherit; color: var(--accent-hi); cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
-.linkbtn:hover { color: var(--accent); }
+.linkbtn:hover { color: var(--accent-text); text-decoration-thickness: 2px; }
 .linkbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .skinauto { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 13px; color: var(--muted); border-left: 2px solid var(--ok); padding: 4px 0 4px 10px; }
 .skinauto.warn { border-left-color: var(--accent); }
 .skinauto b { color: var(--ink); font-weight: 600; }
 .hint { color: var(--muted); font-size: 13px; max-width: 74ch; }
+.skip { position: fixed; left: 12px; top: -80px; z-index: 100; background: var(--panel-solid); color: var(--ink); border: 2px solid var(--focus); padding: 8px 14px; font-family: var(--font-head); letter-spacing: .1em; text-transform: uppercase; font-size: 12.5px; text-decoration: none; }
+.skip:focus { top: 12px; }
+.page h1:focus { outline: none; }
+.page h1:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+/* what is still missing, one line each, with a button to the setting */
+.setup-need { list-style: none; margin: 8px 0 2px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.setup-need li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; }
+.setup-need li b { font-weight: 600; }
+.setup-need li span { display: block; color: var(--muted); font-size: 12.5px; }
+.setup-need-foot { margin-top: 8px; }
+/* a screen with nothing to show yet */
+.empty { align-items: flex-start; }
+.empty .hint { max-width: 62ch; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .grow { flex: 1 1 220px; min-width: 0; }
 label.field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
@@ -156,7 +192,8 @@ input[type="text"], input[type="password"], input[type="number"], select, textar
   background: var(--field); border: 1px solid var(--line-strong); border-radius: 0; padding: 8px 10px; min-height: 36px; width: 100%; min-width: 0; font-size: 14px;
 }
 textarea { resize: vertical; min-height: 84px; line-height: 1.45; }
-input:focus, select:focus, textarea:focus { border-color: var(--blue); outline: none; box-shadow: 0 0 0 1px var(--blue), 0 0 14px var(--blue-soft); }
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):focus, select:focus, textarea:focus { border-color: var(--blue); outline: none; box-shadow: 0 0 0 1px var(--blue), 0 0 14px var(--blue-soft); }
+input[type=checkbox]:focus-visible, input[type=radio]:focus-visible, input[type=range]:focus-visible, input[type=color]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 input[type="text"].mono, input[type="password"].mono { font-family: var(--font-mono); font-size: 13px; }
 /* Hidden like a password, but an ordinary text box, so browsers never offer to save it. */
 input.masked:not(:placeholder-shown) { -webkit-text-security: disc; }
@@ -171,16 +208,16 @@ input:disabled, select:disabled, button:disabled { opacity: .45; cursor: not-all
 .btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hi); }
 .btn.primary { background: var(--accent); border: 0; color: var(--accent-ink); font-size: 14px; font-weight: 700; padding: 10px 26px; min-height: 42px; letter-spacing: .14em;
   clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); }
-.btn.primary:hover:not(:disabled) { background: var(--accent-hi); color: var(--accent-ink); }
+.btn.primary:hover:not(:disabled) { background: var(--accent-press); color: var(--accent-ink); }
 .btn.quiet { border-color: transparent; text-decoration: underline; text-underline-offset: 4px; padding-left: 6px; padding-right: 6px; }
 .btn.small { min-height: 28px; padding: 3px 10px; font-size: 11.5px; }
 .btn.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
 
 .notice { padding: 10px 14px; font-size: 13.5px; border: 1px solid var(--line); border-left: 3px solid var(--line-strong); background: var(--raised); overflow-wrap: anywhere; }
-.notice.error { border-color: var(--danger); background: var(--danger-soft); }
-.notice.good { border-color: var(--ok); background: var(--ok-soft); }
-.notice.warn { border-color: var(--accent); background: var(--accent-soft); }
-.notice.info { border-color: var(--blue); background: var(--blue-soft); }
+.notice.error { border-color: var(--danger); background: linear-gradient(var(--danger-soft), var(--danger-soft)), var(--raised); }
+.notice.good { border-color: var(--ok); background: linear-gradient(var(--ok-soft), var(--ok-soft)), var(--raised); }
+.notice.warn { border-color: var(--accent); background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--raised); }
+.notice.info { border-color: var(--blue); background: linear-gradient(var(--blue-soft), var(--blue-soft)), var(--raised); }
 .notice strong { font-weight: 700; }
 .notice p + p { margin-top: 6px; }
 
@@ -226,6 +263,7 @@ input:disabled, select:disabled, button:disabled { opacity: .45; cursor: not-all
 .vehicles button { all: unset; box-sizing: border-box; display: flex; gap: 12px; align-items: baseline; width: 100%; padding: 7px 12px; cursor: pointer; border-top: 1px solid var(--line-soft); }
 .vehicles button:first-child { border-top: 0; }
 .vehicles button:hover, .vehicles button:focus-visible { background: var(--blue-soft); }
+.vehicles button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .vehicles .n { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
 .vehicles .s { color: var(--muted); font-size: 12px; margin-left: auto; text-align: right; }
 
@@ -236,9 +274,9 @@ input:disabled, select:disabled, button:disabled { opacity: .45; cursor: not-all
 .chip { font-size: 12px; border: 1px solid var(--line); padding: 1px 7px; background: var(--panel-solid); white-space: nowrap; }
 .chip.off { color: var(--muted); text-decoration: line-through; }
 .chip.blue { border-color: var(--blue); color: var(--blue); }
-.chip.orange { border-color: var(--accent); color: var(--accent); }
+.chip.orange { border-color: var(--accent); color: var(--accent-text); }
 button.chip { cursor: pointer; font-family: var(--font-mono); font-size: 12.5px; padding: 3px 9px; color: inherit; }
-button.chip[aria-pressed="true"] { background: var(--blue); color: #fff; border-color: var(--blue); }
+button.chip[aria-pressed="true"] { background: var(--blue); color: var(--blue-ink); border-color: var(--blue); }
 #exSkinsBox[hidden] { display: none !important; }
 #exSkinsBox .chips { flex: none; }
 .pvgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 10px; }
@@ -364,6 +402,7 @@ table.plan .note { font-size: 12px; margin-top: 6px; padding-left: 9px; border-l
 .iconframe::after { bottom: 6px; right: 6px; border-left: 0; border-top: 0; }
 input[type="color"] { width: 46px; height: 32px; border: 1px solid var(--line-strong); background: var(--field); padding: 2px; cursor: pointer; }
 .sub { padding-left: 26px; display: flex; flex-direction: column; gap: 8px; }
+.sub.over { outline: 1px dashed var(--accent); outline-offset: 4px; background: var(--accent-soft); }
 
 /* ---------- skin slots ---------- */
 .statgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); border: 1px solid var(--line); background: var(--raised); }
@@ -372,7 +411,7 @@ input[type="color"] { width: 46px; height: 32px; border: 1px solid var(--line-st
 .stat .val { font-family: var(--font-head); font-size: 15px; letter-spacing: .08em; text-transform: uppercase; overflow-wrap: anywhere; }
 .stat .val.good { color: var(--blue); }
 .stat .val.bad { color: var(--danger); }
-.stat .val.warn { color: var(--accent); }
+.stat .val.warn { color: var(--accent-text); }
 .stat .hint { font-size: 12px; }
 .smod { border: 1px solid var(--line); background: var(--raised); }
 .smod + .smod { margin-top: 12px; }
@@ -392,7 +431,7 @@ input[type="color"] { width: 46px; height: 32px; border: 1px solid var(--line-st
 .plancard img, .plancard .noimg { width: 56px; height: 56px; object-fit: cover; border: 1px solid var(--line-strong); background: var(--tile-empty); }
 .num { font-family: var(--font-mono); font-size: 13px; letter-spacing: .06em; text-align: right; white-space: nowrap; }
 .num .was { color: var(--muted); text-decoration: line-through; margin-right: 6px; }
-.num .now { color: var(--accent); font-weight: 700; }
+.num .now { color: var(--accent-text); font-weight: 700; }
 
 /* ---------- installed mods ---------- */
 .mod { padding: 13px 14px; display: flex; flex-direction: column; gap: 9px; }
@@ -406,10 +445,15 @@ input[type="color"] { width: 46px; height: 32px; border: 1px solid var(--line-st
 pre.report { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.45; background: var(--field); border: 1px solid var(--line); padding: 8px 10px; max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0; user-select: all; }
 
 .setrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
-.status { font-size: 12.5px; font-weight: 400; display: flex; gap: 7px; align-items: flex-start; text-transform: none; letter-spacing: 0; color: var(--muted); }
+.status { font-size: 12.5px; font-weight: 400; display: flex; gap: 7px; align-items: flex-start; text-transform: none; letter-spacing: 0; color: var(--muted); overflow-wrap: anywhere; min-width: 0; }
 .status::before { content: ""; width: 7px; height: 7px; background: var(--ok); margin-top: 6px; flex: none; box-shadow: 0 0 6px var(--ok); }
 .status.bad::before { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
 .status.bad { color: var(--danger); }
+/* optional settings that are not found yet: amber, not red */
+.status.warn::before { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.status.warn { color: var(--accent-text); }
+.saved-chip { align-self: flex-start; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ok); border: 1px solid var(--ok); padding: 0 6px; font-weight: 400; }
+.saved-chip.bad { color: var(--danger); border-color: var(--danger); text-transform: none; letter-spacing: 0; font-family: var(--font-ui); font-size: 12.5px; }
 .results .path { display: block; padding: 2px 0; }
 details.files summary { cursor: pointer; font-size: 13px; color: var(--muted); }
 details.files ul { margin: 6px 0 0; padding-left: 18px; }
@@ -419,18 +463,19 @@ dialog.tut { border: 1px solid var(--line-strong); padding: 0; background: var(-
 dialog.tut[open] { display: grid; grid-template-columns: 210px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
 dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2px); }
 .tut-topics { grid-row: 1 / 3; background: var(--bg); border-right: 1px solid var(--line); padding: 18px 10px; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; }
-.tut-topics .head { font-family: var(--font-mono); font-size: 11px; letter-spacing: .2em; color: var(--accent); padding: 0 12px 12px; text-transform: uppercase; }
+.tut-topics .head { font-family: var(--font-mono); font-size: 11px; letter-spacing: .2em; color: var(--accent-text); padding: 0 12px 12px; text-transform: uppercase; }
 .tut-topics button { all: unset; box-sizing: border-box; width: 100%; padding: 7px 12px; cursor: pointer; font-size: 13.5px; border-left: 2px solid transparent; color: var(--muted); }
 .tut-topics button:hover { color: var(--ink); background: var(--line-soft); }
 .tut-topics button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .tut-topics button[aria-current="step"] { color: var(--ink); border-left-color: var(--accent); font-weight: 700; background: var(--accent-soft); }
 .tut-body { padding: 24px 28px 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; min-height: 320px; }
 .tut-body:focus { outline: none; }
-.tut-body h2 { font-size: 21px; font-weight: 400; letter-spacing: .1em; }
+.tut-body h2 { font-size: 21px; font-weight: 400; letter-spacing: .1em; padding-right: 96px; }
+.tut-close { position: absolute; top: 12px; right: 14px; z-index: 2; background: var(--panel-solid); }
 .tut-body .why { color: var(--muted); max-width: 62ch; }
 .tut-body ol { margin: 0; padding: 0; list-style: none; counter-reset: step; display: flex; flex-direction: column; gap: 11px; max-width: 66ch; }
 .tut-body ol li { counter-increment: step; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; }
-.tut-body ol li::before { content: counter(step, decimal-leading-zero); font-family: var(--font-mono); font-size: 12px; color: var(--accent); border: 1px solid var(--accent); height: 22px; display: grid; place-items: center; margin-top: 1px; }
+.tut-body ol li::before { content: counter(step, decimal-leading-zero); font-family: var(--font-mono); font-size: 12px; color: var(--accent-text); border: 1px solid var(--accent); height: 22px; display: grid; place-items: center; margin-top: 1px; }
 .tut-body .eg { display: block; margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .tut-body .tip { border-left: 2px solid var(--blue); padding: 2px 0 2px 12px; font-size: 13.5px; color: var(--muted); max-width: 62ch; }
 .tut-body .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-family: var(--font-head); font-weight: 500; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
@@ -459,6 +504,8 @@ dialog.tut::backdrop { background: rgba(3, 6, 12, .72); backdrop-filter: blur(2p
 .setup-item { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 12px; border: 1px solid var(--line); background: var(--raised); }
 .setup-item .dot { width: 9px; height: 9px; margin-top: 5px; background: var(--danger); box-shadow: 0 0 8px var(--danger); }
 .setup-item.ok .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.setup-item.opt .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.setup-item.opt p.now { color: var(--accent-text); }
 .setup-item b { font-size: 14px; }
 .setup-item small.for { display: block; color: var(--faint); font-family: var(--font-mono); font-size: 11px; margin-top: 1px; }
 .setup-item p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
@@ -496,6 +543,16 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
   .tut-foot { padding: 10px 16px 12px; }
 }
 
+/* ---------- how new skins are unlocked (Skin slots) ---------- */
+.ul-groups { border-collapse: collapse; font-size: 13px; margin-top: 6px; max-width: 100%; }
+.ul-groups th, .ul-groups td { border-bottom: 1px solid var(--line); padding: 5px 16px 5px 0; text-align: left; vertical-align: top; }
+.ul-groups th { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+.ul-groups td:nth-child(n+3) { font-family: var(--font-mono); }
+details.ul-test { border: 1px solid var(--line); background: var(--raised); max-width: 72ch; }
+details.ul-test summary { cursor: pointer; padding: 8px 12px; font-size: 13.5px; font-weight: 600; }
+details.ul-test summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+details.ul-test ol { margin: 0; padding: 4px 14px 12px 34px; font-size: 13.5px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+
 /* ---------- task dock ---------- */
 .dock { border-top: 1px solid var(--line-strong); background: var(--panel-solid); padding: 12px 40px 14px; display: flex; flex-direction: column; gap: 8px; }
 .foot { border-top: 1px solid var(--line); padding: 7px 40px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--faint); text-align: center; background: var(--foot-bg, rgba(5, 9, 16, .4)); }
@@ -503,6 +560,9 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
 .dock .head { display: flex; gap: 12px; align-items: center; }
 .dock .title { font-family: var(--font-head); font-weight: 600; font-size: 13.5px; letter-spacing: .12em; text-transform: uppercase; }
 .dock .step { color: var(--muted); font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock.failed .head { align-items: flex-start; flex-wrap: wrap; }
+.dock.failed .step { white-space: normal; overflow: visible; color: var(--ink); flex-basis: 260px; overflow-wrap: anywhere; }
+.dock .msg { font-size: 13px; color: var(--danger); overflow-wrap: anywhere; }
 .bar { height: 4px; background: var(--line-soft); overflow: hidden; }
 .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; box-shadow: 0 0 10px var(--accent); }
 .bar.unknown i { width: 30%; animation: slide 1.4s linear infinite; }
@@ -513,6 +573,21 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
 .log { font-family: var(--font-mono); font-size: 12px; line-height: 1.45; background: var(--field); border: 1px solid var(--line); padding: 8px 10px; max-height: 190px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 
 @media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+/* half a screen: a narrower menu, and the strip along the top stays on one line */
+@media (min-width: 761px) and (max-width: 1000px) {
+  .app { grid-template-columns: 200px minmax(0, 1fr); }
+  .rail { padding-left: 10px; padding-right: 10px; }
+  .nav button { font-size: 13px; letter-spacing: .06em; padding-left: 10px; padding-right: 10px; }
+  .hud { flex-wrap: nowrap; padding: 0 12px; }
+  .hud .grow { display: none; }
+  .hud .cell { padding: 9px 12px 8px; flex: 1 1 auto; }
+  .hud .mono-label { overflow: hidden; text-overflow: ellipsis; letter-spacing: .1em; }
+  .hud .val { font-size: 12.5px; letter-spacing: .05em; }
+  .scroll { padding: 24px 24px 60px; }
+  .dock { padding: 12px 24px 14px; }
+  .foot { padding: 7px 24px; }
+}
+@media (max-width: 520px) { .btn { white-space: normal; text-align: left; } .tut-body h2 { padding-right: 0; padding-top: 30px; } }
 @media (max-width: 760px) {
   .app { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
   .rail { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; border-right: 0; border-bottom: 1px solid var(--line); overflow: visible; }
@@ -522,7 +597,7 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
   .nav { flex-direction: row; flex-wrap: wrap; }
   .nav button { width: auto; border-left: 0; border-bottom: 2px solid transparent; padding: 6px 8px; }
   .nav button[aria-current="page"] { border-bottom-color: var(--accent); }
-  .rail-foot { margin: 0 0 0 auto; flex-direction: row; align-items: center; }
+  .rail-foot { margin: 0 0 0 auto; flex-direction: row; align-items: center; position: static; padding: 0; border-top: 0; background: none; }
   .hud { padding: 0 8px; }
   .scroll { padding: 18px 16px 40px; }
   .dock { padding: 10px 16px 12px; }
@@ -542,6 +617,7 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
 </style>
 </head>
 <body>
+<a class="skip" href="#scroll" id="skipLink">Skip to the screen</a>
 <div class="app">
   <aside class="rail">
     <div class="brand" aria-label="ACE8 Skin Studio">
@@ -582,8 +658,8 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
 
   <div class="main">
     <header class="hud" aria-label="Status">
-      <div class="cell"><span class="mono-label">Session status</span><span class="val" id="hudSession">—</span></div>
-      <div class="cell"><span class="mono-label">Operation</span><span class="val" id="hudOp">No data</span></div>
+      <button class="cell" id="hudSessionBtn" type="button" title="Open Settings"><span class="mono-label">Session status</span><span class="val" id="hudSession">—</span></button>
+      <div class="cell"><span class="mono-label">Operation</span><span class="val" id="hudOp">Standing by</span></div>
       <div class="cell grow"></div>
       <div class="cell"><span class="mono-label">Mod loader</span><span class="val" id="hudLoader">—</span></div>
       <div class="cell"><span class="mono-label">New skins</span><span class="val" id="hudSlots">—</span></div>
@@ -632,6 +708,7 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
             <label class="row mono-label" style="gap:8px">Tile format
               <select id="exFormat"><option value="png">PNG</option><option value="tga">TGA</option></select>
             </label>
+            <span class="hint" id="exGoHint"></span>
           </div>
           <div id="exResult"></div>
         </div>
@@ -645,6 +722,7 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
             <button class="btn small" id="libRefresh">Refresh</button>
             <button class="btn small" id="libOpenPaint">Open the paint-ready folder</button>
           </div>
+          <div class="setrow" id="libAddPathRow" hidden><input type="text" id="libAddPath" class="mono" spellcheck="false" placeholder="A folder of raw files you already have: type or paste its path" aria-label="Folder of raw files"><button class="btn small" id="libAddPathGo" type="button">Add this folder</button></div>
         </div>
       </section>
 
@@ -685,6 +763,7 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
           <div class="row">
             <button class="btn primary" id="spGo" disabled>Split</button>
             <button class="btn quiet" id="spClear" hidden>Clear the list</button>
+            <span class="hint" id="spGoHint"></span>
           </div>
           <div id="spResult"></div>
         </div>
@@ -717,6 +796,7 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
           <div class="row">
             <button class="btn primary" id="mdGo" disabled>Save paint model</button>
             <button class="btn quiet" id="mdClear">Clear the list</button>
+            <span class="hint" id="mdGoHint"></span>
           </div>
           <div id="mdResult"></div>
         </div>
@@ -742,6 +822,7 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
             <select id="rpSkin" class="grow" style="width:100%" aria-label="Skin"></select>
             <button class="btn" id="rpAddRaw">Add a folder of raw files</button>
           </div>
+          <div class="setrow" id="rpAddPathRow" hidden><input type="text" id="rpAddPath" class="mono" spellcheck="false" placeholder="A folder of raw files: type or paste its path" aria-label="Folder of raw files"><button class="btn" id="rpAddPathGo" type="button">Add this folder</button></div>
           <p class="hint" id="rpSkinHint">Extract the skin first (Extract in the menu), or add a folder that already holds its raw .uasset, .uexp and .ubulk files.</p>
           <div class="skinauto" id="rpSkinAuto" role="status" hidden></div>
           <div class="row slot-only" id="rpTemplateRow" hidden>
@@ -848,7 +929,7 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
                 </div>
                 <label class="check"><input type="radio" name="rxIcon" value="picture"><span>My own picture</span></label>
                 <div class="sub" id="rxPicBox" hidden>
-                  <div class="row"><button class="btn small" id="rxPicPick" type="button">Choose a picture</button></div>
+                  <div class="row"><button class="btn small" id="rxPicPick" type="button">Choose a picture</button><span class="hint">or drop one here</span></div>
                   <span class="hint path" id="rxPicName"></span>
                 </div>
               </div>
@@ -1026,7 +1107,7 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
           <details class="namemore" id="pnFlightBox"><summary>Flight names (Joker 3, Queen 1 ...)</summary>
             <p class="hint">A flight name belongs to a place in the flight, not to a pilot: in missions where someone else flies as Joker 2, they get the new name too.</p>
             <div class="namelist" id="pnFlights"></div></details>
-          <div class="row"><button class="btn primary" id="pnSave" type="button">Save names</button><button class="btn quiet" id="pnClear" type="button">Put the game's names back</button><span class="hint" id="pnHint"></span></div>
+          <div class="row"><button class="btn primary" id="pnSave" type="button">Save names</button><button class="btn quiet" id="pnClear" type="button">Put the game's names back</button><span class="hint" id="pnHint"></span><span class="row" id="pnAsk" hidden></span></div>
           <div id="pnResult"></div>
         </div>
 
@@ -1177,10 +1258,12 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
           <h1>Settings</h1>
           <p class="lead">Set these once. They are saved in settings.json next to the program.</p>
         </div>
+        <div class="notice warn" id="seFileNote" role="alert" hidden></div>
         <div class="block" id="seImportBlock">
           <h2>Coming from AC8 Skin Studio 1.x</h2>
           <p class="hint">Copies the game folder, AES key, mods folder and your extracted skins' location from the old program's settings, so you do not have to type them again. The old program is not changed.</p>
           <div class="row"><button class="btn" id="seImportOld">Use the settings of AC8 Skin Studio 1.x</button><span class="hint" id="seImportNote"></span></div>
+          <div class="setrow" id="seImportPathRow" hidden><input type="text" id="seImportPath" class="mono" spellcheck="false" placeholder="The folder of AC8 Skin Studio 1.x (where AC8SkinStudio.exe is)" aria-label="Folder of AC8 Skin Studio 1.x"><button class="btn" id="seImportPathGo" type="button">Use its settings</button></div>
         </div>
         <div class="block">
           <h2>Game files</h2>
@@ -1238,8 +1321,8 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
           </label>
           <label class="check"><input type="checkbox" id="seBrowser"><span>Open in my default browser instead of a separate window<span class="hint">Takes effect the next time the program starts.</span></span></label>
           <div class="row">
-            <button class="btn primary" id="seSave">Save settings</button>
-            <span class="hint" id="seSaved" role="status"></span>
+            <button class="btn" id="seSave">Save and check again</button>
+            <span class="hint" id="seSaved" role="status">Settings are saved as soon as you change them.</span>
           </div>
         </div>
         <div class="block">
@@ -1247,6 +1330,7 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
           <p class="hint" id="seAbout"></p>
           <p class="hint">Mods made here replace or add game files, so the game needs a mod loader that accepts them; new skin slots need AC8 Mod Loader 1.1.0 or newer. Use modded files offline and in single player only.</p>
           <div class="row"><button class="btn" id="seReport">Copy a support report</button><button class="btn" id="seOpenWork">Open the workspace folder</button><button class="btn" id="seQuit">Quit the program</button></div>
+          <div id="seQuitAsk"></div>
           <p class="hint">The report holds the version, these settings and the last task's log, ready to paste to whoever is helping you. The AES key is never included, and your Windows user name is taken out of the folder paths.</p>
           <div id="seReportOut"></div>
         </div>
@@ -1258,11 +1342,13 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
       <div class="head">
         <span class="title" id="dockTitle"></span>
         <span class="step" id="dockStep"></span>
+        <button class="btn small" id="dockFix" type="button" hidden>Open Settings</button>
         <button class="btn small" id="dockReport" hidden>Copy report</button>
         <button class="btn small" id="dockLogBtn" aria-expanded="false">Show details</button>
         <button class="btn small" id="dockCancel">Cancel</button>
         <button class="btn small" id="dockClose" hidden>Close</button>
       </div>
+      <div class="msg" id="dockMsg" role="alert" hidden></div>
       <div class="bar" id="dockBar"><i></i></div>
       <pre class="log" id="dockLog" hidden tabindex="0"></pre>
     </div>
@@ -1272,6 +1358,7 @@ label.field.flash { animation: field-flash 1.6s ease-out 1; }
 </div>
 
 <dialog class="tut" id="tut" aria-labelledby="tutTitle">
+  <button class="btn small tut-close" id="tutClose" type="button" aria-label="Close the tutorial">&times; Close</button>
   <nav class="tut-topics" aria-label="Tutorial topics">
     <div class="head">// Briefing</div>
     <div id="tutTopics" style="display:contents"></div>
@@ -1311,6 +1398,19 @@ try { sessionStorage.setItem('ace8-token', TOKEN); history.replaceState(null, ''
 // Every open window gives itself a name, so the program can tell when its last window has closed.
 const CLIENT = 'w' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
+// sentence makes a message from the program read as a sentence of its own: a capital first letter
+// (retoc and UE4SS keep their own spelling, and so do file names) and a full stop at the end. The
+// program's messages are written to be put after other words, so they start in small letters.
+function sentence(s) {
+  s = String(s == null ? '' : s).trim();
+  if (!s) return s;
+  if (/^[a-z]/.test(s) && !/^(retoc|ue4ss)\b/i.test(s) && !/^[\w-]+\.[a-z0-9]{2,5}\b/i.test(s)) s = s[0].toUpperCase() + s.slice(1);
+  if (!/[.!?…:]["'”’)\]]*$/.test(s)) s += '.';
+  return s;
+}
+
+// api calls the program. A failed call throws an Error with the program's message as a sentence,
+// its HTTP status in .status and the whole answer in .data.
 async function api(path, body) {
   let res;
   try {
@@ -1324,7 +1424,11 @@ async function api(path, body) {
   }
   let data = null;
   try { data = await res.json(); } catch (e) {}
-  if (!res.ok) throw new Error((data && data.error) || (res.status === 403 ? 'This window is out of date. Close it and start the program again.' : 'Request failed (' + res.status + ').'));
+  if (!res.ok) {
+    const err = new Error(sentence((data && data.error) || (res.status === 403 ? 'This window is out of date. Close it and start the program again.' : 'Request failed (' + res.status + ').')));
+    err.status = res.status; err.data = data;
+    throw err;
+  }
   return data;
 }
 const thumbURL = p => '/api/thumb?t=' + encodeURIComponent(TOKEN) + '&path=' + encodeURIComponent(p);
@@ -1338,7 +1442,7 @@ function upload(file, batch, onProgress) {
     x.upload.onprogress = e => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
     x.onload = () => {
       let d = null; try { d = JSON.parse(x.responseText); } catch (e) {}
-      if (x.status === 200 && d && d.path) resolve(d.path); else reject(new Error((d && d.error) || 'Could not copy ' + file.name + ' into the program.'));
+      if (x.status === 200 && d && d.path) resolve(d.path); else reject(new Error(sentence((d && d.error) || 'Could not copy ' + file.name + ' into the program.')));
     };
     x.onerror = () => reject(new Error('Could not copy ' + file.name + ' into the program.'));
     x.send(file);
@@ -1366,24 +1470,41 @@ async function droppedFiles(dt) {
 }
 const isPicture = name => /\.(png|tga)$/i.test(name);
 
+// Without a file chooser of the system's own (Linux without zenity or kdialog), the "Choose" buttons
+// open the browser's: its files are copied into the program, the same way as dropped ones.
+const canPick = () => !!(STATE && STATE.canPick);
+function browserFiles({ accept = '', multiple = false, folder = false } = {}) {
+  return new Promise(resolve => {
+    const inp = el('input', { type: 'file', accept: accept || null, multiple, webkitdirectory: folder });
+    inp.addEventListener('change', () => resolve(Array.from(inp.files || [])));
+    inp.addEventListener('cancel', () => resolve([]));
+    inp.click();
+  });
+}
+
 function notice(target, kind, ...content) {
   target.replaceChildren(el('div', { class: 'notice ' + kind, role: kind === 'error' ? 'alert' : 'status' }, ...content));
 }
 const openFolderBtn = (path, label = 'Open folder') => el('button', { class: 'btn small', onclick: () => api('/api/open', { path }).catch(e => alertLine(e.message)) }, label);
-function alertLine(msg) { const d = $('#dock'); showDockMessage(msg); d.hidden = false; }
+// alertLine shows a problem in the task dock. While a task runs, the task keeps the dock (its
+// progress, Cancel and Show details) and the problem is a line of its own under it.
+function alertLine(msg) {
+  msg = sentence(msg);
+  if (activeJob) { const m = $('#dockMsg'); m.textContent = msg; m.hidden = false; return; }
+  showDockMessage(msg);
+  $('#dock').hidden = false;
+}
 
 // ---------------------------------------------------------------- state
 let STATE = null;
 async function refreshState() {
   STATE = await api('/api/state');
   const c = STATE.checks;
-  const missingExtract = ['workspace', 'retoc', 'paks', 'aes'].filter(k => !c[k].ok);
+  const missing = setupMissing();
   const st = $('#setupStatus');
-  st.classList.toggle('bad', missingExtract.length > 0);
-  $('#setupText').textContent = missingExtract.length ? 'Setup: ' + missingExtract.length + (missingExtract.length === 1 ? ' thing' : ' things') + ' missing. Open Settings.' : 'Setup is complete';
-  const ex = $('#exSetup');
-  ex.hidden = missingExtract.length === 0;
-  if (missingExtract.length) ex.replaceChildren(el('strong', { text: 'Extracting needs a little setup first. ' }), missingExtract.map(k => c[k].note).join(' '), ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+  st.classList.toggle('bad', missing.length > 0);
+  $('#setupText').textContent = missing.length ? 'Setup: ' + missing.length + (missing.length === 1 ? ' thing' : ' things') + ' to do. Open Settings.' : 'Setup is complete';
+  setupBanner($('#exSetup'), needsOf('extract'), 'Extracting needs a little setup first.');
   renderRepackSetup();
   renderEmblemSetup();
   $('#rpInstallHint').textContent = c.mods.ok ? STATE.settings.modsDir : 'Set your mods folder in Settings to use this.';
@@ -1391,49 +1512,77 @@ async function refreshState() {
   if (!c.mods.ok) $('#rpInstall').checked = false;
   if (!$('#spOut').value) $('#spOut').value = STATE.folders.split;
   $('#seAbout').textContent = STATE.app + ' ' + STATE.version + '. Program folder: ' + STATE.folders.data;
+  // Settings' Browse buttons have a box to type in instead; a folder of raw files and the 1.x
+  // folder get one when there is no file chooser.
   $$('[data-pick-folder],[data-pick-file]').forEach(b => { b.hidden = !STATE.canPick; });
-  $('#spPick').hidden = !STATE.canPick; $('#rpPick').hidden = !STATE.canPick; $('#mdPick').hidden = !STATE.canPick;
-  $('#imPick').hidden = !STATE.canPick; $('#slPicPick').hidden = !STATE.canPick; $('#seImportOld').disabled = !STATE.canPick;
+  $('#libAdd').hidden = $('#rpAddRaw').hidden = $('#seImportOld').hidden = !STATE.canPick;
+  $('#libAddPathRow').hidden = $('#rpAddPathRow').hidden = $('#seImportPathRow').hidden = STATE.canPick;
   setHud();
   return STATE;
 }
 
 // The strip along the top: setup, the task that is running, the loader and the new skins.
-const HUD = { op: '', loader: null, slots: null };
+const HUD = { op: '', loader: null, slots: null, modsOk: null };
 function setHud() {
   if (!STATE) return;
-  const c = STATE.checks;
-  const missing = ['workspace', 'retoc', 'paks', 'aes', 'mods'].filter(k => !c[k].ok);
+  const missing = setupMissing();
   const s = $('#hudSession');
-  s.textContent = missing.length ? 'Setup needed' : 'Ready';
+  s.textContent = missing.length ? 'Setup: ' + missing.length + ' to do' : 'Ready';
   s.className = 'val ' + (missing.length ? 'bad' : 'good');
+  $('#hudSessionBtn').title = missing.length ? 'Still to set up: ' + missing.map(x => x.title).join(', ') + '. Click to open Settings.' : 'Open Settings';
   const op = $('#hudOp');
-  op.textContent = HUD.op || 'No data'; op.title = HUD.op || '';
+  op.textContent = HUD.op || 'Standing by'; op.title = HUD.op || '';
   op.className = 'val' + (HUD.op ? ' warn' : '');
   const lo = $('#hudLoader');
-  if (HUD.loader == null) { lo.textContent = '—'; lo.className = 'val'; }
+  lo.title = '';
+  if (HUD.modsOk === false) { lo.textContent = 'No mods folder'; lo.className = 'val'; lo.title = 'Set your mods folder in Settings'; }
+  else if (HUD.loader == null) { lo.textContent = '—'; lo.className = 'val'; }
   else if (!HUD.loader) { lo.textContent = 'Not found'; lo.className = 'val bad'; }
   else { lo.textContent = 'v' + HUD.loader; lo.className = 'val ' + (versionLess(HUD.loader, '1.1.0') ? 'bad' : 'good'); lo.title = versionLess(HUD.loader, '1.1.0') ? 'New skin slots need AC8 Mod Loader 1.1.0 or newer' : ''; }
   const sl = $('#hudSlots');
-  sl.textContent = HUD.slots == null ? '—' : HUD.slots + (HUD.slots === 1 ? ' skin' : ' skins');
-  sl.className = 'val' + (HUD.slots ? ' good' : '');
+  sl.textContent = HUD.slots == null || HUD.modsOk === false ? '—' : HUD.slots + (HUD.slots === 1 ? ' skin' : ' skins');
+  sl.className = 'val' + (HUD.slots && HUD.modsOk !== false ? ' good' : '');
 }
+$('#hudSessionBtn').addEventListener('click', () => { const m = setupMissing()[0]; if (m) goSetting(m.field); else showPage('settings'); });
 function versionLess(a, b) {
   const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
   for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) < (pb[i] || 0);
   return false;
 }
+
+// What each screen needs set up before its main button works (the keys of STATE.checks).
+const SCREEN_NEEDS = {
+  extract: ['paks', 'aes', 'retoc', 'workspace'], pilots: ['paks', 'aes', 'retoc', 'workspace'],
+  slot: ['paks', 'aes', 'mods', 'retoc', 'workspace'], emblem: ['paks', 'aes', 'mods', 'retoc', 'workspace'],
+  replace: ['retoc', 'workspace'],
+};
+const needsOf = screen => (SCREEN_NEEDS[screen] || []).filter(k => STATE && STATE.checks[k] && !STATE.checks[k].ok);
+// setupBanner fills a screen's setup notice: each setting still missing on a line of its own, what
+// is wrong with it, and a button that goes straight to it in Settings. notes overrides a check's
+// note (a screen that was told by the program itself). Returns how many are missing.
+function setupBanner(box, keys, lead, after, notes) {
+  box.hidden = !keys.length;
+  if (!keys.length) { box.replaceChildren(); return 0; }
+  box.replaceChildren(...[el('strong', { text: lead }),
+    el('ul', { class: 'setup-need' }, keys.map(k => {
+      const x = SETUP.find(s => s.check === k) || { title: k, field: '' };
+      const note = (notes && notes[k]) || (STATE && STATE.checks[k] ? STATE.checks[k].note : '');
+      return el('li', {}, el('div', {}, el('b', { text: x.title }), note ? el('span', { text: sentence(note) }) : null),
+        el('button', { class: 'btn small', type: 'button', onclick: () => goSetting(x.field) }, 'Set it'));
+    })),
+    after ? el('p', { class: 'hint setup-need-foot', text: after }) : null].filter(Boolean));
+  return keys.length;
+}
 function renderRepackSetup() {
   if (!STATE) return;
-  const c = STATE.checks, rp = $('#rpSetup');
-  const need = repack.mode === 'slot' ? ['workspace', 'retoc', 'paks', 'aes', 'mods'].filter(k => !c[k].ok) : ['workspace', 'retoc'].filter(k => !c[k].ok);
-  rp.hidden = !need.length;
-  if (need.length) rp.replaceChildren(el('strong', { text: repack.mode === 'slot' ? 'New skin slots need a little setup first. ' : 'Packing needs retoc. ' }), need.map(k => c[k].note).join(' '), ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+  setupBanner($('#rpSetup'), needsOf(repack.mode), repack.mode === 'slot' ? 'New skin slots need a little setup first.' : 'Packing needs a little setup first.');
 }
 
 // ---------------------------------------------------------------- pages and appearance
+let PAGE = '';
 function showPage(name, mode) {
   if (name === 'repack' && mode) setRepackMode(mode);
+  PAGE = name;
   $$('.page').forEach(p => { p.hidden = p.id !== 'page-' + name; });
   $$('.nav button[data-page]').forEach(b => {
     const on = b.dataset.page === name && (!b.dataset.mode || b.dataset.mode === repack.mode);
@@ -1441,7 +1590,10 @@ function showPage(name, mode) {
   });
   $('#scroll').scrollTop = 0;
   try { sessionStorage.setItem('ace8-page', name); } catch (e) {}
-  if (!activeJob && $('#dock').classList.contains('done')) $('#dock').hidden = true;
+  // A finished task's dock goes when you move on; a failed one stays on the screen that started it,
+  // whose own box says what went wrong too.
+  const dock = $('#dock');
+  if (!activeJob && !dock.hidden && (dock.classList.contains('done') || (dock.classList.contains('failed') && dock.dataset.page !== name))) dock.hidden = true;
   if (name === 'extract') { loadLibrary(); loadVehicles(); }
   if (name === 'repack') { loadLibrary(); loadSlots(true); }
   if (name === 'mods') loadMods();
@@ -1452,8 +1604,26 @@ function showPage(name, mode) {
   if (name === 'settings') fillSettings();
   if (name === 'links') showLinks();
 }
-$$('.nav button[data-page]').forEach(b => b.addEventListener('click', () => showPage(b.dataset.page, b.dataset.mode)));
-$('#setupStatus').addEventListener('click', () => showPage('settings'));
+// focusHeading puts the keyboard on the new screen's title, so the next Tab is on that screen and a
+// screen reader says where you are.
+function focusHeading() {
+  const h = $('#page-' + PAGE + ' h1');
+  if (!h) return;
+  h.tabIndex = -1;
+  h.focus({ preventScroll: true });
+}
+// "New skin slot" and "New emblem" in the menu always start a new one: a skin or emblem that was
+// being changed (or was just built) is not updated by mistake.
+function newSkinSlot() { showPage('repack', 'slot'); if (repack.rebuild) startAnotherSkin(true); }
+function newEmblem() { showPage('emblem'); if (emb.rebuild) startAnotherEmblem(true); }
+$$('.nav button[data-page]').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.page === 'repack' && b.dataset.mode === 'slot') newSkinSlot();
+  else if (b.dataset.page === 'emblem') newEmblem();
+  else showPage(b.dataset.page, b.dataset.mode);
+  focusHeading();
+}));
+$('#skipLink').addEventListener('click', ev => { ev.preventDefault(); focusHeading(); });
+$('#setupStatus').addEventListener('click', () => { const m = setupMissing()[0]; if (m) goSetting(m.field); else showPage('settings'); });
 
 function applyTheme(t) {
   if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
@@ -1489,13 +1659,18 @@ window.addEventListener('drop', e => e.preventDefault());
 // ---------------------------------------------------------------- tasks (dock)
 let activeJob = null;
 function showDockMessage(msg) {
-  $('#dock').className = 'dock failed';
+  const dock = $('#dock');
+  dock.className = 'dock failed'; dock.dataset.page = PAGE;
   $('#dockTitle').textContent = 'Problem';
-  $('#dockStep').textContent = msg; $('#dockStep').title = msg;
+  $('#dockStep').textContent = msg; $('#dockStep').title = '';
   $('#dockBar').className = 'bar'; $('#dockBar').firstElementChild.style.width = '100%';
   $('#dockCancel').hidden = true; $('#dockClose').hidden = false; $('#dockLogBtn').hidden = true; $('#dockLog').hidden = true;
-  $('#dockReport').hidden = true;
+  $('#dockReport').hidden = true; $('#dockMsg').hidden = true;
+  dockFixFor(msg);
 }
+// A problem that is fixed in Settings gets a button that goes there.
+function dockFixFor(msg) { $('#dockFix').hidden = !/\bSettings\b/.test(msg || '') || PAGE === 'settings'; }
+$('#dockFix').addEventListener('click', () => { const m = setupMissing()[0]; if (m) goSetting(m.field); else showPage('settings'); });
 
 // The support report: copied to the clipboard, and shown so the person can see what they are sharing.
 function legacyCopy(text) {
@@ -1524,7 +1699,7 @@ $('#dockReport').addEventListener('click', async () => {
   $('#seReportOut').scrollIntoView({ block: 'nearest' });
   b.textContent = ok ? 'Copied' : 'Copy report'; setTimeout(() => { b.textContent = 'Copy report'; }, 2500);
 });
-$('#dockClose').addEventListener('click', () => { $('#dock').hidden = true; });
+$('#dockClose').addEventListener('click', () => { $('#dock').hidden = true; $('#dockMsg').hidden = true; });
 $('#dockLogBtn').addEventListener('click', () => {
   const log = $('#dockLog'); log.hidden = !log.hidden;
   $('#dockLogBtn').setAttribute('aria-expanded', String(!log.hidden));
@@ -1537,8 +1712,9 @@ $('#dockCancel').addEventListener('click', () => { if (activeJob) fetch('/api/jo
 function watchJob(id) {
   activeJob = id;
   const dock = $('#dock'), log = $('#dockLog');
-  dock.hidden = false; dock.className = 'dock';
-  log.textContent = ''; $('#dockLogBtn').hidden = false; $('#dockReport').hidden = true;
+  dock.hidden = false; dock.className = 'dock'; dock.dataset.page = PAGE;
+  log.textContent = ''; $('#dockLogBtn').hidden = false; $('#dockReport').hidden = true; $('#dockFix').hidden = true;
+  $('#dockMsg').hidden = true; $('#dockMsg').textContent = '';
   $('#dockCancel').hidden = false; $('#dockClose').hidden = true;
   let since = 0;
   setBusy(true);
@@ -1546,7 +1722,7 @@ function watchJob(id) {
     const tick = async () => {
       let v;
       try { v = await api('/api/job?id=' + id + '&since=' + since); }
-      catch (e) { setBusy(false); showDockMessage(e.message); reject(e); return; }
+      catch (e) { activeJob = null; setBusy(false); showDockMessage(e.message); reject(e); return; }
       since = v.next;
       v.lines = v.lines || [];
       if (v.lines.length) { const atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 8; log.append(v.lines.join('\n') + '\n'); if (atEnd) log.scrollTop = log.scrollHeight; }
@@ -1554,6 +1730,9 @@ function watchJob(id) {
       HUD.op = v.status === 'running' ? v.title : ''; setHud();
       const bar = $('#dockBar');
       if (v.status === 'running') {
+        // the task owns the dock while it runs, whatever was shown in it meanwhile
+        dock.className = 'dock'; dock.hidden = false;
+        $('#dockCancel').hidden = false; $('#dockClose').hidden = true; $('#dockLogBtn').hidden = false; $('#dockFix').hidden = true;
         $('#dockStep').textContent = v.step || 'Working'; $('#dockStep').title = v.step || '';
         bar.className = 'bar' + (v.progress < 0 ? ' unknown' : '');
         bar.firstElementChild.style.width = v.progress < 0 ? '' : Math.round(v.progress * 100) + '%';
@@ -1567,12 +1746,14 @@ function watchJob(id) {
       $('#dockReport').hidden = v.status !== 'failed';
       const secs = Math.max(1, Math.round(v.seconds));
       if (v.status === 'done') { $('#dockStep').textContent = 'Finished in ' + secs + ' s'; resolve(v.result); }
-      else { const msg = v.error || 'Stopped.'; $('#dockStep').textContent = msg; $('#dockStep').title = msg; const err = new Error(msg); err.result = v.result; reject(err); }
+      else { const msg = sentence(v.error || 'Stopped.'); $('#dockStep').textContent = msg; $('#dockStep').title = ''; dockFixFor(msg); const err = new Error(msg); err.result = v.result; reject(err); }
     };
     tick();
   });
 }
-function setBusy(b) { $$('.btn.primary, #exFind').forEach(x => { x.dataset.busy = b ? '1' : ''; }); if (!b) { HUD.op = ''; setHud(); } updateButtons(); }
+// One screen's buttons failing to update must not stop the others, or the watching of a task.
+function safely(fn) { try { fn(); } catch (e) { console.error(e); } }
+function setBusy(b) { $$('.btn.primary, #exFind').forEach(x => { x.dataset.busy = b ? '1' : ''; }); if (!b) { HUD.op = ''; setHud(); } safely(updateButtons); }
 async function runJob(path, body) { const r = await api(path, body === undefined ? {} : body); return watchJob(r.job); }
 
 // ---------------------------------------------------------------- split
@@ -1618,7 +1799,9 @@ async function addSplitPaths(paths) {
   for (const f of r.files) if (!split.files.some(x => x.path === f.path)) split.files.push(f);
   renderSplit();
 }
-wireDrop($('#spDrop'), async files => {
+wireDrop($('#spDrop'), splitFiles);
+async function splitFiles(files) {
+  if (!files.length) return;
   const pics = files.filter(f => isPicture(f.name));
   if (!pics.length) { notice($('#spResult'), 'error', 'Only PNG and TGA pictures can be split.'); return; }
   $('#spResult').replaceChildren();
@@ -1634,8 +1817,9 @@ wireDrop($('#spDrop'), async files => {
     } catch (e) { entry.uploading = null; entry.error = e.message; }
     renderSplit();
   }
-});
+}
 $('#spPick').addEventListener('click', async () => {
+  if (!canPick()) { splitFiles(await browserFiles({ accept: '.png,.tga', multiple: true })); return; }
   try { const r = await api('/api/pick', { kind: 'files', filter: 'images', title: 'Choose skin pictures' }); await addSplitPaths(r.paths || []); }
   catch (e) { notice($('#spResult'), 'error', e.message); }
 });
@@ -1714,7 +1898,9 @@ function renderModel() {
   $('#mdTable').replaceChildren(el('thead', {}, el('tr', {}, el('th', { text: '' }), el('th', { text: 'Material and file' }), el('th', { text: 'Size' }), el('th', { text: 'Texture area' }))), el('tbody', {}, rows));
   updateButtons();
 }
-wireDrop($('#mdDrop'), async files => {
+wireDrop($('#mdDrop'), modelFiles);
+async function modelFiles(files) {
+  if (!files.length) return;
   const glbs = files.filter(f => isModel(f.name));
   if (!glbs.length) { notice($('#mdError'), 'error', 'Only .glb models can be used here. In FModel, export the model as glTF (.glb).'); return; }
   const batch = newBatch(); model.batches.push(batch);
@@ -1724,8 +1910,9 @@ wireDrop($('#mdDrop'), async files => {
   catch (e) { notice($('#mdError'), 'error', e.message); }
   up.hidden = true; bar.style.width = '0';
   await addModels(paths);
-});
+}
 $('#mdPick').addEventListener('click', async () => {
+  if (!canPick()) { modelFiles(await browserFiles({ accept: '.glb', multiple: true })); return; }
   try { const r = await api('/api/pick', { kind: 'files', filter: 'glb', title: 'Choose .glb models' }); await addModels(r.paths || []); }
   catch (e) { notice($('#mdError'), 'error', e.message); }
 });
@@ -1744,10 +1931,14 @@ $('#mdGo').addEventListener('click', async () => {
 
 let LIB = [];
 const KIND_LABEL = { colour: 'colour', finish: 'finish (metal and roughness)', normal: 'normal map', other: 'other' };
-async function loadLibrary(fresh) {
-  try { LIB = (await api('/api/library' + (fresh === true ? '?fresh=1' : ''))).skins; } catch (e) { LIB = []; }
-  repack.guess = null;
-  renderLibrary(); fillSkinSelect();
+// loadLibrary.pending is the latest load, for code that needs LIB as it is now.
+function loadLibrary(fresh) {
+  loadLibrary.pending = (async () => {
+    try { LIB = (await api('/api/library' + (fresh === true ? '?fresh=1' : ''))).skins; } catch (e) { LIB = []; }
+    repack.guess = null;
+    renderLibrary(); fillSkinSelect();
+  })();
+  return loadLibrary.pending;
 }
 function renderLibrary() {
   const box = $('#libList');
@@ -1762,7 +1953,7 @@ function renderLibrary() {
         el('div', { class: 'row' },
           el('button', { class: 'btn small', disabled: !usable.length, onclick: () => makeTiles(usable) }, 'Make tiles'),
           el('button', { class: 'btn small', disabled: !sk.textures.some(t => t.supported), onclick: () => { showPage('repack', 'replace'); chooseSkin(sk.dir); skinChanged(); } }, 'Repack this skin'),
-          el('button', { class: 'btn small', disabled: !sk.textures.some(t => t.supported), onclick: () => { showPage('repack', 'slot'); chooseSkin(sk.dir); skinChanged(); } }, 'New skin from it'),
+          el('button', { class: 'btn small', disabled: !sk.textures.some(t => t.supported), onclick: () => { newSkinSlot(); chooseSkin(sk.dir); skinChanged(); } }, 'New skin from it'),
           openFolderBtn(sk.dir, 'Open'))),
       face && face.blocksH === 1 ? stripFor(face.blocksW, null, '/api/texthumb?t=' + encodeURIComponent(TOKEN) + '&uexp=' + encodeURIComponent(face.uexp)) : null);
   })));
@@ -1776,13 +1967,16 @@ async function makeTiles(texs) {
 }
 const samePath = (a, b) => a.replace(/[\\/]+$/, '').toLowerCase() === b.replace(/[\\/]+$/, '').toLowerCase();
 const underPath = (p, dir) => { p = p.toLowerCase().replace(/\\/g, '/'); dir = dir.toLowerCase().replace(/\\/g, '/').replace(/\/+$/, ''); return p === dir || p.startsWith(dir + '/'); };
+// A folder of raw files is added by choosing it, or by typing its path where there is no file chooser.
 async function addRawFolder(ev) {
-  const fromRepack = ev && ev.currentTarget && ev.currentTarget.id === 'rpAddRaw';
+  const fromRepack = !!(ev && ev.currentTarget && /^rpAdd/.test(ev.currentTarget.id));
+  const typed = ev && ev.currentTarget && /PathGo$/.test(ev.currentTarget.id) ? $(fromRepack ? '#rpAddPath' : '#libAddPath') : null;
   const out = fromRepack ? $('#rpSkinAuto') : $('#exResult');
   try {
-    const r = await api('/api/pick', { kind: 'folder', title: 'Choose a folder that holds raw .uasset, .uexp and .ubulk files' });
-    if (!r.paths || !r.paths.length) return;
-    const dir = r.paths[0];
+    let dir = '';
+    if (typed) dir = typed.value.trim();
+    else { const r = await api('/api/pick', { kind: 'folder', title: 'Choose a folder that holds raw .uasset, .uexp and .ubulk files' }); dir = (r.paths || [])[0] || ''; }
+    if (!dir) { if (typed) typed.focus(); return; }
     const before = STATE.settings.extraRawDirs || [];
     const list = before.filter(p => !samePath(p, dir)).concat(dir);
     await api('/api/settings', { extraRawDirs: list }); await refreshState(); await loadLibrary();
@@ -1801,11 +1995,12 @@ async function addRawFolder(ev) {
       const pick = (g.found && found.find(sk => sk.dir === g.dir)) || (found.length === 1 ? found[0] : null);
       if (pick && chooseSkin(pick.dir)) skinChanged();
       else skinNote('ok', el('span', { text: found.length + ' skins were found there. Choose one in the list above.' }));
-    }
-  } catch (e) { alertLine(e.message); }
+    } else notice(out, 'good', el('strong', { text: found.length + (found.length === 1 ? ' skin was' : ' skins were') + ' found there. ' }), 'They are listed under "Extracted skins".');
+    if (typed) typed.value = '';
+  } catch (e) { if (fromRepack) skinNote('warn', el('span', { text: e.message })); else notice(out, 'error', e.message); }
 }
-$('#libAdd').addEventListener('click', addRawFolder);
-$('#rpAddRaw').addEventListener('click', addRawFolder);
+['#libAdd', '#rpAddRaw', '#libAddPathGo', '#rpAddPathGo'].forEach(s => $(s).addEventListener('click', addRawFolder));
+['#libAddPath', '#rpAddPath'].forEach(s => $(s).addEventListener('keydown', ev => { if (ev.key === 'Enter') $(s + 'Go').click(); }));
 $('#libRefresh').addEventListener('click', () => loadLibrary(true));
 $('#libOpenPaint').addEventListener('click', () => api('/api/open', { path: STATE.folders.paint }).catch(() => notice($('#exResult'), 'warn', 'There is no paint-ready folder yet. It appears after the first tiles are made.')));
 
@@ -2062,7 +2257,9 @@ const texOptions = () => ({ bc7: $('#rpBC7').checked, noMips: $('#rpNoMips').che
   texOptsShown.touched = true;
   api('/api/settings', { tex: texOptions() }).then(st => { STATE = st; }).catch(() => {});
 }));
-wireDrop($('#rpDrop'), async files => {
+wireDrop($('#rpDrop'), repackFiles);
+async function repackFiles(files) {
+  if (!files.length) return;
   const pics = files.filter(f => isPicture(f.name));
   if (!pics.length) { notice($('#rpPlan'), 'error', 'Drop PNG or TGA pictures, or the folder that holds them.'); return; }
   if (repack.batches.length && !activeJob) api('/api/inbox/clean', { batches: repack.batches }).catch(() => {});
@@ -2078,8 +2275,9 @@ wireDrop($('#rpDrop'), async files => {
   } catch (e) { notice($('#rpPlan'), 'error', e.message); }
   up.hidden = true; bar.style.width = '0';
   replan();
-});
+}
 $('#rpPick').addEventListener('click', async () => {
+  if (!canPick()) { repackFiles(await browserFiles({ folder: true })); return; }
   try {
     const r = await api('/api/pick', { kind: 'folder', title: 'Choose the folder with your exported pictures', start: repack.paintDir });
     if (r.paths && r.paths.length) { repack.paintDir = r.paths[0]; repack.files = []; repack.touched = false; repack.choices = {}; replan(); }
@@ -2091,15 +2289,28 @@ function syncExtras() {
   const mode = radio('rxIcon');
   $('#rxColourBox').hidden = mode !== 'recolour'; $('#rxPicBox').hidden = mode !== 'picture';
   $('#rxColour').disabled = $('#rxColourAuto').checked;
-  $('#rxPicName').textContent = repack.rxPicture || '';
+  $('#rxPicName').textContent = repack.rxPicLabel || repack.rxPicture || '';
   updateButtons();
 }
 ['#rxOn', '#rxColourAuto'].forEach(s => $(s).addEventListener('change', syncExtras));
 $$('input[name="rxIcon"]').forEach(r => r.addEventListener('change', syncExtras));
+// The replaced skin's icon from a picture: chosen, or dropped on its box (copied into the program).
+async function rxIconFiles(files) {
+  if (!files.length) return;
+  const pic = files.find(f => /\.(png|jpe?g|tga)$/i.test(f.name));
+  if (!pic) { alertLine('Drop a PNG, JPEG or TGA picture for the icon.'); return; }
+  try {
+    repack.rxBatch = repack.rxBatch || newBatch();
+    repack.rxPicture = await upload(pic, repack.rxBatch); repack.rxPicLabel = pic.name;
+    syncExtras();
+  } catch (e) { alertLine(e.message); }
+}
+wireDrop($('#rxPicBox'), rxIconFiles);
 $('#rxPicPick').addEventListener('click', async () => {
+  if (!canPick()) { rxIconFiles(await browserFiles({ accept: '.png,.jpg,.jpeg,.tga' })); return; }
   try {
     const r = await api('/api/pick', { kind: 'file', filter: 'pictures', title: 'Choose a picture for the icon' });
-    if (r.paths && r.paths.length) { repack.rxPicture = r.paths[0]; syncExtras(); }
+    if (r.paths && r.paths.length) { repack.rxPicture = r.paths[0]; repack.rxPicLabel = ''; syncExtras(); }
   } catch (e) { alertLine(e.message); }
 });
 $('#rpGo').addEventListener('click', async () => {
@@ -2139,9 +2350,9 @@ async function loadMods(quiet) {
   const badge = $('#navModsBadge');
   badge.hidden = !clashing; badge.textContent = clashing; badge.title = clashing ? clashing + ' mods replace the same game files as another mod' : '';
   if (quiet === true) return;
-  const setup = $('#moSetup');
-  setup.hidden = r.ok; $('#moBlock').hidden = !r.ok;
-  if (!r.ok) { setup.replaceChildren(el('strong', { text: 'No mods folder yet. ' }), r.note, ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings')); return; }
+  $('#moBlock').hidden = !r.ok;
+  setupBanner($('#moSetup'), r.ok ? [] : ['mods'], 'No mods folder yet.', 'Once it is set, this screen lists every mod in it: what each one replaces, and which ones get in each other\'s way.', { mods: r.note });
+  if (!r.ok) return;
   $('#moDir').textContent = r.dir;
   $('#moOpenRemoved').hidden = !r.haveRemoved;
   $('#moSummary').textContent = r.mods.length ? r.mods.length + (r.mods.length === 1 ? ' mod' : ' mods') + (clashing ? ', ' + clashing + ' in conflict' : ', no conflicts') : 'No mods yet';
@@ -2186,11 +2397,26 @@ async function loadMods(quiet) {
 }
 async function removeMod(m) {
   const out = $('#moResult'); out.replaceChildren();
+  let r;
   try {
-    const r = await api('/api/mods/remove', { name: m.name, loose: m.loose });
+    r = await api('/api/mods/remove', { name: m.name, loose: m.loose });
     await loadMods();
     notice(out, 'good', el('strong', { text: m.name + ' was taken out of the mods folder. ' }), 'Nothing was deleted; it is now in ', el('span', { class: 'path', text: r.movedTo }), ' ', openFolderBtn(r.movedTo));
-  } catch (e) { notice(out, 'error', e.message); }
+  } catch (e) { notice(out, 'error', e.message); return; }
+  // A mod with its own skin list had its skins copied into the shared one: the shared list is made
+  // again without them.
+  if (m.kind !== 'tables') return;
+  const box = out.firstElementChild;
+  box.append(el('p', { class: 'hint', text: 'Its skins were in the shared skin list, so the list is being made again without them.' }));
+  try {
+    const res = await runJob('/api/skinlist/rebuild', {});
+    const list = res && (res.list || (res.slots ? res : null));
+    box.append(el('p', { class: 'hint', text: 'The shared skin list is up to date.' }));
+    const saved = savedLine(list); if (saved) box.append(saved);
+    for (const p of (list && list.problems) || []) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: sentence(p) }));
+  } catch (e) { out.append(el('div', { class: 'notice error', role: 'alert', style: 'margin-top:8px' }, el('strong', { text: 'The skin list could not be made again. ' }), e.message, ' ', el('button', { class: 'btn small', type: 'button', onclick: () => showPage('slots') }, 'Open Skin slots'))); }
+  await loadSlots(true);
+  loadMods(true);
 }
 $('#moRefresh').addEventListener('click', () => { $('#moResult').replaceChildren(); loadMods(); });
 $('#moOpen').addEventListener('click', () => { if (MODS) api('/api/open', { path: MODS.dir }).catch(e => notice($('#moResult'), 'error', e.message)); });
@@ -2207,17 +2433,28 @@ function replaceNotReady() {
   if ($('#rxOn').checked && radio('rxIcon') === 'picture' && !repack.rxPicture) return 'Choose the picture for the icon.';
   return '';
 }
-// The reason beside the build button takes you to the step it is about.
+// The reason beside a grey main button takes you to the step it is about. A target is a selector,
+// or a function that returns one (or goes there itself and returns nothing).
+const goFirstSetting = () => { const k = needsOf(PAGE === 'repack' ? repack.mode : PAGE)[0]; const x = k && SETUP.find(s => s.check === k); if (x) goSetting(x.field); else showPage('settings'); };
 const HINT_TARGETS = [
-  [/Settings/, () => showPage('settings')],
-  [/skin to (start from|replace)/, '#rpSkin'],
+  [/Settings/, goFirstSetting],
+  [/skin to (start from|replace)|Choose a skin of the/, '#rpSkin'],
   [/number of the game skin/, '#rpTemplate'],
   [/painted pictures/, '#rpPick'],
   [/Tick the textures|colour the icon/, '#rpPlan'],
-  [/Give the mod a name/, '#rpName'],
+  [/Give the mod a name/, () => PAGE === 'pilots' ? '#piName' : '#rpName'],
   [/Give the skin a name/, '#slName'],
-  [/skin mod to add/, '#slMod'],
+  [/skin mod to add/, () => PAGE === 'emblem' ? '#emMod' : '#slMod'],
   [/picture for the icon/, () => repack.mode === 'slot' ? '#slPicPick' : '#rxPicPick'],
+  [/emblem's picture/, '#emPick'],
+  [/Give the emblem a name/, '#emName'],
+  [/letters of the aircraft/, '#exFilter'],
+  [/Drop PNG or TGA pictures/, '#spPick'],
+  [/how many pieces/, '#spPieces'],
+  [/Tick at least one part/, '#mdTable'],
+  [/Give the new model a name/, '#mdName'],
+  [/helmet pictures or a new portrait/, () => pilotNow() ? '#piDrop' : pilots.idx && pilots.idx.pilots.length ? '#piList' : '#piFind'],
+  [/helmet pictures first|helmet part it is for/, '#piPlan'],
 ];
 function goToStep(target) {
   if (typeof target === 'function') { target = target(); if (!target) return; }
@@ -2228,38 +2465,53 @@ function goToStep(target) {
   block.classList.remove('flash'); void block.offsetWidth; block.classList.add('flash');
   setTimeout(() => { try { n.focus({ preventScroll: true }); } catch (e) {} }, 400);
 }
-function setGoHint(text) {
-  const h = $('#rpGoHint');
+// setGoHint says beside a main button why it cannot be pressed yet ('' when it can).
+function setGoHint(hint, text) {
+  const h = typeof hint === 'string' ? $(hint) : hint;
+  if (!h) return;
   if (!text) { h.replaceChildren(); return; }
   const t = HINT_TARGETS.find(([re]) => re.test(text));
   h.replaceChildren(t ? el('button', { type: 'button', class: 'linkbtn', title: 'Show me', onclick: () => goToStep(t[1]) }, text) : text);
+}
+function splitNotReady() {
+  if (!split.files.length) return 'Drop PNG or TGA pictures above, or choose them.';
+  if (splitReady().length) return '';
+  if (split.files.some(f => f.uploading != null)) return 'Wait until the pictures are copied in.';
+  if (split.files.every(f => f.error)) return 'None of these pictures could be read. Remove them, or drop others.';
+  return 'Choose how many pieces to cut under "Pieces".';
 }
 function updateButtons() {
   const busy = !!activeJob;
   const ready = splitReady().length;
   $('#spGo').disabled = busy || !ready;
   $('#spGo').textContent = ready > 1 ? 'Split ' + ready + ' pictures' : 'Split';
-  const exOK = STATE && ['workspace', 'retoc', 'paks', 'aes'].every(k => STATE.checks[k].ok);
-  $('#exGo').disabled = busy || !exOK || $('#exFilter').value.trim().length < 3;
+  setGoHint('#spGoHint', busy ? '' : splitNotReady());
+  const exOK = STATE && !needsOf('extract').length;
+  const exWhy = !STATE ? '' : !exOK ? 'Finish the setup in Settings first.' : $('#exFilter').value.trim().length < 3 ? 'Type at least 3 letters of the aircraft folder name.' : '';
+  $('#exGo').disabled = busy || !!exWhy || !STATE;
+  setGoHint('#exGoHint', busy ? '' : exWhy);
   $('#exFind').disabled = busy || !exOK;
   $('#exPreview').disabled = busy || !exOK;
   if (repack.mode === 'slot') {
     const why = slotNotReady();
     $('#rpGo').disabled = busy || !!why;
-    const updating = repack.rebuild && radio('slModMode') === 'add' && $('#slMod').value === repack.rebuild.mod;
-    $('#rpGo').textContent = updating ? 'Update this skin' : 'Build new skin';
-    setGoHint(busy ? '' : why);
+    $('#rpGo').textContent = slotUpdating() ? 'Update this skin' : 'Build new skin';
+    setGoHint('#rpGoHint', busy ? '' : why);
   } else {
     const why = replaceNotReady();
     $('#rpGo').disabled = busy || !!why;
     $('#rpGo').textContent = repack.picked.size > 1 ? 'Build mod with ' + repack.picked.size + ' textures' : 'Build mod';
-    setGoHint(busy ? '' : why);
+    setGoHint('#rpGoHint', busy ? '' : why);
   }
-  $('#mdGo').disabled = busy || !model.keep.size || !$('#mdName').value.trim();
-  pilotsButtons();
-  if (pn.view) namesButtons();
-  emblemButtons();
-  if (SAVE) saveButtons();
+  const mdWhy = !model.keep.size ? 'Tick at least one part to keep.' : !$('#mdName').value.trim() ? 'Give the new model a name.' : '';
+  $('#mdGo').disabled = busy || !!mdWhy;
+  setGoHint('#mdGoHint', busy ? '' : mdWhy);
+  safely(pilotsButtons);
+  if (pn.view) safely(namesButtons);
+  safely(emblemButtons);
+  if (SAVE) safely(saveButtons);
+  safely(slotsButtons);
+  safely(unlocksButtons);
 }
 
 // ---------------------------------------------------------------- settings
@@ -2268,41 +2520,87 @@ function fillSettings() {
   const s = STATE.settings;
   $('#sePaks').value = s.paksDir; $('#seAes').value = s.aesKey; $('#seUsmap').value = s.usmap; $('#seRetoc').value = s.retocPath; $('#seUe4ss').value = s.ue4ssMods || ''; $('#seSaveDir').value = s.saveDir || '';
   $('#seMods').value = s.modsDir; $('#seWork').value = s.workspace; $('#seFormat').value = s.imageFormat; $('#seBrowser').checked = s.defaultBrowser;
+  // settings.json could not be read (the program kept a copy of it and started afresh)
+  const file = STATE.checks.settings;
+  $('#seFileNote').hidden = !file || file.ok;
+  if (file && !file.ok) $('#seFileNote').replaceChildren(el('strong', { text: 'Your settings could not be read. ' }), sentence(file.note));
   showChecks();
   const raws = s.extraRawDirs || [];
   $('#seRawBox').hidden = !raws.length;
   $('#seRaw').replaceChildren(...raws.map(p => el('div', { class: 'skin' }, el('span', { class: 'path grow', text: p }), el('button', { class: 'btn small', onclick: async () => { await api('/api/settings', { extraRawDirs: raws.filter(x => x !== p) }); await refreshState(); fillSettings(); } }, 'Remove'))));
 }
 function showChecks() {
-  $$('[data-check]').forEach(n => { const c = STATE.checks[n.dataset.check]; n.textContent = c.note; n.classList.toggle('bad', !c.ok); });
+  $$('[data-check]').forEach(n => {
+    const c = STATE.checks[n.dataset.check], optional = (SETUP.find(x => x.check === n.dataset.check) || {}).optional;
+    n.textContent = c.note; n.classList.toggle('bad', !c.ok && !optional); n.classList.toggle('warn', !c.ok && !!optional);
+  });
   $('#seWorkDefault').hidden = STATE.checks.workspace.ok || STATE.settings.workspace === STATE.folders.defaultWorkspace;
 }
-$('#seWorkDefault').addEventListener('click', ev => { ev.preventDefault(); $('#seWorkDefault').hidden = true; $('#seWork').value = STATE.folders.defaultWorkspace; saveSettings(); });
-async function saveSettings() {
+$('#seWorkDefault').addEventListener('click', ev => { ev.preventDefault(); $('#seWorkDefault').hidden = true; $('#seWork').value = STATE.folders.defaultWorkspace; saveSettings({ target: $('#seWork') }); });
+// Every setting is saved as soon as it changes. "Saved" (or what went wrong) shows next to it.
+function savedMark(field, text, bad) {
+  const box = field && field.closest('label.field, label.row, label.check');
+  if (!box) return;
+  $$('.saved-chip', box).forEach(n => n.remove());
+  const chip = el('span', { class: 'saved-chip' + (bad ? ' bad' : ''), role: bad ? 'alert' : 'status', text });
+  box.append(chip);
+  if (!bad) setTimeout(() => chip.remove(), 2500);
+}
+async function saveSettings(ev) {
+  const field = ev && ev.target && ev.target !== $('#seSave') ? ev.target : null;
   const body = { paksDir: $('#sePaks').value, aesKey: $('#seAes').value, usmap: $('#seUsmap').value, retocPath: $('#seRetoc').value, modsDir: $('#seMods').value, ue4ssMods: $('#seUe4ss').value, saveDir: $('#seSaveDir').value, workspace: $('#seWork').value, imageFormat: $('#seFormat').value, defaultBrowser: $('#seBrowser').checked };
   try {
     await api('/api/settings', body); await refreshState(); fillSettings();
     $('#exFormat').value = STATE.settings.imageFormat;
-    $('#seSaved').textContent = 'Saved.'; setTimeout(() => { $('#seSaved').textContent = ''; }, 2500);
+    if (field) savedMark(field, 'Saved');
+    else { $('#seSaved').textContent = 'Saved and checked again.'; setTimeout(() => { $('#seSaved').textContent = 'Settings are saved as soon as you change them.'; }, 2500); }
     updateButtons();
-  } catch (e) { $('#seSaved').textContent = e.message; }
+  } catch (e) { if (field) savedMark(field, e.message, true); else $('#seSaved').textContent = e.message; }
 }
 $('#seSave').addEventListener('click', saveSettings);
-$$('#page-settings input[type=text], #page-settings input[type=password]').forEach(i => i.addEventListener('change', saveSettings));
+$$('#page-settings input[type=text], #page-settings input[type=password], #seFormat, #seBrowser').forEach(i => i.addEventListener('change', saveSettings));
 $('#seAesShow').addEventListener('click', () => { const show = $('#seAes').classList.toggle('masked') === false; $('#seAesShow').textContent = show ? 'Hide' : 'Show'; });
 $('#seReport').addEventListener('click', () => copyReport($('#seReportOut')));
-$('#seImportOld').addEventListener('click', async () => {
+async function importOldSettings(path) {
   const note = $('#seImportNote');
   try {
-    const r = await api('/api/pick', { kind: 'folder', title: 'Choose the folder of AC8 Skin Studio 1.x (where AC8SkinStudio.exe is)' });
-    if (!r.paths || !r.paths.length) return;
-    await api('/api/settings/import', { path: r.paths[0] });
+    if (!path) {
+      const r = await api('/api/pick', { kind: 'folder', title: 'Choose the folder of AC8 Skin Studio 1.x (where AC8SkinStudio.exe is)' });
+      path = (r.paths || [])[0];
+      if (!path) return;
+    }
+    await api('/api/settings/import', { path });
     await refreshState(); fillSettings(); loadLibrary(true);
     note.textContent = 'Copied. Check the settings below.';
   } catch (e) { note.textContent = e.message; }
-});
+}
+$('#seImportOld').addEventListener('click', () => importOldSettings(''));
+$('#seImportPathGo').addEventListener('click', () => { const p = $('#seImportPath').value.trim(); if (p) importOldSettings(p); else { $('#seImportNote').textContent = 'Type the folder of AC8 Skin Studio 1.x first.'; $('#seImportPath').focus(); } });
+$('#seImportPath').addEventListener('keydown', ev => { if (ev.key === 'Enter') $('#seImportPathGo').click(); });
 $('#seOpenWork').addEventListener('click', () => api('/api/open', { path: STATE.settings.workspace }).catch(() => { $('#seSaved').textContent = 'The workspace folder is created the first time something is saved in it.'; }));
-$('#seQuit').addEventListener('click', async () => { try { await api('/api/quit', {}); } catch (e) {} document.body.replaceChildren(el('p', { style: 'padding:40px;font-size:17px', text: 'The program has stopped. You can close this window.' })); });
+// Quit. While a task runs, the program answers 409 with busy set; quitting then needs a yes, and
+// {force: true} stops the task first.
+async function quitProgram(force) {
+  const ask = $('#seQuitAsk');
+  try { await api('/api/quit', force ? { force: true } : {}); }
+  catch (e) {
+    if (e.status === 409 && e.data && e.data.busy) { askQuit(e.message); return; }
+    if (e.status) { notice(ask, 'error', e.message); return; }
+    // no answer at all: it has stopped already
+  }
+  document.body.replaceChildren(el('p', { style: 'padding:40px;font-size:17px', text: 'The program has stopped. You can close this window.' }));
+}
+function askQuit(msg) {
+  const ask = $('#seQuitAsk');
+  // msg is the program's own words (it knows the task, even one started in another window)
+  ask.replaceChildren(el('div', { class: 'notice warn', role: 'alert' },
+    el('p', {}, el('strong', { text: 'Quit while a task is running? ' }), msg || 'A task is still running' + (HUD.op ? ': ' + HUD.op : '') + '.', ' Quitting stops it, and what it was making is not finished.'),
+    el('div', { class: 'row', style: 'margin-top:8px' },
+      el('button', { class: 'btn small danger', type: 'button', onclick: () => { ask.replaceChildren(); quitProgram(true); } }, 'Stop it and quit'),
+      el('button', { class: 'btn small', type: 'button', onclick: () => { ask.replaceChildren(); $('#seQuit').focus(); } }, 'Keep working'))));
+  $$('button', ask)[1].focus();
+}
+$('#seQuit').addEventListener('click', () => { if (activeJob) askQuit(''); else quitProgram(false); });
 
 // ---------------------------------------------------------------- tutorial
 // Written for someone who has never modded a game before: plain words first, the program's own
@@ -2337,7 +2635,9 @@ const TERMS = [
   [/\bworkspace\b/i, 'Workspace'], [/\bnormal map\b/, 'Texture'], [/\bskin numbers?\b/, 'Skin number'],
 ];
 
-// The setup checks, in plain words. "field" is the box in Settings; "for" is what needs it.
+// The setup checks, in plain words. "field" is the box in Settings; "for" is what needs it;
+// "optional" ones are found by themselves and only needed for a few things, so they are not
+// counted as setup still to do (Settings shows them in amber, not red).
 const SETUP = [
   { check: 'paks', field: 'sePaks', title: `Where the game is installed`, for: `Extract, New skin slot, New emblem, Pilots`,
     what: `The game's Paks folder, so Skin Studio can read skins out of the game.`,
@@ -2348,10 +2648,10 @@ const SETUP = [
   { check: 'mods', field: 'seMods', title: `Your mods folder`, for: `Installing skins, New skin slot, New emblem`,
     what: `The folder your mod loader reads. Finished mods are put there for you.`,
     how: `With AC8 Mod Loader it is …\\ACE COMBAT 8\\Game\\Binaries\\Win64\\ue4ss\\Mods\\IoStoreLoaderMod. Install the mod loader first if that folder is not there.` },
-  { check: 'ue4ss', field: 'seUe4ss', title: `UE4SS (comes with the mod loader)`, for: `The names of new skins, the backup at game start`,
+  { check: 'ue4ss', field: 'seUe4ss', optional: true, title: `UE4SS (comes with the mod loader)`, for: `The names of new skins, the backup at game start`,
     what: `Found by itself once the mods folder is set, when the mods folder is inside ue4ss\\Mods.`,
     how: `Usually nothing to do. If it stays red, choose the ue4ss\\Mods folder (the one with mods.txt in it).` },
-  { check: 'save', field: 'seSaveDir', title: `Your save folder`, for: `Save tools and save backups`,
+  { check: 'save', field: 'seSaveDir', optional: true, title: `Your save folder`, for: `Save tools and save backups`,
     what: `Found by itself on most computers once the game has been played.`,
     how: `If it stays red, start the game once and come back, or choose …\\AppData\\Local\\BANDAI NAMCO Entertainment\\ACE COMBAT 8\\Saved\\SaveGames.` },
   { check: 'retoc', field: 'seRetoc', title: `retoc (comes with Skin Studio)`, for: `Everything that reads or packs game files`,
@@ -2361,7 +2661,8 @@ const SETUP = [
     what: `Where Skin Studio keeps its work. Green unless the folder cannot be used.`,
     how: `If it is red, press "Use the folder next to the program" in Settings.` },
 ];
-const setupMissing = () => STATE ? SETUP.filter(x => STATE.checks[x.check] && !STATE.checks[x.check].ok) : [];
+const setupNeeded = SETUP.filter(x => !x.optional);
+const setupMissing = () => STATE ? setupNeeded.filter(x => STATE.checks[x.check] && !STATE.checks[x.check].ok) : [];
 
 const TUTORIAL = [
   { id: 'start', group: 'Getting started', topic: 'Start here', title: 'Welcome to ACE8 Skin Studio',
@@ -2482,7 +2783,7 @@ const TUTORIAL = [
   { id: 'settings', topic: 'Settings', page: 'settings', title: 'Settings: everything in one place',
     short: `Where the game, your mods and your save are, plus a few preferences. The "First-time setup" topic explains each line in plain words.`,
     steps: [
-      { t: `Each setting shows a green dot when it is right, and a red one with what to do when it is not.` },
+      { t: `Each setting shows a green dot when it is right, and a red one with what to do when it is not. UE4SS and the save folder are found by themselves and show amber until they are.` },
       { t: `Coming from AC8 Skin Studio 1.x? "Use the settings of AC8 Skin Studio 1.x" copies them over.` },
       { t: `Settings are saved by themselves when you leave a box, in settings.json next to the program.` },
       { t: `"Copy a support report" under About copies your version, settings and the last task's log, ready to paste into a message to whoever helps you. The AES key is never included.` } ] },
@@ -2545,7 +2846,7 @@ function renderGoals(t, body) {
   ];
   body.append(
     miss.length ? el('div', { class: 'notice warn tut-setup-note' }, el('strong', { text: 'First, a little setup. ' }),
-      (miss.length === 1 ? '1 of ' : miss.length + ' of ') + SETUP.length + ' setup lines ' + (miss.length === 1 ? 'is' : 'are') + ' not done yet. It takes a few minutes and is done once. ',
+      (miss.length === 1 ? '1 thing is' : miss.length + ' things are') + ' still to set up. It takes a few minutes and is done once. ',
       el('button', { class: 'btn small', type: 'button', onclick: () => tutGo('setup') }, 'Show me')) :
       el('div', { class: 'notice good tut-setup-note' }, el('strong', { text: 'Setup is done. ' }), 'Pick what you want to do below.'),
     el('h3', { class: 'tut-h3', text: 'What do you want to do?' }),
@@ -2558,9 +2859,9 @@ function renderSetup(t, body) {
   if (!STATE) { body.append(el('p', { class: 'hint', text: 'Checking…' })); return; }
   const rows = SETUP.map(x => {
     const c = STATE.checks[x.check] || { ok: false, note: '' };
-    return el('div', { class: 'setup-item' + (c.ok ? ' ok' : '') },
-      el('span', { class: 'dot', role: 'img', 'aria-label': c.ok ? 'Done' : 'Not done yet' }),
-      el('div', {}, el('b', { text: x.title }), el('small', { class: 'for', text: 'Needed for: ' + x.for }),
+    return el('div', { class: 'setup-item' + (c.ok ? ' ok' : x.optional ? ' opt' : '') },
+      el('span', { class: 'dot', role: 'img', 'aria-label': c.ok ? 'Done' : x.optional ? 'Optional, not found yet' : 'Not done yet' }),
+      el('div', {}, el('b', { text: x.title }), el('small', { class: 'for', text: (x.optional ? 'Optional. Only needed for: ' : 'Needed for: ') + x.for }),
         el('p', { text: c.ok ? c.note : x.what }),
         c.ok ? null : el('p', { class: 'how', text: x.how }),
         c.ok ? null : el('p', { class: 'now', text: 'Now: ' + c.note })),
@@ -2568,7 +2869,7 @@ function renderSetup(t, body) {
   });
   const left = setupMissing().length;
   body.append(
-    el('p', { class: 'hint', text: left ? left + ' of ' + SETUP.length + ' still to do.' : 'Everything is set. You are ready to go.' }),
+    el('p', { class: 'hint', text: (left ? left + ' of ' + setupNeeded.length + ' still to do.' : 'Everything needed is set. You are ready to go.') + ' The two marked optional are found by themselves and only needed for what they say.' }),
     el('div', { class: 'setup-list' }, rows),
     el('div', { class: 'row' }, el('button', { class: 'btn small', type: 'button', onclick: async () => { try { await refreshState(); } catch (e) {} renderTutorial(); } }, 'Check again'),
       el('button', { class: 'btn small', type: 'button', onclick: () => { $('#tut').close(); showPage('settings'); } }, 'Open Settings')),
@@ -2628,6 +2929,7 @@ $('#tutHide').addEventListener('change', async ev => {
   catch (e) { ev.target.checked = !want; }
 });
 $('#tut').addEventListener('click', ev => { if (ev.target === $('#tut')) $('#tut').close(); }); // a click on the dimmed area closes it
+$('#tutClose').addEventListener('click', () => $('#tut').close());
 $('#navTutorial').addEventListener('click', () => openTutorial(0));
 // Every screen gets a "How this works" button that opens the tutorial at its own topic.
 const PAGE_TOPIC = { extract: 'extract', split: 'split', model: 'model', emblem: 'emblem', pilots: 'pilots', slots: 'slots', mods: 'mods', save: 'save', settings: 'setup' };
@@ -2667,16 +2969,25 @@ const pad3 = n => String(n).padStart(3, '0');
 function selectedSkin() { return LIB.find(sk => sk.dir === $('#rpSkin').value); }
 function folderNumberOf(sk) { return sk && /^\d{3}$/.test(sk.folder) ? +sk.folder : 0; }
 
+// The game skin a new skin starts from: the number typed under step 01, or the chosen folder's.
 function templateHint() {
   const sk = selectedSkin();
   const n = folderNumberOf(sk);
   const box = $('#rpTemplate');
   box.placeholder = n ? pad3(n) : 'number';
-  $('#rpTemplateHint').textContent = sk
-    ? (n ? 'The new skin starts as a copy of ' + sk.aircraft + ' skin ' + pad3(n) + ': its material, finish and normal map, and where emblems may go. Type another number to start from a different skin of this aircraft.'
-         : 'This folder is not named after a skin number, so type the number of the game skin to start from.')
-    : 'Choose the skin first.';
+  const typed = +box.value || 0, from = typed || n;
+  let text = 'Choose the skin first.';
+  if (sk && !from) text = 'This folder is not named after a skin number, so type the number of the game skin to start from.';
+  else if (sk) {
+    text = 'The new skin starts as a copy of ' + sk.aircraft + ' skin ' + pad3(from) + ': its material, finish and normal map, and where emblems may go.' +
+      (typed && typed !== n ? ' Empty the box to start from the chosen folder\'s skin' + (n ? ' (' + pad3(n) + ')' : '') + ' instead.' : ' Type another number to start from a different skin of this aircraft.');
+    const rb = slotUpdating() ? repack.rebuild : null;
+    if (rb && rb.template && from !== rb.template) text += ' ' + rb.name + ' is based on skin ' + pad3(rb.template) + ' now: updating it from another skin starts it again from that skin, without the paint it has.';
+  }
+  $('#rpTemplateHint').textContent = text;
 }
+// slotUpdating: the build button changes the skin being changed (or just built), not a new one.
+function slotUpdating() { return !!(repack.rebuild && radio('slModMode') === 'add' && $('#slMod').value === repack.rebuild.mod); }
 
 function fillModSelect() {
   const sel = $('#slMod'), keep = sel.value;
@@ -2725,8 +3036,9 @@ $$('input[name="slIcon"]').forEach(r => r.addEventListener('change', () => { ren
 $('#slColourAuto').addEventListener('change', () => { renderIconPreview(); updateButtons(); });
 $('#slColour').addEventListener('input', renderIconPreview);
 ['#slName', '#slModTitle'].forEach(s => $(s).addEventListener('input', updateButtons));
-$('#rpTemplate').addEventListener('input', () => { updateButtons(); clearTimeout(repack.tplTimer); repack.tplTimer = setTimeout(renderIconPreview, 400); });
-wireDrop($('#slIconPreview'), async files => {
+$('#rpTemplate').addEventListener('input', () => { templateHint(); updateButtons(); clearTimeout(repack.tplTimer); repack.tplTimer = setTimeout(renderIconPreview, 400); });
+async function slotIconFiles(files) {
+  if (!files.length) return;
   const pic = files.find(f => /\.(png|jpe?g|tga)$/i.test(f.name));
   if (!pic) { alertLine('Drop a PNG, JPEG or TGA picture for the icon.'); return; }
   try {
@@ -2735,8 +3047,10 @@ wireDrop($('#slIconPreview'), async files => {
     document.querySelector('input[name="slIcon"][value="picture"]').checked = true;
     renderIconPreview(); updateButtons();
   } catch (e) { alertLine(e.message); }
-});
+}
+wireDrop($('#slIconPreview'), slotIconFiles);
 $('#slPicPick').addEventListener('click', async () => {
+  if (!canPick()) { slotIconFiles(await browserFiles({ accept: '.png,.jpg,.jpeg,.tga' })); return; }
   try {
     const r = await api('/api/pick', { kind: 'file', filter: 'pictures', title: 'Choose a picture for the icon' });
     if (r.paths && r.paths.length) { repack.iconPicture = r.paths[0]; renderIconPreview(); updateButtons(); }
@@ -2748,7 +3062,10 @@ function slotNotReady() {
   const c = STATE.checks;
   for (const k of ['workspace', 'retoc', 'paks', 'aes', 'mods']) if (!c[k].ok) return 'Finish the setup in Settings first.';
   if (!$('#rpSkin').value) return 'Choose the skin to start from.';
-  if (!folderNumberOf(selectedSkin()) && !+$('#rpTemplate').value) return 'Type the number of the game skin to start from.';
+  // a skin being changed stays a skin of its own aircraft
+  const rb = slotUpdating() ? repack.rebuild : null, sk = selectedSkin();
+  if (rb && rb.vehicle && sk && sk.aircraft.toLowerCase() !== rb.vehicle.toLowerCase()) return 'Choose a skin of the ' + rb.vehicle + ': ' + rb.name + ' is one of its skins.';
+  if (!folderNumberOf(sk) && !+$('#rpTemplate').value) return 'Type the number of the game skin to start from.';
   if (!$('#slName').value.trim()) return 'Give the skin a name.';
   if (radio('slModMode') === 'add' && !$('#slMod').value) return 'Choose the skin mod to add it to.';
   if (radio('slIcon') === 'picture' && !repack.iconPicture) return 'Choose the picture for the icon.';
@@ -2778,17 +3095,19 @@ async function buildSlot() {
     await loadSlots(true);
     loadMods(true);
     // pressing Build again now updates this skin instead of making a second one
-    repack.rebuild = { mod: res.mod, slot: res.slot };
+    repack.rebuild = { mod: res.mod, slot: res.slot, name: res.name, vehicle: sk ? sk.aircraft : '', template: +$('#rpTemplate').value || folderNumberOf(sk) };
     document.querySelector('input[name="slModMode"][value="add"]').checked = true;
-    fillModSelect(); $('#slMod').value = res.mod; syncModMode(); updateButtons();
+    fillModSelect(); $('#slMod').value = res.mod; syncModMode(); templateHint(); updateButtons();
   } catch (e) { notice(out, 'error', e.message); }
 }
-function startAnotherSkin() {
+// startAnotherSkin leaves the skin just built (or being changed) alone: the next build makes a new
+// one. quiet: the keyboard stays where it is.
+function startAnotherSkin(quiet) {
   repack.rebuild = null;
-  $('#slName').value = ''; $('#slDesc').value = '';
+  $('#slName').value = ''; $('#slDesc').value = ''; $('#rpTemplate').value = '';
   $('#rpResult').replaceChildren();
-  $('#slName').focus();
-  updateButtons();
+  if (quiet !== true) $('#slName').focus();
+  templateHint(); updateButtons();
 }
 function aircraftNumber(name) { const m = /^[A-Za-z]+0*(\d+)_/.exec(name || ''); return m ? +m[1] : 0; }
 
@@ -2819,7 +3138,7 @@ function slotResultCard(res) {
     el('button', { class: 'btn small', onclick: () => exportMod(res.mod, $('#rpResult')) }, 'Share as a .zip'),
     el('button', { class: 'btn small', onclick: startAnotherSkin }, 'Start another skin')));
   const wrap = el('div', { style: 'display:flex;flex-direction:column;gap:10px' }, box);
-  for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) wrap.append(el('div', { class: 'notice warn', text: p }));
+  for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) wrap.append(el('div', { class: 'notice warn', text: sentence(p) }));
   return wrap;
 }
 
@@ -2827,7 +3146,7 @@ function slotResultCard(res) {
 let SLOTS = null;
 async function loadSlots(quiet) {
   try { SLOTS = await api('/api/slots'); } catch (e) { if (quiet !== true) notice($('#slList'), 'error', e.message); return; }
-  HUD.loader = SLOTS.ok ? (SLOTS.loader || '') : null;
+  HUD.loader = SLOTS.ok ? (SLOTS.loader || '') : null; HUD.modsOk = !!SLOTS.ok;
   HUD.slots = SLOTS.mods.reduce((a, m) => a + m.slots.length, 0);
   setHud();
   const b = $('#navSlotsBadge');
@@ -2844,9 +3163,10 @@ function stat(label, val, cls, hint) {
 
 function renderSlots() {
   const S = SLOTS;
-  const setup = $('#slSetupNote');
-  setup.hidden = S.ok;
-  if (!S.ok) setup.replaceChildren(el('strong', { text: 'No mods folder yet. ' }), S.note, ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+  setupBanner($('#slSetupNote'), S.ok ? [] : ['mods'], 'No mods folder yet.', 'Once it is set, this screen lists every skin mod in it, with its skins and emblems.', { mods: S.note });
+  // without a mods folder nothing here can be known yet
+  $('#slStats').hidden = !S.ok;
+  slotsButtons();
   const sst = S.sst || {};
   const count = S.mods.reduce((a, m) => a + m.slots.length, 0);
   const emblems = S.mods.reduce((a, m) => a + (m.emblems || []).length, 0);
@@ -2856,7 +3176,7 @@ function renderSlots() {
     stat('Skin list', S.stale ? 'out of date' : S.listBuilt ? 'up to date' : (count ? 'not built' : 'not needed yet'), S.stale ? 'bad' : S.listBuilt ? 'good' : (count ? 'bad' : ''), S.listBuilt ? 'Built ' + new Date(S.listBuilt).toLocaleString() : 'Built when skins are added'),
     stat('New skins', String(count), count ? 'good' : '', S.mods.length + (S.mods.length === 1 ? ' skin mod' : ' skin mods') + (emblems ? ', and ' + emblems + (emblems === 1 ? ' new emblem' : ' new emblems') : '')));
   const probs = $('#slProblems');
-  probs.replaceChildren(...(S.setup || []).concat(S.problems || []).map(p => el('div', { class: 'notice warn', style: 'margin-bottom:8px', text: p })));
+  probs.replaceChildren(...(S.setup || []).concat(S.problems || []).map(p => el('div', { class: 'notice warn', style: 'margin-bottom:8px', text: sentence(p) })));
   if (S.stale) probs.prepend(el('div', { class: 'notice error', style: 'margin-bottom:8px' }, el('strong', { text: 'The skin list needs rebuilding. ' }), S.stale, ' ',
     el('button', { class: 'btn small', onclick: () => slotJob('/api/skinlist/rebuild', {}, 'The skin list is up to date.') }, 'Rebuild the skin list')));
 
@@ -2939,17 +3259,29 @@ function slotCard(m, sl) {
   return card;
 }
 
-// "Change paint or icon": the New skin slot screen, set up to rebuild this skin.
-function rebuildSlot(m, sl) {
+// "Change paint or icon": the New skin slot screen, set up to rebuild this skin and nothing else.
+// Nothing chosen earlier on that screen carries over: not the pictures, the skin, a typed skin
+// number or the icon, so the skin keeps its own paint and stays based on its own game skin.
+async function rebuildSlot(m, sl) {
   showPage('repack', 'slot');
-  repack.rebuild = { mod: m.key, slot: sl.key };
+  const n = Math.floor(sl.template % 1000000 / 1000);
+  repack.rebuild = { mod: m.key, slot: sl.key, name: sl.name, vehicle: sl.vehicle, template: n };
+  if (repack.batches.length && !activeJob) api('/api/inbox/clean', { batches: repack.batches }).catch(() => {});
+  Object.assign(repack, { paintDir: '', files: [], batches: [], rows: [], picked: new Set(), touched: false, choices: {}, iconPicture: '', autoSkin: '' });
+  $('#rpPlan').replaceChildren(); $('#rpSource').hidden = true;
+  document.querySelector('input[name="slIcon"][value="base"]').checked = true;
   document.querySelector('input[name="slModMode"][value="add"]').checked = true;
   fillModSelect(); $('#slMod').value = m.key; syncModMode();
   $('#slName').value = sl.name; $('#slDesc').value = sl.description || '';
-  const n = Math.floor(sl.template % 1000000 / 1000);
-  const sk = LIB.find(s => s.aircraft === sl.vehicle && s.folder === pad3(n) && s.textures.some(t => t.supported));
-  if (sk) { chooseSkin(sk.dir); skinChanged(); } else $('#rpTemplate').value = n;
-  notice($('#rpResult'), 'info', el('strong', { text: 'Changing ' + sl.name + '. ' }), sk ? 'Drop new pictures if the paint changes (its own textures are kept otherwise), choose the icon and press Update this skin. It keeps its number.' : 'Extract ' + sl.vehicle + ' skin ' + pad3(n) + ' first (or add its raw files), then drop the new pictures.');
+  await loadLibrary.pending; // the extracted skins may still be loading
+  if (!repack.rebuild || repack.rebuild.slot !== sl.key) return; // another skin was chosen meanwhile
+  const sk = LIB.find(s => s.aircraft.toLowerCase() === (sl.vehicle || '').toLowerCase() && s.folder === pad3(n) && s.textures.some(t => t.supported));
+  if (sk) { chooseSkin(sk.dir); $('#rpTemplate').value = ''; }
+  else { $('#rpSkin').value = ''; $('#rpTemplate').value = n; }
+  skinChanged();
+  notice($('#rpResult'), 'info', el('strong', { text: 'Changing ' + sl.name + '. ' }),
+    sk ? 'Drop new pictures if the paint changes (its own textures are kept otherwise), choose the icon (it is made again from what you choose) and press Update this skin. It keeps its number.'
+       : 'Extract ' + sl.vehicle + ' skin ' + pad3(n) + ' first (or add its raw files), then choose it under step 01 and drop the new pictures.');
   updateButtons();
 }
 
@@ -2962,7 +3294,7 @@ async function slotJob(path, body, okText) {
     out.replaceChildren(box);
     const list = res && (res.list || (res.slots ? res : null));
     const saved = savedLine(list); if (saved) box.append(saved);
-    for (const p of (list && list.problems) || []) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: p }));
+    for (const p of (list && list.problems) || []) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: sentence(p) }));
   } catch (e) { notice(out, 'error', e.message); }
   await loadSlots();
   loadMods(true);
@@ -3005,6 +3337,7 @@ async function importFiles(files) {
   planImportUI();
 }
 $('#imPick').addEventListener('click', async () => {
+  if (!canPick()) { const files = await browserFiles({ accept: '.zip' }); if (files.length) importFiles(files); return; }
   try {
     const r = await api('/api/pick', { kind: 'file', filter: 'zip', title: 'Choose a skin mod (.zip)' });
     if (r.paths && r.paths.length) { imp.path = r.paths[0]; imp.batch = ''; planImportUI(); }
@@ -3060,15 +3393,22 @@ async function planImportUI() {
       if (plan.studio && (plan.skins.length || (plan.emblems || []).length)) done.append(el('p', { class: 'hint' }, 'New skins and emblems unlock when you finish a campaign mission, or straight away with ', el('button', { class: 'linkbtn', type: 'button', onclick: () => showPage('save') }, 'Unlock now'), ' on the Save tools screen.'));
       const saved = savedLine(res.list); if (saved) done.append(saved);
       out.replaceChildren(done);
-      for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: p }));
+      for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: sentence(p) }));
     } catch (e) { notice(out, 'error', e.message); }
     loadSlots(); loadMods(true);
   } }, plan.update ? 'Update it' : 'Install');
-  box.replaceChildren(card, ...plan.notes.map(n => el('div', { class: 'notice info', style: 'margin-top:8px', text: n })), el('div', { class: 'row', style: 'margin-top:12px' }, go, el('button', { class: 'btn quiet', onclick: () => box.replaceChildren() }, 'Cancel')));
+  box.replaceChildren(card, ...plan.notes.map(n => el('div', { class: 'notice info', style: 'margin-top:8px', text: sentence(n) })), el('div', { class: 'row', style: 'margin-top:12px' }, go, el('button', { class: 'btn quiet', onclick: () => box.replaceChildren() }, 'Cancel')));
 }
 
+// Rebuild the skin list needs the mods folder, and no other task running.
+function slotsButtons() {
+  const noMods = !!(SLOTS && !SLOTS.ok);
+  const b = $('#slRebuild');
+  b.disabled = !!activeJob || noMods;
+  b.title = noMods ? 'Set your mods folder in Settings first' : activeJob ? 'Wait for the task that is running' : '';
+}
 $('#slRefresh').addEventListener('click', () => { $('#slResult').replaceChildren(); loadSlots(); });
-$('#slNew').addEventListener('click', () => showPage('repack', 'slot'));
+$('#slNew').addEventListener('click', () => { newSkinSlot(); focusHeading(); });
 $('#slRebuild').addEventListener('click', () => slotJob('/api/skinlist/rebuild', {}, 'The skin list is up to date.'));
 $('#slOpenShared').addEventListener('click', () => api('/api/open', { path: STATE.folders.shared }).catch(() => notice($('#slResult'), 'warn', 'Nothing has been shared yet. "Share as .zip" on a skin mod makes one.')));
 
@@ -3118,6 +3458,7 @@ function renderEmblemPreview() {
 }
 
 async function useEmblemFiles(files) {
+  if (!files.length) return;
   const pic = files.find(f => /\.(png|jpe?g|tga)$/i.test(f.name));
   if (!pic) { notice($('#emResult'), 'error', 'Drop a PNG, JPEG or TGA picture for the emblem.'); return; }
   const up = $('#emUp'), bar = $('.upbar i', up);
@@ -3133,6 +3474,7 @@ async function useEmblemFiles(files) {
 wireDrop($('#emDrop'), useEmblemFiles);
 wireDrop($('#emPreview'), useEmblemFiles);
 $('#emPick').addEventListener('click', async () => {
+  if (!canPick()) { useEmblemFiles(await browserFiles({ accept: '.png,.jpg,.jpeg,.tga' })); return; }
   try {
     const r = await api('/api/pick', { kind: 'file', filter: 'pictures', title: 'Choose the emblem\'s picture' });
     if (r.paths && r.paths.length) { emb.picture = r.paths[0]; renderEmblemPreview(); updateButtons(); }
@@ -3141,16 +3483,12 @@ $('#emPick').addEventListener('click', async () => {
 
 function renderEmblemSetup() {
   if (!STATE) return;
-  const c = STATE.checks, box = $('#emSetup');
-  const need = ['workspace', 'retoc', 'paks', 'aes', 'mods'].filter(k => !c[k].ok);
-  box.hidden = !need.length;
-  if (need.length) box.replaceChildren(el('strong', { text: 'New emblems need a little setup first. ' }), need.map(k => c[k].note).join(' '), ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+  setupBanner($('#emSetup'), needsOf('emblem'), 'New emblems need a little setup first.');
 }
 
 function emblemNotReady() {
   if (!STATE) return '';
-  const c = STATE.checks;
-  for (const k of ['workspace', 'retoc', 'paks', 'aes', 'mods']) if (!c[k].ok) return 'Finish the setup in Settings first.';
+  if (needsOf('emblem').length) return 'Finish the setup in Settings first.';
   if (!emb.picture && !emblemUpdating()) return 'Choose the emblem\'s picture.';
   if (!$('#emName').value.trim()) return 'Give the emblem a name.';
   if (radio('emModMode') === 'add' && !$('#emMod').value) return 'Choose the skin mod to add it to.';
@@ -3160,7 +3498,7 @@ function emblemButtons() {
   const why = emblemNotReady();
   $('#emGo').disabled = !!activeJob || !!why;
   $('#emGo').textContent = emblemUpdating() ? 'Update this emblem' : 'Build new emblem';
-  $('#emGoHint').textContent = activeJob ? '' : why;
+  setGoHint('#emGoHint', activeJob ? '' : why);
 }
 
 async function buildEmblem() {
@@ -3203,16 +3541,17 @@ function emblemResultCard(res) {
     el('button', { class: 'btn small', onclick: () => exportMod(res.mod, $('#emResult')) }, 'Share as a .zip'),
     el('button', { class: 'btn small', onclick: startAnotherEmblem }, 'Start another emblem')));
   const wrap = el('div', { style: 'display:flex;flex-direction:column;gap:10px' }, box);
-  for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) wrap.append(el('div', { class: 'notice warn', text: p }));
+  for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) wrap.append(el('div', { class: 'notice warn', text: sentence(p) }));
   return wrap;
 }
 
-function startAnotherEmblem() {
+// quiet: the keyboard stays where it is (the menu's "New emblem").
+function startAnotherEmblem(quiet) {
   emb.rebuild = null; emb.picture = '';
   $('#emName').value = ''; $('#emDesc').value = '';
   $('#emResult').replaceChildren();
   renderEmblemPreview(); updateButtons();
-  $('#emName').focus();
+  if (quiet !== true) $('#emName').focus();
 }
 
 // "Change picture" on the Skin slots screen: this screen, set up to change that emblem.
@@ -3232,7 +3571,6 @@ function showEmblemPage() {
   renderEmblemSetup();
   fillEmblemModSelect();
   renderEmblemPreview();
-  $('#emPick').hidden = !(STATE && STATE.canPick);
   loadSlots(true).then(() => { fillEmblemModSelect(); updateButtons(); });
 }
 
@@ -3318,11 +3656,7 @@ function defaultPilotMod() {
 
 function renderPilots() {
   const idx = pilots.idx, has = !!(idx && (idx.pilots.length || idx.portraits.length));
-  const c = STATE && STATE.checks;
-  const need = c ? ['workspace', 'retoc', 'paks', 'aes'].filter(k => !c[k].ok) : [];
-  const su = $('#piSetup');
-  su.hidden = !need.length;
-  if (need.length) su.replaceChildren(el('strong', { text: 'Pilots needs a little setup first. ' }), need.map(k => c[k].note).join(' '), ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+  setupBanner($('#piSetup'), STATE ? needsOf('pilots') : [], 'Pilots needs a little setup first.');
   $('#piFind').textContent = has ? 'Look again' : 'Find pilots in the game files';
   $('#piFindHint').textContent = !has
     ? 'Reads the game\'s file list, fetches the radio portraits (they are small) and makes a small picture of each helmet. The full-size helmet files are deleted again.'
@@ -3339,7 +3673,14 @@ function renderPilots() {
   if (!pilots.nameTouched) $('#piName').value = defaultPilotMod();
   renderPilotHelmet();
   renderPortraits();
+  renumberSteps('#page-pilots');
   pilotsButtons();
+}
+// Steps are numbered as they are shown: blocks that are hidden until pilots are found do not leave
+// gaps in the numbers.
+function renumberSteps(page) {
+  let n = 0;
+  $$(page + ' .block').forEach(b => { const st = $('h2 .step', b); if (st && !b.hidden) st.textContent = String(++n).padStart(2, '0'); });
 }
 
 function pickPilot(id) {
@@ -3420,6 +3761,7 @@ async function replanPilot() {
 }
 wireDrop($('#piDrop'), files => addPilotFiles(files, ''));
 $('#piPick').addEventListener('click', async () => {
+  if (!canPick()) { const files = await browserFiles({ folder: true }); if (files.length) addPilotFiles(files, ''); return; }
   try {
     const r = await api('/api/pick', { kind: 'folder', title: 'Choose the folder with your helmet pictures' });
     if (!r.paths || !r.paths.length) return;
@@ -3626,7 +3968,7 @@ async function openComposer(name) {
   const own = !!pc.base.path;
   $('#pcKeepPhoto').textContent = own ? 'Keep this portrait\'s photo' : 'Keep the game\'s photo';
   $('#pcKeepText').textContent = own ? 'Keep this portrait\'s text' : 'Keep the game\'s text';
-  $('#pcBox').hidden = false;
+  $('#pcBox').hidden = false; $('#pcMsg').replaceChildren();
   $('#pcTitle').textContent = pt.label; $('#pcName').textContent = pt.name;
   document.querySelector('input[name=pcPhoto][value=' + pc.photo + ']').checked = true;
   document.querySelector('input[name=pcText][value=' + pc.text + ']').checked = true;
@@ -3643,7 +3985,11 @@ async function openComposer(name) {
     if (!pc || pc.name !== name) return;
     pc.orig = orig;
     // a kept portrait opens as it was made: its photo and the portrait it took one from
-    if (pc.photo === 'mine' && pc.photoPath) { try { pc.mine = await loadImg(fullPic(pc.photoPath, ed && ed.saved)); } catch (e) { pc.photo = 'keep'; } }
+    // (if it cannot be read, it stays chosen and kept: Use waits until a picture is chosen again)
+    if (pc.photo === 'mine' && pc.photoPath) {
+      try { pc.mine = await loadImg(fullPic(pc.photoPath, ed && ed.saved)); }
+      catch (e) { notice($('#pcMsg'), 'warn', el('strong', { text: 'The photo kept with this portrait could not be opened. ' }), 'Choose it again with "Choose a picture". The portrait in the mod stays as it is until you press "Put it in the mod".'); }
+    }
     if (pc.other) { try { pc.otherImg = await loadImg(pimg('portrait', pc.other)); } catch (e) {} }
     if (!pc || pc.name !== name) return;
     document.querySelector('input[name=pcPhoto][value=' + pc.photo + ']').checked = true;
@@ -3705,6 +4051,19 @@ $('#pcRemove').addEventListener('click', async () => {
   await loadSavedPortraits();
   openComposer(name); // starts again from the game's own portrait
 });
+// keepablePhoto: the photo as it is kept with the portrait. The program reads kept photos back as
+// PNG (or TGA), so a JPEG, WebP, BMP or GIF is turned into a PNG first, at most 2048 pixels on its
+// longer side (more than the largest zoom needs). Moving and zooming do not depend on its size.
+async function keepablePhoto(file, img) {
+  if (/\.png$/i.test(file.name) && (!file.type || file.type === 'image/png')) return file;
+  const k = Math.min(1, 2048 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  if (!blob) throw new Error('That picture could not be turned into a PNG to keep it. Choose a PNG picture instead.');
+  return new File([blob], file.name.replace(/\.[^.]*$/, '') + '.png', { type: 'image/png' });
+}
 // how a portrait was made, kept with it so it opens the same way next time
 const portraitState = () => ({ photo: pc.photo, text: pc.text, zoom: pc.zoom, ox: pc.ox, oy: pc.oy, soften: pc.soften, other: pc.other || '', fields: { ...pc.fields }, mineLabel: pc.mineLabel || '' });
 $('#pcUse').addEventListener('click', async () => {
@@ -3716,7 +4075,7 @@ $('#pcUse').addEventListener('click', async () => {
     pilots.batches.push(batch);
     // the photo is kept with the portrait, so it can be moved or zoomed again later
     let photo = pc.photo === 'mine' ? pc.photoPath : '';
-    if (pc.photo === 'mine' && pc.mineFile) photo = await upload(pc.mineFile, batch);
+    if (pc.photo === 'mine' && pc.mineFile) photo = await upload(await keepablePhoto(pc.mineFile, pc.mine), batch);
     const state = portraitState();
     for (const [name, orig, base] of targets) {
       const cv = composePortrait(orig, pc.otherImg);
@@ -3738,7 +4097,7 @@ $('#piName').addEventListener('input', () => { pilots.nameTouched = true; pilots
 function pilotsNotReady() {
   const pics = pilots.plan ? pilots.plan.sheets.reduce((n, s) => n + Object.keys(s.uses).length, 0) : 0;
   const ports = Object.keys(pilots.edits).length;
-  if (!STATE || !STATE.checks.retoc.ok) return 'Set up retoc in Settings first.';
+  if (!STATE || !STATE.checks.retoc.ok || !STATE.checks.workspace.ok) return 'Finish the setup in Settings first.';
   if (!pics && !ports) return 'Add helmet pictures or a new portrait first.';
   if (pilots.plan && pilots.plan.problems.length) return 'Sort out the helmet pictures first (see above).';
   if (pilots.plan && pilots.plan.unplaced.length) return 'Drop each picture on the helmet part it is for.';
@@ -3748,17 +4107,16 @@ function pilotsNotReady() {
 function pilotsButtons() {
   if (!$('#piGo')) return;
   const busy = !!activeJob;
-  const exOK = STATE && ['workspace', 'retoc', 'paks', 'aes'].every(k => STATE.checks[k].ok);
+  const exOK = STATE && !needsOf('pilots').length;
   $('#piFind').disabled = busy || !exOK;
   $('#piPaint').disabled = busy || !exOK || !pilotNow();
   const why = pilotsNotReady();
   $('#piGo').disabled = busy || !!why;
-  $('#piGoHint').textContent = busy ? '' : why;
+  setGoHint('#piGoHint', busy ? '' : why);
   if (STATE) {
     $('#piInstall').disabled = !STATE.checks.mods.ok;
     if (!STATE.checks.mods.ok) $('#piInstall').checked = false;
     $('#piInstallHint').textContent = STATE.checks.mods.ok ? STATE.settings.modsDir : 'Set your mods folder in Settings to use this.';
-    $('#piPick').hidden = !STATE.canPick;
   }
   if (pc) $('#pcUse').disabled = busy || (pc.photo === 'keep' && pc.text === 'keep') || (pc.photo === 'mine' && !pc.mine) || (pc.photo === 'other' && !pc.otherImg);
 }
@@ -3779,12 +4137,20 @@ $('#piGo').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------- pilots: names on the radio
-const pn = { view: null, names: {}, saved: {}, open: false };
+const pn = { view: null, names: {}, saved: {}, open: false, asking: false };
 const pnField = (kind, id) => kind + ':' + id;
 
+// adoptNames takes the names as the program has them, keeping any typed here and not saved yet
+// (leaving the screen and coming back does not throw them away).
+function adoptNames(view) {
+  const edits = {};
+  for (const k of new Set([...Object.keys(pn.names), ...Object.keys(pn.saved)])) if ((pn.names[k] || '').trim() !== (pn.saved[k] || '').trim()) edits[k] = pn.names[k] || '';
+  pn.view = view; pn.saved = { ...view.names }; pn.names = { ...view.names, ...edits };
+}
 async function loadNames() {
-  try { pn.view = await api('/api/pilots/names'); } catch (e) { pn.view = null; }
-  if (pn.view) { pn.saved = { ...pn.view.names }; pn.names = { ...pn.view.names }; }
+  let view = null;
+  try { view = await api('/api/pilots/names'); } catch (e) {}
+  if (view) adoptNames(view); else pn.view = null;
   renderNames();
 }
 
@@ -3841,10 +4207,11 @@ function renderNames() {
   const c = STATE && STATE.checks;
   const ready = c && ['workspace', 'retoc', 'paks', 'aes'].every(k => c[k].ok);
   block.hidden = !v || !ready;
+  renumberSteps('#page-pilots');
   if (block.hidden) return;
   const status = $('#pnStatus');
   status.replaceChildren();
-  if (v.problem) status.append(el('div', { class: 'notice warn', style: 'margin-bottom:10px', text: v.problem }));
+  if (v.problem) status.append(el('div', { class: 'notice warn', style: 'margin-bottom:10px', text: sentence(v.problem) }));
   for (const f of v.clashes || []) status.append(el('div', { class: 'notice warn', style: 'margin-bottom:10px', text: f + ' (in SkinSlotText\'s folder) also sets some of these names and is read first, so its names would show instead.' + (f === 'PilotNameTest.ini' ? ' Saving takes it out.' : ' Take it out, or take those lines out of it.') }));
   if (v.needLists) {
     status.append(el('div', { class: 'notice info' }, el('strong', { text: 'The game\'s list of people on the radio is not fetched yet. ' }),
@@ -3877,8 +4244,10 @@ function namesButtons() {
   if (!v) return;
   const dirty = namesDirty();
   const any = Object.values(pn.saved).some(x => (x || '').trim());
+  // while "Put the game's names back" asks to be sure, its question stands in for these
+  $('#pnSave').hidden = pn.asking; $('#pnHint').hidden = pn.asking;
   $('#pnSave').disabled = !!activeJob || !!v.problem || v.needLists || !dirty;
-  $('#pnClear').hidden = !any;
+  $('#pnClear').hidden = !any || pn.asking;
   $('#pnHint').textContent = v.problem ? '' : dirty ? 'Changes not saved yet.' : any ? 'Saved. They show the next time the game starts.' : '';
 }
 
@@ -3894,18 +4263,22 @@ async function saveNames(names, okText) {
 
 async function fetchNameLists() {
   const out = $('#pnResult'); out.replaceChildren();
-  try { pn.view = await runJob('/api/pilots/names/fetch'); pn.saved = { ...pn.view.names }; pn.names = { ...pn.view.names }; renderNames(); }
+  try { adoptNames(await runJob('/api/pilots/names/fetch')); renderNames(); }
   catch (e) { notice(out, 'error', e.message); }
 }
 
 $('#pnSave').addEventListener('click', () => saveNames(pn.names, 'Names saved.'));
-$('#pnClear').addEventListener('click', () => {
-  const row = $('#pnClear').parentElement;
-  const keep = [...row.children];
-  row.replaceChildren(el('span', { class: 'hint', text: 'Clear every new name and use the game\'s own again?' }),
-    el('button', { class: 'btn small danger', type: 'button', onclick: async () => { row.replaceChildren(...keep); await saveNames({}, 'The game\'s own names are back.'); } }, 'Yes, clear them'),
-    el('button', { class: 'btn small', type: 'button', onclick: () => row.replaceChildren(...keep) }, 'Cancel'));
-});
+function askClearNames(on) {
+  pn.asking = on;
+  const ask = $('#pnAsk');
+  ask.hidden = !on;
+  ask.replaceChildren(...(on ? [el('span', { class: 'hint', text: 'Clear every new name and use the game\'s own again?' }),
+    el('button', { class: 'btn small danger', type: 'button', onclick: async () => { askClearNames(false); await saveNames({}, 'The game\'s own names are back.'); } }, 'Yes, clear them'),
+    el('button', { class: 'btn small', type: 'button', onclick: () => { askClearNames(false); $('#pnClear').focus(); } }, 'Cancel')] : []));
+  namesButtons();
+  if (on) $$('button', ask)[1].focus();
+}
+$('#pnClear').addEventListener('click', () => askClearNames(true));
 
 // ---------------------------------------------------------------- save tools
 let SAVE = null;
@@ -3924,14 +4297,19 @@ function renderSave() {
   const auto = S.autoBackup || {};
   $('#svStats').replaceChildren(
     stat('Save', S.found ? 'found' : 'not found', S.found && !S.problem ? 'good' : 'bad', S.found ? 'Last saved ' + fmtWhen(S.modified) : 'Set its folder in Settings'),
-    stat('Game', S.gameRunning ? 'running' : 'closed', S.gameRunning ? 'bad' : 'good', S.gameRunning ? 'Close it to use these tools' : 'Ready'),
+    // without the save there is nothing to be ready for
+    S.found ? stat('Game', S.gameRunning ? 'running' : 'closed', S.gameRunning ? 'bad' : 'good', S.gameRunning ? 'Close it to use these tools' : 'Ready')
+      : stat('Game', S.gameRunning ? 'running' : '—', S.gameRunning ? 'bad' : '', 'Needs the save first'),
     stat('New skins and emblems', items.length ? unlocked + ' of ' + items.length + ' unlocked' : 'none yet', items.length ? (unlocked === items.length ? 'good' : 'warn') : '', items.length ? 'In the game\'s lists now' : 'Build one first'),
     stat('Backup at game start', auto.installed ? 'on' : (auto.dir ? 'off' : 'needs UE4SS'), auto.installed ? 'good' : 'warn', (S.backups || []).length + ((S.backups || []).length === 1 ? ' backup kept' : ' backups kept')));
 
   const probs = $('#svProblems');
   probs.replaceChildren();
   const warn = (...c) => probs.append(el('div', { class: 'notice warn', style: 'margin-bottom:8px' }, ...c));
-  if (S.problem) warn(el('strong', { text: 'The save cannot be used. ' }), S.problem, ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+  const canPutBack = (S.backups || []).some(b => (b.files || []).includes('Campaign.sav'));
+  if (S.problem) warn(el('strong', { text: 'The save cannot be used. ' }), sentence(S.problem), ' ',
+    canPutBack ? 'If it was working before, close the game and press Put this back next to a backup below. ' : '',
+    el('button', { class: 'btn small', type: 'button', onclick: () => goSetting('seSaveDir') }, 'Set the save folder'));
   if (S.gameRunning) warn(el('strong', { text: 'The game is running. ' }), 'Close it first: the game writes its save when it closes, which would undo any change made now. ', el('button', { class: 'btn small', onclick: loadSave }, 'Check again'));
 
   // what Unlock now would unlock
@@ -3967,7 +4345,7 @@ function renderSave() {
     a.replaceChildren(el('p', { class: 'hint' }, el('strong', { text: 'Back up the save each time the game starts? ' }), 'This adds SkinStudioSaveBackup, a small UE4SS mod that copies the save when the game starts, keeping the last 20 starts. It only reads the save.'),
       el('div', { class: 'row', style: 'margin-bottom:12px' }, el('button', { class: 'btn small', type: 'button', onclick: () => autoMod(true) }, 'Turn it on')));
   } else {
-    a.replaceChildren(el('p', { class: 'hint', text: auto.problem || '' }));
+    a.replaceChildren(el('p', { class: 'hint', text: sentence(auto.problem || '') }));
   }
 
   // the list of backups
@@ -3999,8 +4377,13 @@ function saveButtons() {
   const S = SAVE;
   const blocked = !!activeJob || !S || !S.found || !!S.problem || !!S.gameRunning;
   $('#svUnlock').disabled = blocked || !(S && (S.items || []).some(x => !x.unlocked));
-  $$('#svVanillaRow button, #svBackups button').forEach(b => { b.disabled = blocked; });
+  $$('#svVanillaRow button').forEach(b => { b.disabled = blocked; });
+  // a backup can be put back when the save is damaged or missing: that is when it is needed most
+  $$('#svBackups button').forEach(b => { b.disabled = !!activeJob || !S || !S.dir || !!S.gameRunning; });
   $('#svBackupNow').disabled = !!activeJob || !S || !S.found;
+  // the backups folder sits next to the save folder, so it needs that first
+  $('#svOpen').disabled = !S || !S.backupsDir;
+  $('#svOpen').title = S && !S.backupsDir ? 'Set the game\'s save folder in Settings first' : '';
 }
 
 async function saveJob(path, body, okText) {
@@ -4036,7 +4419,89 @@ $('#svBackupNow').addEventListener('click', async () => {
   catch (e) { notice(out, 'error', e.message); }
   loadSave();
 });
-$('#svOpen').addEventListener('click', () => api('/api/open', { path: SAVE && SAVE.backupsDir }).catch(() => notice($('#svResult'), 'warn', 'There are no backups yet. Press Back up now to make one.')));
+$('#svOpen').addEventListener('click', () => api('/api/open', { path: SAVE && SAVE.backupsDir }).catch(() => notice($('#svResult'), 'warn',
+  SAVE && SAVE.found ? 'There are no backups yet. Press Back up now to make one.' : 'Set the game\'s save folder in Settings first.')));
+
+// ---------------------------------------------------------------- how new skins are unlocked (Skin slots)
+// The start-rule experiment (settings.unlockAtStart) and the read-only report "How the game unlocks
+// skins" (/api/skins/report). See docs/dlc-research.md for why new skins are not shipped as DLC.
+const unlocksBlock = el('div', { class: 'block', id: 'ulBlock' },
+  el('h2', { text: 'How new skins are unlocked' }),
+  el('p', { class: 'hint', text: 'New skins and emblems unlock when you finish a campaign mission, the same way the game unlocks its own first skins. The game itself writes that into your save; Skin Studio does not touch it. Unlock now on the Save tools screen does it straight away instead, after backing your save up.' }),
+  el('label', { class: 'check' }, el('input', { type: 'checkbox', id: 'ulStart' }),
+    el('span', {}, 'Also try to unlock them when the game starts (experimental)',
+      el('span', { class: 'hint', text: 'Gives each new skin and emblem a second unlock rule with no conditions, the way the game unlocks its own music player. If the game acts on it, new skins appear without a mission, and the game writes your save itself. If it does not, finishing a mission still unlocks them, so nothing is lost. Not tried in the game yet: the steps to try it are below.' }))),
+  el('div', { id: 'ulStartOut' }),
+  el('details', { class: 'ul-test' }, el('summary', { text: 'How to try the experiment in the game' }),
+    el('ol', {},
+      el('li', { text: 'Open Save tools, press Back up now, and turn on Backup at game start.' }),
+      el('li', { text: 'Tick the box above. The skin list is rebuilt.' }),
+      el('li', { text: 'Make one new test skin. Do not press Unlock now.' }),
+      el('li', { text: 'Start the game (offline) and go straight to the hangar, without playing a mission. Is the test skin there?' }),
+      el('li', { text: 'Close the game, come back here and press "How the game unlocks skins". It says whether the game acted on the new rule. Copy the report and send it to whoever asked you to try it.' }))),
+  el('div', { class: 'row' },
+    el('button', { class: 'btn small', id: 'ulReport', type: 'button' }, 'How the game unlocks skins'),
+    el('span', { class: 'hint', text: 'Reads the game\'s own lists and your save, and changes nothing.' })),
+  el('div', { id: 'ulReportOut' }));
+{
+  const before = $('#slTablesBlock') || $('#slRemovedBlock');
+  if (before) before.before(unlocksBlock); else $('#page-slots').append(unlocksBlock);
+}
+
+function unlocksButtons() {
+  const busy = !!activeJob;
+  $('#ulStart').disabled = busy;
+  $('#ulReport').disabled = busy || !(STATE && STATE.checks.paks.ok && STATE.checks.aes.ok);
+  $('#ulReport').title = $('#ulReport').disabled && !busy ? 'Needs the game\'s Paks folder and AES key in Settings.' : '';
+  if (STATE) $('#ulStart').checked = !!STATE.settings.unlockAtStart;
+}
+
+$('#ulStart').addEventListener('change', async ev => {
+  const on = ev.target.checked, out = $('#ulStartOut');
+  out.replaceChildren();
+  try {
+    await api('/api/settings', { unlockAtStart: on });
+    await refreshState();
+  } catch (e) { ev.target.checked = !on; notice(out, 'error', e.message); return; }
+  const hasSkins = SLOTS && (SLOTS.mods || []).length > 0;
+  if (!hasSkins || !STATE.checks.mods.ok) {
+    notice(out, 'info', on ? 'Turned on. New skins and emblems get the extra rule when they are built.' : 'Turned off.');
+    return;
+  }
+  try {
+    const res = await runJob('/api/skinlist/rebuild', {});
+    const box = el('div', { class: 'notice good', role: 'status' }, el('strong', { text: on ? 'Turned on. ' : 'Turned off. ' }),
+      on ? 'The skin list now gives every new skin and emblem the extra rule. Start the game to try it.' : 'The extra rules are out of the skin list again; finishing a mission still unlocks new skins.');
+    const saved = savedLine(res); if (saved) box.append(saved);
+    out.replaceChildren(box);
+    for (const p of (res && res.problems) || []) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: p }));
+  } catch (e) { notice(out, 'error', e.message); }
+  loadSlots();
+});
+
+$('#ulReport').addEventListener('click', async () => {
+  const out = $('#ulReportOut');
+  out.replaceChildren();
+  try {
+    const r = await runJob('/api/skins/report', {});
+    const groups = el('table', { class: 'ul-groups' },
+      el('thead', {}, el('tr', {}, ['DLC id', 'Category', 'Skins', 'In your save', 'No unlock rule'].map(h => el('th', { text: h })))),
+      el('tbody', {}, (r.groups || []).map(g => el('tr', {},
+        el('td', { text: g.dlcid || '(none)' }), el('td', { text: g.category + (g.skinType ? ' · type' : '') }),
+        el('td', { text: String(g.count) }), el('td', { text: String(g.inSave) }), el('td', { text: String(g.noRule) })))));
+    const copy = el('button', { class: 'btn small', type: 'button', onclick: async ev => {
+      const b = ev.currentTarget;
+      try { await navigator.clipboard.writeText(r.text); b.textContent = 'Copied'; } catch (e) { b.textContent = 'Could not copy'; }
+      setTimeout(() => { b.textContent = 'Copy report'; }, 2000);
+    } }, 'Copy report');
+    const box = el('div', { class: 'notice info', role: 'status' },
+      el('strong', { text: 'What your game and save say' }),
+      el('ul', { style: 'margin:6px 0 8px 18px' }, (r.lines || []).map(l => el('li', { text: l }))),
+      r.saveFound ? null : el('p', { class: 'hint', text: 'Your save was not read (' + r.saveProblem + '); the game\'s lists were.' }),
+      groups, el('div', { class: 'row', style: 'margin-top:8px' }, copy));
+    out.replaceChildren(box);
+  } catch (e) { notice(out, 'error', e.message); }
+});
 
 // ---------------------------------------------------------------- start
 setInterval(() => { api('/api/ping').catch(() => {}); }, 15000);
