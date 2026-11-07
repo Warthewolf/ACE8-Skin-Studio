@@ -23,8 +23,9 @@ type Job struct {
 	Title    string
 	Status   string // running, done, failed, cancelled
 	Step     string
-	Progress float64 // 0..1, or -1 when unknown
-	Lines    []string
+	Progress float64  // 0..1, or -1 when unknown
+	Lines    []string // the first logHead lines, then the newest ones (see Log)
+	dropped  int      // lines taken out after the first logHead to keep the log short
 	Result   any
 	Err      string
 	Started  time.Time
@@ -44,12 +45,20 @@ func (j *Job) Log(format string, a ...any) {
 		}
 	}
 	j.Lines = append(j.Lines, s)
-	if len(j.Lines) > 5000 {
-		j.Lines = append(j.Lines[:100], j.Lines[len(j.Lines)-4000:]...)
+	if len(j.Lines) > logMax {
+		j.dropped += len(j.Lines) - logHead - logTail
+		j.Lines = append(j.Lines[:logHead], j.Lines[len(j.Lines)-logTail:]...)
 	}
 	j.mu.Unlock()
 	logf("[job %s] %s", j.ID, s)
 }
+
+// A job keeps at most logMax lines of its log: the first logHead and the newest logTail.
+const (
+	logMax  = 5000
+	logHead = 100
+	logTail = 4000
+)
 
 func (j *Job) SetStep(step string, progress float64) {
 	j.mu.Lock()
@@ -81,18 +90,36 @@ type jobView struct {
 	Seconds  float64  `json:"seconds"`
 }
 
+// view is what the window is shown. since and Next count every line ever logged, also those taken
+// out to keep the log short, so the window gets each line once however long the log grows.
 func (j *Job) view(since int) jobView {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	if since < 0 || since > len(j.Lines) {
+	next := j.dropped + len(j.Lines)
+	if since < 0 || since > next {
 		since = 0
+	}
+	lines := []string{}
+	left := func(n int) string { return fmt.Sprintf("(%d lines left out here to keep the log short)", n) }
+	switch {
+	case j.dropped == 0:
+		lines = append(lines, j.Lines[since:]...)
+	case since < logHead:
+		lines = append(lines, j.Lines[since:logHead]...)
+		lines = append(lines, left(j.dropped))
+		lines = append(lines, j.Lines[logHead:]...)
+	case since < logHead+j.dropped:
+		lines = append(lines, left(logHead+j.dropped-since))
+		lines = append(lines, j.Lines[logHead:]...)
+	default:
+		lines = append(lines, j.Lines[since-j.dropped:]...)
 	}
 	end := j.Ended
 	if end.IsZero() {
 		end = time.Now()
 	}
 	return jobView{ID: j.ID, Title: j.Title, Status: j.Status, Step: j.Step, Progress: j.Progress,
-		Lines: append([]string{}, j.Lines[since:]...), Next: len(j.Lines), Result: j.Result, Error: j.Err,
+		Lines: lines, Next: next, Result: j.Result, Error: j.Err,
 		Seconds: end.Sub(j.Started).Seconds()}
 }
 

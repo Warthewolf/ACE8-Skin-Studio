@@ -88,14 +88,21 @@ func ensureOodle(j *Job, retoc string, paks string) error {
 	if st, err := os.Stat(dst); err == nil && st.Size() > 100_000 {
 		return nil
 	}
+	// Both ways below write to a new file and put it in place only once it is whole: a library cut
+	// short (a full disk) would otherwise stay next to retoc and pass the size check above for good.
+	os.Remove(dst + ".part")
 	// 1. the game's own copy
 	if src := gameOodle(paks, oodleGameName); src != "" {
-		if err := copyFile(src, dst); err == nil {
-			j.Log("Copied the game's %s next to retoc (retoc needs it to read the game's files).", oodleName)
-			return nil
-		} else {
+		err := copyFile(src, dst+".part")
+		if err == nil {
+			err = os.Rename(dst+".part", dst)
+		}
+		if err != nil {
+			os.Remove(dst + ".part")
 			return oodleWriteProblem(dst, err)
 		}
+		j.Log("Copied the game's %s next to retoc (retoc needs it to read the game's files).", oodleName)
+		return nil
 	}
 	// 2. the same download retoc makes
 	j.SetStep("Getting Oodle for retoc", -1)
@@ -120,7 +127,7 @@ func ensureOodle(j *Job, retoc string, paks string) error {
 			"Check the internet connection (a firewall or antivirus may block it), or get %s from %s and put it next to retoc (%s), then try again",
 			oodleName, err, oodleName, oodleBaseURL+oodlePlatformPath, filepath.Dir(retoc))
 	}
-	if err := os.WriteFile(dst, b, 0o644); err != nil {
+	if err := writeWhole(dst, b, 0o644); err != nil {
 		return oodleWriteProblem(dst, err)
 	}
 	j.Log("Downloaded %s next to retoc.", oodleName)

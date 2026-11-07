@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +18,10 @@ const createNoWindow = 0x08000000
 func hideWindow(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: createNoWindow}
 }
+
+// sameUserPeer: on Windows other users cannot read the window's launch code from the browser's
+// command line, so nothing more is checked (see os_other.go).
+func sameUserPeer(r *http.Request) bool { return true }
 
 func findEdge() string {
 	for _, env := range []string{"ProgramFiles(x86)", "ProgramFiles", "LocalAppData"} {

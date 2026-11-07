@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
@@ -32,7 +33,8 @@ var (
 	baseURL string
 )
 
-const preferredPort = 48189
+// preferredPort is the usual port (a variable so tests can keep clear of a copy running on it).
+var preferredPort = 48189
 
 func runApp(args []string) int {
 	fs := flag.NewFlagSet("app", flag.ContinueOnError)
@@ -54,19 +56,12 @@ func runApp(args []string) int {
 		dataDir = filepath.Dir(exe)
 	}
 	os.MkdirAll(dataDir, 0o755)
-	logFile, _ = os.Create(filepath.Join(dataDir, "ACE8SkinStudio.log"))
-	loadSettings()
-	logf("%s %s starting on %s", appName, appVersion, runtime.GOOS)
 
-	// If the program is already running, bring its window up instead of starting a second copy.
-	if *port == 0 {
-		if resp, err := (&http.Client{Timeout: 700 * time.Millisecond}).Post(fmt.Sprintf("http://127.0.0.1:%d/api/show", preferredPort), "text/plain", strings.NewReader(dataDir)); err == nil {
-			b, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			if resp.StatusCode == 200 && strings.TrimSpace(string(b)) == "ok" {
-				return 0
-			}
-		}
+	// If the program is already running with this data folder, bring its window up instead of
+	// starting a second copy. This is asked before the log is opened: opening it empties it, and
+	// the log is the running copy's.
+	if *port == 0 && showRunningCopy() {
+		return 0
 	}
 	token = *tok
 	if token == "" {
@@ -86,12 +81,21 @@ func runApp(args []string) int {
 		}
 	}
 	if err != nil {
-		logf("cannot listen: %v", err)
+		// added to the end of the log, which may be another copy's
+		logFile, _ = os.OpenFile(filepath.Join(dataDir, "ACE8SkinStudio.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		logf("%s %s cannot listen: %v", appName, appVersion, err)
 		fmt.Fprintln(os.Stderr, "cannot start:", err)
 		return 1
 	}
-	baseURL = fmt.Sprintf("http://127.0.0.1:%d", ln.Addr().(*net.TCPAddr).Port)
+	// This copy serves the data folder from here on, so the log is its own.
+	logFile, _ = os.Create(filepath.Join(dataDir, "ACE8SkinStudio.log"))
+	logf("%s %s starting on %s", appName, appVersion, runtime.GOOS)
+	loadSettings()
+	listenPort := ln.Addr().(*net.TCPAddr).Port
+	baseURL = fmt.Sprintf("http://127.0.0.1:%d", listenPort)
 	logf("listening on %s", baseURL)
+	// where a second launch finds this copy when it could not have the usual port
+	os.WriteFile(filepath.Join(dataDir, portFileName), []byte(strconv.Itoa(listenPort)), 0o644)
 	fmt.Println(baseURL + "/?t=" + token)
 	purgeInbox(getSettings())
 
@@ -112,9 +116,99 @@ func runApp(args []string) int {
 	return 0
 }
 
-func showWindow() error {
-	return openURL(baseURL+"/?t="+token, !getSettings().DefaultBrowser)
+// portFileName is the file in the data folder that holds the port the running copy listens on.
+const portFileName = "ACE8SkinStudio.port"
+
+// showRunningCopy asks a copy of the program that is already running with the same data folder to
+// show its window, and reports whether one did. It is looked for on the usual port and on the port
+// the last copy for this data folder wrote down.
+func showRunningCopy() bool {
+	dir := dataDir
+	if abs, err := filepath.Abs(dir); err == nil {
+		dir = abs
+	}
+	ports := []int{preferredPort}
+	if b, err := os.ReadFile(filepath.Join(dataDir, portFileName)); err == nil {
+		if p, err := strconv.Atoi(strings.TrimSpace(string(b))); err == nil && p > 0 && p < 65536 && p != preferredPort {
+			ports = append(ports, p)
+		}
+	}
+	client := &http.Client{Timeout: 2 * time.Second}
+	for _, p := range ports {
+		resp, err := client.Post(fmt.Sprintf("http://127.0.0.1:%d/api/show", p), "text/plain", strings.NewReader(dir))
+		if err != nil {
+			continue
+		}
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 64))
+		resp.Body.Close()
+		if resp.StatusCode == 200 && strings.TrimSpace(string(b)) == "ok" {
+			return true
+		}
+	}
+	return false
 }
+
+// sameFolder tells whether two paths name the same folder.
+func sameFolder(a, b string) bool {
+	if a == "" || b == "" {
+		return false
+	}
+	sa, errA := os.Stat(a)
+	sb, errB := os.Stat(b)
+	if errA == nil && errB == nil {
+		return os.SameFile(sa, sb)
+	}
+	a, b = filepath.Clean(a), filepath.Clean(b)
+	return a == b || (runtime.GOOS == "windows" && strings.EqualFold(a, b))
+}
+
+// The window is opened with a launch code, not the access token: a browser's command line can be
+// read by the other users of the computer (on Linux, in /proc), and a launch code works only once,
+// for a short time, and only for this user. The window's first request (/launch) swaps it for the
+// page with the token.
+var (
+	launchMu    sync.Mutex
+	launchCodes = map[string]time.Time{} // code -> until when it works
+)
+
+const launchCodeLife = 2 * time.Minute
+
+func newLaunchCode() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	code := hex.EncodeToString(b)
+	now := time.Now()
+	launchMu.Lock()
+	defer launchMu.Unlock()
+	for c, until := range launchCodes {
+		if now.After(until) {
+			delete(launchCodes, c)
+		}
+	}
+	launchCodes[code] = now.Add(launchCodeLife)
+	return code
+}
+
+// useLaunchCode reports whether code is a launch code that still works, and makes it unusable.
+func useLaunchCode(code string) bool {
+	launchMu.Lock()
+	defer launchMu.Unlock()
+	until, ok := launchCodes[code]
+	delete(launchCodes, code)
+	return ok && time.Now().Before(until)
+}
+
+// windowURL is the address a new window is opened with.
+func windowURL() string { return baseURL + "/launch?code=" + newLaunchCode() }
+
+// showWindow opens a window on the program (a variable so tests do not open one).
+var showWindow = func() error { return openURL(windowURL(), !getSettings().DefaultBrowser) }
+
+// exitProgram ends the program (a variable so tests can stand in for it).
+var exitProgram = os.Exit
+
+// quitWait is how long Quit waits for a cancelled task to stop.
+const quitWait = 5 * time.Second
 
 // purgeInbox deletes uploaded copies left over from earlier runs.
 func purgeInbox(s Settings) {
@@ -160,8 +254,7 @@ func readJSON(r *http.Request, v any) error {
 // guard rejects requests that do not come from the program's own window.
 func guard(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		host := r.Host
-		if !strings.HasPrefix(host, "127.0.0.1:") && !strings.HasPrefix(host, "localhost:") {
+		if !localHost(r.Host) {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
@@ -178,6 +271,12 @@ func guard(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
+}
+
+// localHost tells whether a request was sent to this computer by name (not through another site's
+// name that leads here).
+func localHost(host string) bool {
+	return strings.HasPrefix(host, "127.0.0.1:") || strings.HasPrefix(host, "localhost:")
 }
 
 // clientID is the name the page that sent a request gave itself.
@@ -357,6 +456,25 @@ func textureThumb(uexpPath string, maxW int) ([]byte, error) {
 	return b, nil
 }
 
+// notChanged lets the browser keep a preview only while its file stays the same: a rebuilt icon is
+// written over the old one under the same name, so a preview kept by its address alone would show
+// the old picture. It marks the answer with a tag made from the file's size and time (key, from
+// fileKey) and what was asked, and answers "not changed" when the browser already has that one.
+func notChanged(w http.ResponseWriter, r *http.Request, key string, asked ...any) bool {
+	w.Header().Set("Cache-Control", "private, no-cache")
+	if key == "" {
+		return false
+	}
+	h := sha256.Sum256([]byte(fmt.Sprint(key, asked)))
+	tag := `"` + hex.EncodeToString(h[:12]) + `"`
+	w.Header().Set("ETag", tag)
+	if r.Header.Get("If-None-Match") == tag {
+		w.WriteHeader(http.StatusNotModified)
+		return true
+	}
+	return false
+}
+
 type inspectRow struct {
 	Path   string `json:"path"`
 	Name   string `json:"name"`
@@ -396,15 +514,46 @@ func routes() http.Handler {
 		w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' blob: data:")
 		w.Write(indexHTML)
 	})
-	// Another copy of the program asks this one to show its window (no token: it only opens our own page).
+	// The window's first request: the launch code it was opened with is swapped for the page, with
+	// the access token (see showWindow).
+	mux.HandleFunc("/launch", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		refuse := func(why string) {
+			logf("a window was refused: %s", why)
+			http.Error(w, "This link to "+appName+" has already been used, or is too old. To open the program's window, start "+appName+" again.", http.StatusForbidden)
+		}
+		switch {
+		case !localHost(r.Host):
+			refuse("sent through another name")
+		case !sameUserPeer(r):
+			refuse("asked for by another user of this computer")
+		case !useLaunchCode(r.URL.Query().Get("code")):
+			refuse("the launch code was used before or is too old")
+		default:
+			http.Redirect(w, r, "/?t="+token, http.StatusSeeOther)
+		}
+	})
+	// Another copy of the program asks this one to show its window (no token: it only opens our own
+	// page). It is only for a copy started with the same data folder; one with another starts by itself.
 	mux.HandleFunc("/api/show", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || !strings.HasPrefix(r.Host, "127.0.0.1:") || r.Header.Get("Origin") != "" {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
+		b, _ := io.ReadAll(io.LimitReader(r.Body, 8<<10))
+		if !sameFolder(strings.TrimSpace(string(b)), dataDir) {
+			io.WriteString(w, "other")
+			return
+		}
 		presence.heard("")
-		showWindow()
 		io.WriteString(w, "ok")
+		// after the answer, so the other copy is not kept waiting while the browser starts
+		go func() {
+			if err := showWindow(); err != nil {
+				logf("could not open the window: %v", err)
+			}
+		}()
 	})
 	api := func(path string, h http.HandlerFunc) { mux.HandleFunc(path, guard(h)) }
 
@@ -417,8 +566,25 @@ func routes() http.Handler {
 		writeJSON(w, 200, map[string]bool{"ok": true})
 	})
 	api("/api/quit", func(w http.ResponseWriter, r *http.Request) {
+		// {"force": true} quits even while a task runs; without it (or with no body) a running task
+		// is never stopped part-way
+		var q struct{ Force bool }
+		readJSON(r, &q)
+		if j := jobs.Last(); j != nil && j.statusNow() == "running" {
+			if !q.Force {
+				writeJSON(w, http.StatusConflict, map[string]any{"busy": true,
+					"error": "A task is running (" + j.Title + "). Quitting now would stop it part-way, which can leave half-copied files in the mods folder. Wait for it to finish, or cancel it, then quit."})
+				return
+			}
+			// quitting anyway: stop the task (and retoc with it), and give it a moment to end
+			logf("quit requested while %q was running; cancelling it", j.Title)
+			j.cancel()
+			for end := time.Now().Add(quitWait); j.statusNow() == "running" && time.Now().Before(end); {
+				time.Sleep(50 * time.Millisecond)
+			}
+		}
 		writeJSON(w, 200, map[string]bool{"ok": true})
-		go func() { time.Sleep(300 * time.Millisecond); logf("quit requested"); os.Exit(0) }()
+		go func() { time.Sleep(300 * time.Millisecond); logf("quit requested"); exitProgram(0) }()
 	})
 	api("/api/settings", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -529,23 +695,31 @@ func routes() http.Handler {
 		if w, err := strconv.Atoi(r.URL.Query().Get("w")); err == nil {
 			maxW = min(max(w, 32), 1600)
 		}
-		b, err := makeThumb(r.URL.Query().Get("path"), maxW, r.URL.Query().Get("alpha") == "1")
+		p, alpha := r.URL.Query().Get("path"), r.URL.Query().Get("alpha") == "1"
+		if notChanged(w, r, fileKey(p), maxW, alpha) {
+			return
+		}
+		b, err := makeThumb(p, maxW, alpha)
 		if err != nil {
+			w.Header().Del("ETag")
 			http.Error(w, err.Error(), 404)
 			return
 		}
 		w.Header().Set("Content-Type", "image/png")
-		w.Header().Set("Cache-Control", "private, max-age=600")
 		w.Write(b)
 	})
 	api("/api/texthumb", func(w http.ResponseWriter, r *http.Request) {
-		b, err := textureThumb(r.URL.Query().Get("uexp"), 1400)
+		p := r.URL.Query().Get("uexp")
+		if notChanged(w, r, fileKey(p), "tex") {
+			return
+		}
+		b, err := textureThumb(p, 1400)
 		if err != nil {
+			w.Header().Del("ETag")
 			http.Error(w, err.Error(), 404)
 			return
 		}
 		w.Header().Set("Content-Type", "image/png")
-		w.Header().Set("Cache-Control", "private, max-age=600")
 		w.Write(b)
 	})
 	api("/api/split", func(w http.ResponseWriter, r *http.Request) {

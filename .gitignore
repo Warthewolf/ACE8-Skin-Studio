@@ -4,7 +4,10 @@
 *.test
 # never commit settings: they hold your AES key
 settings.json
+settings.json.part
+settings.broken*.json
 ACE8SkinStudio.log
+ACE8SkinStudio.port
 workspace/
 /ace8skinstudio
 /dist/

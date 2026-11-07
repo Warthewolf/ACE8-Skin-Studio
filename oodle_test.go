@@ -26,8 +26,13 @@ func TestEnsureOodle(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "could not be downloaded") {
 		t.Fatalf("wrong file accepted: %v", err)
 	}
-	if fileExists(filepath.Join(filepath.Dir(retoc), oodleName)) {
+	if fileExists(filepath.Join(filepath.Dir(retoc), oodleName)) || fileExists(filepath.Join(filepath.Dir(retoc), oodleName+".part")) {
 		t.Fatal("wrong file written")
+	}
+	// a library cut short is not taken for a whole one: the right one is fetched in its place
+	os.WriteFile(filepath.Join(filepath.Dir(retoc), oodleName+".part"), make([]byte, 300_000), 0o644)
+	if err := ensureOodle(j, retoc, ""); err == nil || fileExists(filepath.Join(filepath.Dir(retoc), oodleName)) {
+		t.Fatalf("a part-written library was used: %v", err)
 	}
 	// the game's own copy is used when it has one (Windows only: Linux needs its own library)
 	if oodleGameName != "" {
@@ -42,6 +47,9 @@ func TestEnsureOodle(t *testing.T) {
 		}
 		if st, err := os.Stat(filepath.Join(filepath.Dir(retoc), oodleName)); err != nil || st.Size() != 200_000 {
 			t.Fatalf("game copy not used: %v", err)
+		}
+		if fileExists(filepath.Join(filepath.Dir(retoc), oodleName+".part")) {
+			t.Fatal("the copy was left beside its place")
 		}
 		// there now: nothing more to do, even without a game folder
 		if err := ensureOodle(j, retoc, ""); err != nil {

@@ -9,16 +9,96 @@ package main
 
 import (
 	"bufio"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 )
 
 func hideWindow(cmd *exec.Cmd) {}
+
+// sameUserPeer tells whether a request comes from a program of the user running this one (or of
+// the administrator, who can reach everything anyway). Any user can connect to 127.0.0.1; on Linux
+// /proc/net/tcp says who owns the other end of a connection. When that cannot be told, the answer
+// is yes.
+func sameUserPeer(r *http.Request) bool {
+	local, _ := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
+	if local == nil {
+		return true
+	}
+	uid, ok := socketOwner(r.RemoteAddr, local.String())
+	return !ok || uid == os.Getuid() || uid == 0
+}
+
+// socketOwner finds the user who owns the far end of a connection to this computer: the socket
+// whose own address is remote and whose far end is local. ok is false when it cannot be told.
+func socketOwner(remote, local string) (uid int, ok bool) {
+	rip, rport, err1 := splitAddr(remote)
+	lip, lport, err2 := splitAddr(local)
+	if err1 != nil || err2 != nil {
+		return 0, false
+	}
+	for _, f := range []string{"/proc/net/tcp", "/proc/net/tcp6"} {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		// sl local_address rem_address st tx:rx tr:when retrnsmt uid ...
+		for _, line := range strings.Split(string(b), "\n") {
+			fs := strings.Fields(line)
+			if len(fs) < 8 || fs[3] == "06" { // 06: a connection already closed (its owner is not kept)
+				continue
+			}
+			if procAddrIs(fs[1], rip, rport) && procAddrIs(fs[2], lip, lport) {
+				if u, err := strconv.Atoi(fs[7]); err == nil {
+					return u, true
+				}
+			}
+		}
+	}
+	return 0, false
+}
+
+func splitAddr(a string) (net.IP, int, error) {
+	h, p, err := net.SplitHostPort(a)
+	if err != nil {
+		return nil, 0, err
+	}
+	ip := net.ParseIP(h)
+	if ip == nil {
+		return nil, 0, errors.New("not an address")
+	}
+	port, err := strconv.Atoi(p)
+	return ip, port, err
+}
+
+// procAddrIs tells whether an address as /proc/net/tcp writes it is ip:port. It is in hexadecimal,
+// each group of 4 bytes as a number in this computer's own byte order, then ":" and the port.
+func procAddrIs(s string, ip net.IP, port int) bool {
+	h, p, found := strings.Cut(s, ":")
+	if !found {
+		return false
+	}
+	if n, err := strconv.ParseUint(p, 16, 16); err != nil || int(n) != port {
+		return false
+	}
+	raw, err := hex.DecodeString(h)
+	if err != nil || (len(raw) != 4 && len(raw) != 16) {
+		return false
+	}
+	for i := 0; i < len(raw); i += 4 {
+		binary.NativeEndian.PutUint32(raw[i:], binary.BigEndian.Uint32(raw[i:]))
+	}
+	return net.IP(raw).Equal(ip)
+}
 
 // openURL shows the program's window: an app window of a Chromium browser when one is installed,
 // otherwise the default browser.

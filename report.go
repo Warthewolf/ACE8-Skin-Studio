@@ -122,6 +122,9 @@ func buildReport() string {
 	line("Made %s on %s/%s", time.Now().Format("2006-01-02 15:04"), runtime.GOOS, runtime.GOARCH)
 	line("")
 	line("Setup")
+	if note := settingsNote(); note != "" {
+		line("  Settings file PROBLEM: %s", note)
+	}
 	line("  Game Paks folder: %s [%s: %s]", orNone(s.PaksDir), state("paks"), c["paks"].Note)
 	aes := "not set"
 	if s.AESKey != "" {

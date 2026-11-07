@@ -3,7 +3,9 @@ package main
 // Settings kept in settings.json next to the program, and the folders the program works in.
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -43,8 +45,13 @@ var (
 	dataDir  string // folder that holds settings.json (normally the program's own folder)
 	setMu    sync.Mutex
 	settings Settings
+	saveMu   sync.Mutex // one save at a time, so settings.json and the settings in use stay the same
 	logFile  *os.File
 	logMu    sync.Mutex
+
+	// settingsProblem says, in plain words, why settings.json could not be read when the program
+	// started ("" when it could).
+	settingsProblem string
 )
 
 func logf(format string, a ...any) {
@@ -98,10 +105,57 @@ func loadSettings() {
 	setMu.Lock()
 	defer setMu.Unlock()
 	settings = Settings{}
-	if b, err := os.ReadFile(filepath.Join(dataDir, "settings.json")); err == nil {
-		json.Unmarshal(b, &settings)
+	settingsProblem = ""
+	b, err := os.ReadFile(filepath.Join(dataDir, "settings.json"))
+	switch {
+	case err == nil:
+		if err := json.Unmarshal(b, &settings); err != nil {
+			settingsProblem = keepBrokenSettings(b, err)
+		}
+	case !os.IsNotExist(err):
+		logf("settings.json could not be read: %v", err)
+		settingsProblem = "settings.json could not be read when the program started (" + err.Error() + "), so the settings start empty."
 	}
 	defaults(&settings)
+}
+
+// keepBrokenSettings keeps a copy of a settings.json that could not be read, so the AES key and the
+// folders in it are not lost when the settings are saved again, and says so in plain words.
+func keepBrokenSettings(b []byte, err error) string {
+	logf("settings.json could not be read: %v", err)
+	if len(bytes.TrimSpace(b)) == 0 {
+		return "settings.json was empty when the program started (the computer may have stopped while it was being saved), so the settings start fresh."
+	}
+	why, lost := "settings.json could not be read when the program started (it has a mistake in it, such as a single \\ in a folder path where two are needed)", "the settings start empty"
+	var se *json.SyntaxError
+	if !errors.As(err, &se) { // one value of the wrong kind: the rest was read
+		why, lost = "A setting in settings.json could not be read when the program started ("+err.Error()+")", "that setting starts empty"
+	}
+	// the same file kept on an earlier start is not copied again
+	keep := ""
+	olds, _ := filepath.Glob(filepath.Join(dataDir, "settings.broken*.json"))
+	for _, o := range olds {
+		if ob, err := os.ReadFile(o); err == nil && bytes.Equal(ob, b) {
+			keep = o
+			break
+		}
+	}
+	if keep == "" {
+		keep = filepath.Join(dataDir, "settings.broken-"+time.Now().Format("20060102-150405")+".json")
+		if err := writeWhole(keep, b, 0o644); err != nil {
+			logf("a copy of settings.json could not be kept: %v", err)
+			return why + ", and no copy of it could be kept (" + err.Error() + "). Fix it by hand before changing anything here, or the key and folders in it will be replaced."
+		}
+		logf("settings.json kept as %s", keep)
+	}
+	return why + ", so " + lost + ". Nothing is lost: a copy of the file is kept as " + keep + ". Enter what is missing again here, or copy it from that file."
+}
+
+// settingsNote is why settings.json could not be read at the start ("" when it could).
+func settingsNote() string {
+	setMu.Lock()
+	defer setMu.Unlock()
+	return settingsProblem
 }
 
 func getSettings() Settings {
@@ -115,13 +169,39 @@ func getSettings() Settings {
 func saveSettings(s Settings) error {
 	defaults(&s)
 	b, _ := json.MarshalIndent(s, "", "  ")
-	if err := os.WriteFile(filepath.Join(dataDir, "settings.json"), b, 0o644); err != nil {
+	saveMu.Lock()
+	defer saveMu.Unlock()
+	if err := writeWhole(filepath.Join(dataDir, "settings.json"), b, 0o644); err != nil {
 		return fmt.Errorf("could not save settings: %v", err)
 	}
 	setMu.Lock()
 	settings = s
 	setMu.Unlock()
 	return nil
+}
+
+// writeWhole writes data to a new file next to path and only then puts it in path's place, so path
+// never holds half a file (a full disk, or the computer stopping part-way through).
+func writeWhole(path string, data []byte, perm os.FileMode) error {
+	tmp := path + ".part"
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(data)
+	if err == nil {
+		err = f.Sync()
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = os.Rename(tmp, path)
+	}
+	if err != nil {
+		os.Remove(tmp)
+	}
+	return err
 }
 
 // Workspace sub-folders.
@@ -265,6 +345,13 @@ func (s Settings) checks() map[string]check {
 		out["aes"] = check{false, "That is not a valid key: it must be 64 hexadecimal characters, optionally starting with 0x."}
 	default:
 		out["aes"] = check{true, "Key has the right shape"}
+	}
+	// a settings.json that could not be read is why the key has gone: say so where it is asked for
+	if note := settingsNote(); note != "" {
+		if a := out["aes"]; !a.OK {
+			out["aes"] = check{false, note + " " + a.Note}
+		}
+		out["settings"] = check{false, note}
 	}
 	switch {
 	case s.Usmap == "":
