@@ -435,6 +435,7 @@ func routes() http.Handler {
 			return
 		}
 		invalidateLibrary()
+		refreshSaveBackupMod(getSettings()) // the game-start backup follows a new save folder
 		writeJSON(w, 200, currentState())
 	})
 	api("/api/pick", func(w http.ResponseWriter, r *http.Request) {

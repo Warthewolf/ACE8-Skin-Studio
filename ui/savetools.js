@@ -22,7 +22,10 @@ function renderSave() {
   const probs = $('#svProblems');
   probs.replaceChildren();
   const warn = (...c) => probs.append(el('div', { class: 'notice warn', style: 'margin-bottom:8px' }, ...c));
-  if (S.problem) warn(el('strong', { text: 'The save cannot be used. ' }), S.problem, ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+  const canPutBack = (S.backups || []).some(b => (b.files || []).includes('Campaign.sav'));
+  if (S.problem) warn(el('strong', { text: 'The save cannot be used. ' }), S.problem, canPutBack ? (/[.!?]$/.test(S.problem) ? ' ' : '. ') : ' ',
+    canPutBack ? 'If it was working before, close the game and press Put this back next to a backup below. ' : '',
+    el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
   if (S.gameRunning) warn(el('strong', { text: 'The game is running. ' }), 'Close it first: the game writes its save when it closes, which would undo any change made now. ', el('button', { class: 'btn small', onclick: loadSave }, 'Check again'));
 
   // what Unlock now would unlock
@@ -90,7 +93,9 @@ function saveButtons() {
   const S = SAVE;
   const blocked = !!activeJob || !S || !S.found || !!S.problem || !!S.gameRunning;
   $('#svUnlock').disabled = blocked || !(S && (S.items || []).some(x => !x.unlocked));
-  $$('#svVanillaRow button, #svBackups button').forEach(b => { b.disabled = blocked; });
+  $$('#svVanillaRow button').forEach(b => { b.disabled = blocked; });
+  // a backup can be put back when the save is damaged or missing: that is when it is needed most
+  $$('#svBackups button').forEach(b => { b.disabled = !!activeJob || !S || !S.dir || !!S.gameRunning; });
   $('#svBackupNow').disabled = !!activeJob || !S || !S.found;
 }
 

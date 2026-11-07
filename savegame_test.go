@@ -417,6 +417,88 @@ func TestSaveBackupsAndRestore(t *testing.T) {
 	}
 }
 
+// Putting back a backup with its System.sav when Campaign.sav is gone still backs up the
+// System.sav it replaces.
+func TestRestoreWithoutCampaignBacksUpSystem(t *testing.T) {
+	s := saveEnv(t)
+	j := testJob()
+	camp := testSave([]int32{21001001}, nil, [2]int32{0, 0}, 0)
+	oldSystem := testSaveFile("/Script/Live.LiveSystemSaveGame", gvListBytes(gvTag("Version", tInt, 0, i32b(1))))
+	nowSystem := testSaveFile("/Script/Live.LiveSystemSaveGame", gvListBytes(gvTag("Version", tInt, 0, i32b(2))))
+	os.WriteFile(filepath.Join(s.SaveDir, campaignSave), camp, 0o644)
+	os.WriteFile(filepath.Join(s.SaveDir, systemSave), oldSystem, 0o644)
+	b, err := makeSaveBackup(s, "by hand")
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Remove(filepath.Join(s.SaveDir, campaignSave))
+	os.WriteFile(filepath.Join(s.SaveDir, systemSave), nowSystem, 0o644)
+	res, err := doRestoreBackup(j, s, b.ID, true)
+	if err != nil || !res.Changed {
+		t.Fatalf("restore %+v %v", res, err)
+	}
+	if res.Backup.ID == "" {
+		t.Fatal("System.sav was replaced without a backup")
+	}
+	p, _ := s.backupPath(res.Backup.ID, systemSave)
+	if got, _ := os.ReadFile(p); !bytes.Equal(got, nowSystem) {
+		t.Fatal("the System.sav from before the restore is not in the backup")
+	}
+	if got, _ := os.ReadFile(filepath.Join(s.SaveDir, campaignSave)); !bytes.Equal(got, camp) {
+		t.Fatal("Campaign.sav was not put back")
+	}
+}
+
+// After the save folder is changed (or cleared) in Settings, the game-start backup is told the
+// new folder.
+func TestSaveBackupModFollowsSaveFolder(t *testing.T) {
+	s := saveEnv(t)
+	t.Setenv("LOCALAPPDATA", t.TempDir())
+	ue := filepath.Join(t.TempDir(), "ue4ss", "Mods")
+	os.MkdirAll(ue, 0o755)
+	os.WriteFile(filepath.Join(ue, "mods.txt"), []byte("x : 1\r\n"), 0o644)
+	s.UE4SSMods = ue
+	paths := filepath.Join(ue, saveBackupMod, "Scripts", "paths.txt")
+
+	// installed for the usual place: no paths.txt
+	usual := s
+	usual.SaveDir = ""
+	keepSaveBackupMod(usual)
+	if _, err := os.Stat(paths); err == nil {
+		t.Fatal("paths.txt written for the usual save folder")
+	}
+	// the save folder is set in Settings
+	if st := saveBackupModStatus(s); st.Current {
+		t.Fatal("up to date without being told the save folder")
+	}
+	refreshSaveBackupMod(s)
+	if b, err := os.ReadFile(paths); err != nil || !strings.HasPrefix(string(b), s.SaveDir+"\r\n") {
+		t.Fatalf("paths.txt %q %v", b, err)
+	}
+	if st := saveBackupModStatus(s); !st.Current {
+		t.Fatalf("not up to date: %+v", st)
+	}
+	// moved to another folder
+	moved := s
+	moved.SaveDir = filepath.Join(t.TempDir(), "Saved", "SaveGames")
+	os.MkdirAll(moved.SaveDir, 0o755)
+	keepSaveBackupMod(moved)
+	if b, err := os.ReadFile(paths); err != nil || !strings.HasPrefix(string(b), moved.SaveDir+"\r\n") {
+		t.Fatalf("paths.txt after moving %q %v", b, err)
+	}
+	// cleared again: paths.txt goes
+	refreshSaveBackupMod(usual)
+	if _, err := os.Stat(paths); err == nil {
+		t.Fatal("paths.txt left after the save folder was cleared")
+	}
+	// not installed: changing Settings does not put it in
+	removeSaveBackupMod(s)
+	refreshSaveBackupMod(s)
+	if st := saveBackupModStatus(s); st.Installed {
+		t.Fatal("installed by a change of Settings")
+	}
+}
+
 var isGameExeCases = []struct {
 	name string
 	want bool

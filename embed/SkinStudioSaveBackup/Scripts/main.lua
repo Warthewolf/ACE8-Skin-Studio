@@ -1,4 +1,4 @@
--- SkinStudioSaveBackup 1.0 (UE4SS Lua mod for ACE COMBAT 8), made by ACE8 Skin Studio.
+-- SkinStudioSaveBackup 1.1 (UE4SS Lua mod for ACE COMBAT 8), made by ACE8 Skin Studio.
 --
 -- Each time the game starts, this copies the campaign save (Campaign.sav) and the settings save
 -- (System.sav) into the folder SkinStudioSaveBackups\auto next to the game's SaveGames folder:
@@ -59,24 +59,32 @@ local function run()
         from, to = saved .. "SaveGames\\", saved .. "SkinStudioSaveBackups\\auto\\"
     end
 
+    -- Campaign.sav is the one that matters. When it is missing or empty (a new game, or the game
+    -- stopped while writing it), no slot is used, so the backups made before all stay as they are.
+    local campaign = readAll(from .. "Campaign.sav")
+    if not campaign or #campaign == 0 then
+        log("Campaign.sav is missing or empty in " .. from .. " (a new game?); no backup made, the earlier ones are kept")
+        return
+    end
+
     local n = tonumber((readAll(to .. "next.txt") or ""):match("%d+") or "") or 1
     if n < 1 or n > KEEP then n = 1 end
     local slot = string.format("%02d", n)
-    local made = 0
     for _, name in ipairs({ "Campaign.sav", "System.sav" }) do
-        local d = readAll(from .. name)
+        local d = campaign
+        if name ~= "Campaign.sav" then d = readAll(from .. name) end
+        local target = to .. slot .. " " .. name
         if d and #d > 0 then
-            local ok, err = writeAll(to .. slot .. " " .. name, d)
+            local ok, err = writeAll(target, d)
             if not ok then
                 log("could not write the backup (" .. tostring(err) .. "). Open ACE8 Skin Studio's Save tools once to make the folder " .. to)
                 return
             end
-            made = made + 1
+        elseif type(os.remove) == "function" then
+            -- not there now: the slot's copy from an earlier start goes, so the slot never mixes
+            -- an old file with this start's date
+            os.remove(target)
         end
-    end
-    if made == 0 then
-        log("no save found in " .. from .. " (a new game?); no backup made")
-        return
     end
     writeAll(to .. slot .. ".txt", os.date("%Y-%m-%d %H:%M:%S") .. "\n")
     writeAll(to .. "next.txt", tostring(n % KEEP + 1) .. "\n")

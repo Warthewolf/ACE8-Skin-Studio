@@ -41,7 +41,9 @@ var saveBackupModFS embed.FS
 // saveGamesDir is the game's SaveGames folder: from Settings, or the usual place.
 func (s Settings) saveGamesDir() string {
 	if s.SaveDir != "" {
-		return s.SaveDir
+		// a separator at the end ("…\SaveGames\") is dropped, or the backups would go inside
+		// SaveGames instead of next to it; a drive root such as C:\ stays as it is
+		return filepath.Clean(s.SaveDir)
 	}
 	if la := os.Getenv("LOCALAPPDATA"); la != "" {
 		return filepath.Join(la, "BANDAI NAMCO Entertainment", "ACE COMBAT 8", "Saved", "SaveGames")
@@ -116,17 +118,27 @@ func makeSaveBackupKind(s Settings, reason, kind string) (saveBackup, error) {
 		return saveBackup{}, errors.New("the game's save folder was not found; set it in Settings")
 	}
 	now := time.Now()
-	name := now.Format("2006-01-02 15-04-05")
-	dir := filepath.Join(root, name)
-	for i := 2; ; i++ {
-		if _, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) {
+	stamp := now.Format("2006-01-02 15-04-05")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		return saveBackup{}, fmt.Errorf("the backup folder could not be made (%v)", err)
+	}
+	// The folder is named after the time, with " (2)", " (3)" and so on when a backup was already
+	// made in that second. Mkdir only makes a folder that is not there yet, so two backups never
+	// share one; any other failure (no permission, the folder cannot be reached) stops here.
+	var name, dir string
+	for i := 1; ; i++ {
+		name = stamp
+		if i > 1 {
+			name = fmt.Sprintf("%s (%d)", stamp, i)
+		}
+		dir = filepath.Join(root, name)
+		err := os.Mkdir(dir, 0o755)
+		if err == nil {
 			break
 		}
-		name = fmt.Sprintf("%s (%d)", now.Format("2006-01-02 15-04-05"), i)
-		dir = filepath.Join(root, name)
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return saveBackup{}, fmt.Errorf("the backup folder could not be made (%v)", err)
+		if !errors.Is(err, fs.ErrExist) || i >= 1000 {
+			return saveBackup{}, fmt.Errorf("the backup folder could not be made (%v)", err)
+		}
 	}
 	b := saveBackup{ID: name, When: now, Reason: reason, Kind: kind}
 	for _, f := range []string{campaignSave, systemSave} {
@@ -138,7 +150,7 @@ func makeSaveBackupKind(s Settings, reason, kind string) (saveBackup, error) {
 			os.RemoveAll(dir)
 			return saveBackup{}, fmt.Errorf("%s could not be read for the backup (%v)", f, err)
 		}
-		if err := os.WriteFile(filepath.Join(dir, f), data, 0o644); err != nil {
+		if err := writeFileSynced(filepath.Join(dir, f), data); err != nil {
 			os.RemoveAll(dir)
 			return saveBackup{}, fmt.Errorf("the backup could not be written (%v)", err)
 		}
@@ -155,10 +167,45 @@ func makeSaveBackupKind(s Settings, reason, kind string) (saveBackup, error) {
 	}
 	info, _ := json.MarshalIndent(backupInfo{When: now, Reason: reason, Kind: kind, Program: appName + " " + appVersion}, "", "  ")
 	os.WriteFile(filepath.Join(dir, saveBackupInfo), info, 0o644)
+	syncDir(dir)
+	syncDir(root)
 	return b, nil
 }
 
+// writeFileSynced writes data to path and waits until it is on the disk, so a power cut or crash
+// just after cannot leave an empty or zeroed file behind. A disk that cannot be asked to do that is
+// written to as usual.
+func writeFileSynced(path string, data []byte) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(data)
+	if err == nil {
+		if err = f.Sync(); errors.Is(err, errors.ErrUnsupported) {
+			err = nil
+		}
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	return err
+}
+
+// syncDir asks for a folder's list of files to be put on the disk too (where the system allows it),
+// so a file just made or renamed in it is still there after a power cut.
+func syncDir(dir string) {
+	if f, err := os.Open(dir); err == nil {
+		f.Sync()
+		f.Close()
+	}
+}
+
 var reAutoBackup = regexp.MustCompile(`^(\d\d) (Campaign|System)\.sav$`)
+
+// autoSlotSpread is how much older than its slot's "07.txt" a game-start backup file can be and
+// still count as written with it (it is written a moment before).
+const autoSlotSpread = 10 * time.Minute
 
 // listSaveBackups lists the backups, newest first.
 func listSaveBackups(s Settings) []saveBackup {
@@ -206,6 +253,13 @@ func listSaveBackups(s Settings) []saveBackup {
 		}
 		st, err := os.Stat(filepath.Join(auto, e.Name()))
 		if err != nil {
+			continue
+		}
+		// "07.txt" is written last, each time the slot is used. A file much older than it was not
+		// written then: the first version of the mod left a file from an earlier start in the slot
+		// when that save was missing or empty. It is not listed, so it is never put back as if it
+		// were from the slot's date.
+		if mark, err := os.Stat(filepath.Join(auto, m[1]+".txt")); err == nil && st.ModTime().Before(mark.ModTime().Add(-autoSlotSpread)) {
 			continue
 		}
 		b := slots[m[1]]
@@ -335,10 +389,11 @@ func pruneListChangeBackups(s Settings, keep int) {
 	}
 }
 
-// replaceFile writes data next to path and then puts it in path's place.
+// replaceFile writes data next to path, makes sure it is on the disk, and then puts it in path's
+// place.
 func replaceFile(path string, data []byte) error {
 	tmp := path + ".skinstudio-new"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	if err := writeFileSynced(tmp, data); err != nil {
 		os.Remove(tmp)
 		return fmt.Errorf("the new save could not be written (%v)", err)
 	}
@@ -350,6 +405,7 @@ func replaceFile(path string, data []byte) error {
 		os.Remove(tmp)
 		return fmt.Errorf("the save could not be replaced (%v); it was not changed", err)
 	}
+	syncDir(filepath.Dir(path))
 	return nil
 }
 
@@ -871,6 +927,17 @@ func doRestoreBackup(j *Job, s Settings, id string, withSystem bool) (*saveChang
 		if err != nil {
 			return nil, err
 		}
+		// only the files the list shows for this backup are put back (see listSaveBackups)
+		listed := false
+		for _, x := range bk.Files {
+			listed = listed || x == f
+		}
+		if !listed {
+			if f == systemSave {
+				continue
+			}
+			return nil, fmt.Errorf("that backup has no %s to put back; nothing was changed", f)
+		}
 		b, err := os.ReadFile(p)
 		if errors.Is(err, fs.ErrNotExist) && f == systemSave {
 			continue
@@ -889,12 +956,21 @@ func doRestoreBackup(j *Job, s Settings, id string, withSystem bool) (*saveChang
 	}
 	j.SetStep("Backing up the save as it is now", 0.3)
 	res := &saveChange{Cloud: hasSteamCloud(s)}
-	if _, err := os.Stat(filepath.Join(dir, campaignSave)); err == nil {
+	// the saves as they are now are backed up when any file about to be replaced is there (also
+	// System.sav alone, when Campaign.sav has gone)
+	for _, f := range files {
+		if _, ok := data[f]; !ok {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(dir, f)); errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
 		b, err := makeSaveBackup(s, "before putting back the backup of "+bk.When.Format("2 Jan 2006 15:04"))
 		if err != nil {
 			return nil, err
 		}
 		res.Backup = b
+		break
 	}
 	if err := needGameClosed(); err != nil {
 		return nil, err
@@ -1030,7 +1106,22 @@ func saveBackupModStatus(s Settings) autoModView {
 			v.Current = false
 		}
 	}
+	// paths.txt must name the save folder set in Settings now, and not be there when none is set
+	have, err := os.ReadFile(filepath.Join(v.Dir, saveBackupMod, "Scripts", "paths.txt"))
+	if want := saveBackupPaths(s); (want == "" && !errors.Is(err, fs.ErrNotExist)) || (want != "" && (err != nil || string(have) != want)) {
+		v.Current = false
+	}
 	return v
+}
+
+// saveBackupPaths is what SkinStudioSaveBackup's paths.txt holds when the save is not in the usual
+// place (a folder is set in Settings): the save folder, then the folder for its backups. It is ""
+// when the usual place is used, and then there is no paths.txt.
+func saveBackupPaths(s Settings) string {
+	if s.SaveDir == "" {
+		return ""
+	}
+	return s.saveGamesDir() + "\r\n" + filepath.Join(s.saveBackupsDir(), autoBackupFolder) + "\r\n"
 }
 
 // installSaveBackupMod puts SkinStudioSaveBackup into UE4SS's Mods folder and makes the folder it
@@ -1062,8 +1153,7 @@ func installSaveBackupMod(s Settings) error {
 	}
 	// paths.txt tells it where the save is when that is not the usual place
 	paths := filepath.Join(dest, "Scripts", "paths.txt")
-	if s.SaveDir != "" {
-		txt := s.saveGamesDir() + "\r\n" + filepath.Join(root, autoBackupFolder) + "\r\n"
+	if txt := saveBackupPaths(s); txt != "" {
 		if err := os.WriteFile(paths, []byte(txt), 0o644); err != nil {
 			return err
 		}
@@ -1095,6 +1185,18 @@ func keepSaveBackupMod(s Settings) {
 	}
 	if err := installSaveBackupMod(s); err != nil {
 		logf("SkinStudioSaveBackup could not be installed: %v", err)
+	}
+}
+
+// refreshSaveBackupMod writes SkinStudioSaveBackup again when it is installed but out of date, for
+// example after the save folder was changed in Settings, so it goes on backing up the right save.
+// It does not put the mod in when it is not there.
+func refreshSaveBackupMod(s Settings) {
+	if st := saveBackupModStatus(s); !st.Installed || st.Current {
+		return
+	}
+	if err := installSaveBackupMod(s); err != nil {
+		logf("SkinStudioSaveBackup could not be updated: %v", err)
 	}
 }
 
