@@ -32,12 +32,43 @@ type AdoptedMod struct {
 	Skipped  int           `json:"skipped"` // skins that are already in the list through a Skin Studio mod
 	Problem  string        `json:"problem,omitempty"`
 	utocs    []string
+	read     bool            // its lists were read
+	assign   []AdoptedAssign // the numbers and unlock ids its new skins got
 }
+
+// AdoptedAssign records the number and unlock id a skin from another mod's list was given, so it
+// keeps them while this program's skins come and go, and a skin from a mod installed later never
+// takes them.
+type AdoptedAssign struct {
+	Folder   string `json:"folder"` // the mod's folder
+	Row      string `json:"row"`    // the skin's row in that mod's list
+	Aircraft int    `json:"aircraft"`
+	Number   int    `json:"number"`
+	UnlockID int64  `json:"unlockId,omitempty"`
+}
+
+func adoptedKey(folder, row string) string { return strings.ToLower(folder) + "/" + row }
 
 const (
 	skinListLabel   = "Datatables/Information/DT_Skin"
 	unlockListLabel = "Unlock/DA_Unlock_Skin"
 )
+
+// carriesLists tells whether a mod holds a skin list or unlock list of its own. It looks at every
+// file of the mod: the list of its files for the window (Replaces) is cut short for a big mod.
+func carriesLists(m InstalledMod) bool {
+	for _, label := range m.chunks {
+		if label == skinListLabel || label == unlockListLabel {
+			return true
+		}
+	}
+	for _, r := range m.Replaces {
+		if r == skinListLabel || r == unlockListLabel {
+			return true
+		}
+	}
+	return false
+}
 
 // findTableMods lists the mods (other than this program's own) that hold a skin list or unlock list.
 func findTableMods(s Settings, slotMods []InstalledSlotMod) []AdoptedMod {
@@ -50,13 +81,7 @@ func findTableMods(s Settings, slotMods []InstalledSlotMod) []AdoptedMod {
 		if m.Name == skinListMod || ours[strings.ToLower(filepath.Clean(m.Dir))] && !m.Loose {
 			continue
 		}
-		has := false
-		for _, r := range m.Replaces {
-			if r == skinListLabel || r == unlockListLabel {
-				has = true
-			}
-		}
-		if !has {
+		if !carriesLists(m) {
 			continue
 		}
 		am := AdoptedMod{Folder: m.Name, Dir: m.Dir, NewSkins: []AdoptedSkin{}}
@@ -78,17 +103,147 @@ func sameObj(sc *Schema, a, b *Obj) bool {
 	return err1 == nil && err2 == nil && bytes.Equal(x, y)
 }
 
-// adoptRows copies another mod's changes into the lists. Numbers in reserved (and unlock ids in
-// reservedIDs) are not given to its new skins; the numbers it ends up with are added to them.
-func adoptRows(j *Job, sc *Schema, st *SkinTable, ut *UnlockTable, am *AdoptedMod, reserved map[int]map[int]bool, reservedIDs map[int64]bool, ourKeys map[string]bool) {
+// gameLists are the game's own skin rows and unlock rules, as they are before any other mod's list
+// is taken in. A mod's row or rule with the key or id of one of them is a change to the game's;
+// anything else is new, also when a mod taken in earlier added one with the same key or id.
+type gameLists struct {
+	rows    map[string]*Obj
+	entries map[int64]*Obj
+}
+
+func gameListsOf(st *SkinTable, ut *UnlockTable) gameLists {
+	g := gameLists{rows: map[string]*Obj{}, entries: map[int64]*Obj{}}
+	for _, r := range st.Rows {
+		g.rows[r.Key] = r.Obj.Clone()
+	}
+	for _, e := range ut.Entries() {
+		g.entries[e.Int("ID")] = e.Clone()
+	}
+	return g
+}
+
+// adoption is what taking in the other mods' lists shares between them.
+type adoption struct {
+	game        gameLists
+	reserved    map[int]map[int]bool     // aircraft -> numbers not given to their new skins (ours, and those placed so far)
+	reservedIDs map[int64]bool           // unlock ids not given to them
+	ourKeys     map[string]bool          // this program's mod keys
+	kept        map[string]AdoptedAssign // adoptedKey -> what that skin had before
+	held        map[int]map[int]string   // aircraft -> number -> adoptedKey of the skin, still there, that had it
+}
+
+func (ad *adoption) reserve(a, n int) {
+	if ad.reserved[a] == nil {
+		ad.reserved[a] = map[int]bool{}
+	}
+	ad.reserved[a][n] = true
+}
+
+// adoptAll takes the lists of the other mods (adopted) into the tables, which hold the game's own
+// lists and nothing else yet. Their skins keep the numbers they had here before, or get the ones
+// they ask for when free, but never take a number one of this program's skins (mods) has, nor an
+// unlock id this program ever gave out.
+func adoptAll(j *Job, st *SkinTable, ut *UnlockTable, mods []InstalledSlotMod, adopted []AdoptedMod, old SkinListState) {
+	read := make([]adoptedLists, len(adopted))
+	for i := range adopted {
+		read[i].st, read[i].ut = readAdopted(st.sc, &adopted[i])
+		if !adopted[i].read {
+			j.Log("%s: %s", adopted[i].Folder, adopted[i].Problem)
+		}
+	}
+	adoptLists(j, st, ut, mods, adopted, read, old)
+}
+
+// adoptedLists are the skin list and unlock list of another mod (nil for one it does not have).
+type adoptedLists struct {
+	st *SkinTable
+	ut *UnlockTable
+}
+
+// adoptLists is adoptAll with the other mods' lists read (read[i] are those of adopted[i]).
+func adoptLists(j *Job, st *SkinTable, ut *UnlockTable, mods []InstalledSlotMod, adopted []AdoptedMod, read []adoptedLists, old SkinListState) {
+	if len(adopted) == 0 {
+		return
+	}
+	sc := st.sc
+	ad := &adoption{game: gameListsOf(st, ut), reserved: map[int]map[int]bool{}, reservedIDs: map[int64]bool{}, ourKeys: map[string]bool{},
+		kept: map[string]AdoptedAssign{}, held: map[int]map[int]string{}}
+	for _, a := range old.AdoptedSkins {
+		ad.kept[adoptedKey(a.Folder, a.Row)] = a
+	}
+	var present []AdoptedAssign // records of skins still in their mod's list
+	for i := range adopted {
+		am := &adopted[i]
+		if !am.read || read[i].st == nil {
+			continue
+		}
+		for _, r := range read[i].st.Rows {
+			if a, ok := ad.kept[adoptedKey(am.Folder, r.Key)]; ok && ad.game.rows[r.Key] == nil {
+				present = append(present, a)
+			}
+		}
+	}
+	// The numbers they had before stay theirs. When two had the same one (the mod of one was taken
+	// out, and is back), it stays with the skin that was in the list when it was last built.
+	wasIn := map[string]bool{}
+	for _, f := range old.Adopted {
+		wasIn[strings.ToLower(f)] = true
+	}
+	sort.SliceStable(present, func(i, j int) bool {
+		return !wasIn[strings.ToLower(present[i].Folder)] && wasIn[strings.ToLower(present[j].Folder)]
+	})
+	for _, a := range present {
+		if ad.held[a.Aircraft] == nil {
+			ad.held[a.Aircraft] = map[int]string{}
+		}
+		ad.held[a.Aircraft][a.Number] = adoptedKey(a.Folder, a.Row)
+	}
+	installed := map[string]bool{}
+	for _, m := range mods {
+		ad.ourKeys[m.Manifest.Key] = true
+		for _, sl := range m.Manifest.Slots {
+			installed[m.Manifest.Key+"/"+sl.Key] = true
+		}
+	}
+	live := map[string]bool{}
+	for _, k := range old.Mods {
+		live[k] = true
+	}
+	for _, a := range old.Assign {
+		ad.reservedIDs[a.UnlockID] = true // ids ever given out are never given to another skin
+		if a.UnlockID2 != 0 {
+			ad.reservedIDs[a.UnlockID2] = true
+		}
+		k := a.Mod + "/" + a.Slot
+		if !installed[k] {
+			continue
+		}
+		// a skin of ours coming back (its mod was taken out) does not take back a number that a skin
+		// from another mod's list has had since; it gets a free one (see assignNumbers)
+		if !live[k] && ad.held[a.Aircraft][a.Number] != "" {
+			continue
+		}
+		ad.reserve(a.Aircraft, a.Number)
+	}
+	for _, id := range old.Retired {
+		ad.reservedIDs[id] = true
+	}
+	for i := range adopted {
+		if adopted[i].read {
+			adoptRows(j, sc, st, ut, &adopted[i], read[i].st, read[i].ut, ad)
+		}
+	}
+}
+
+// readAdopted reads another mod's skin list and unlock list (nil for one it does not have).
+func readAdopted(sc *Schema, am *AdoptedMod) (*SkinTable, *UnlockTable) {
 	var fst *SkinTable
 	var fut *UnlockTable
 	for _, u := range am.utocs {
 		a, b, err := readZenSkinTables(u, sc)
 		if err != nil {
 			am.Problem = "its skin list could not be read (" + err.Error() + "), so its skins are not in the merged list"
-			j.Log("%s: %s", am.Folder, am.Problem)
-			return
+			return nil, nil
 		}
 		if a != nil {
 			fst = a
@@ -97,32 +252,63 @@ func adoptRows(j *Job, sc *Schema, st *SkinTable, ut *UnlockTable, am *AdoptedMo
 			fut = b
 		}
 	}
-	baseRows := map[string]int{}
-	for i, r := range st.Rows {
-		baseRows[r.Key] = i
+	am.read = true
+	return fst, fut
+}
+
+// adoptedRecords gives the records of other mods' skins to keep: those placed now, and those of
+// mods whose lists are not in the merged list now (taken out, or not readable), for when they are back.
+func adoptedRecords(old SkinListState, adopted []AdoptedMod) []AdoptedAssign {
+	var out []AdoptedAssign
+	now := map[string]bool{}
+	for _, am := range adopted {
+		if am.read {
+			now[strings.ToLower(am.Folder)] = true
+			out = append(out, am.assign...)
+		}
 	}
-	baseEntries := map[int64]int{}
+	for _, a := range old.AdoptedSkins {
+		if !now[strings.ToLower(a.Folder)] {
+			out = append(out, a)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if fi, fj := strings.ToLower(out[i].Folder), strings.ToLower(out[j].Folder); fi != fj {
+			return fi < fj
+		}
+		return out[i].Row < out[j].Row
+	})
+	return out
+}
+
+// adoptRows copies another mod's changes (from its lists fst and fut, either may be nil) into the lists.
+func adoptRows(j *Job, sc *Schema, st *SkinTable, ut *UnlockTable, am *AdoptedMod, fst *SkinTable, fut *UnlockTable, ad *adoption) {
 	entries := ut.Entries()
+	entryAt := map[int64]int{}
 	for i, e := range entries {
-		baseEntries[e.Int("ID")] = i
+		entryAt[e.Int("ID")] = i
 	}
-	taken := func(a, n int) bool {
-		if reserved[a] != nil && reserved[a][n] {
+	taken := func(a, n int, self string) bool {
+		if ad.reserved[a][n] {
+			return true
+		}
+		if h := ad.held[a][n]; h != "" && h != self {
 			return true
 		}
 		return st.Find(skinIDOf(a, n)) != nil
 	}
 	usedIDs := ut.UsedIDs()
-	for id := range reservedIDs {
+	for id := range ad.reservedIDs {
 		usedIDs[id] = true
 	}
+	inRange := func(id int64) bool { return id >= ut.MinID() && id <= ut.MaxID() }
 	// unlock entries of the other mod by the skin they unlock
 	unlockFor := map[int64]*Obj{}
 	if fut != nil {
 		for _, e := range fut.Entries() {
 			id := e.Int("ID")
-			if i, ok := baseEntries[id]; ok {
-				if !sameObj(sc, e, entries[i]) {
+			if g, ok := ad.game.entries[id]; ok {
+				if i, ok := entryAt[id]; ok && !sameObj(sc, e, g) {
 					entries[i] = e.Clone()
 					am.Unlocks++
 				}
@@ -140,9 +326,13 @@ func adoptRows(j *Job, sc *Schema, st *SkinTable, ut *UnlockTable, am *AdoptedMo
 	var added []newRow
 	if fst != nil {
 		for _, r := range fst.Rows {
-			if i, ok := baseRows[r.Key]; ok {
-				if !sameObj(sc, r.Obj, st.Rows[i].Obj) {
-					st.Rows[i] = SkinRow{Key: r.Key, Obj: r.Obj.Clone()}
+			if g, ok := ad.game.rows[r.Key]; ok {
+				if !sameObj(sc, r.Obj, g) {
+					for i := range st.Rows {
+						if st.Rows[i].Key == r.Key {
+							st.Rows[i] = SkinRow{Key: r.Key, Obj: r.Obj.Clone()}
+						}
+					}
 					am.Changed++
 				}
 				continue
@@ -151,7 +341,7 @@ func adoptRows(j *Job, sc *Schema, st *SkinTable, ut *UnlockTable, am *AdoptedMo
 			if id <= 0 {
 				continue
 			}
-			if nk := r.Obj.Str("SkinNameTextID"); strings.HasPrefix(nk, "SS_") && ourKeys[textKeyMod(nk)] {
+			if nk := r.Obj.Str("SkinNameTextID"); strings.HasPrefix(nk, "SS_") && ad.ourKeys[textKeyMod(nk)] {
 				am.Skipped++ // one of this program's own skins, in the copy of the list its mod shares
 				continue
 			}
@@ -170,11 +360,18 @@ func adoptRows(j *Job, sc *Schema, st *SkinTable, ut *UnlockTable, am *AdoptedMo
 	for _, nr := range added {
 		oldID := nr.row.SkinID()
 		a := aircraftOf(oldID)
-		num := nr.wanted
-		if num <= 0 || num > lastSlotNumber || taken(a, num) {
-			num = 0
+		self := adoptedKey(am.Folder, nr.row.Key)
+		rec, had := ad.kept[self]
+		had = had && rec.Aircraft == a
+		num := 0
+		switch {
+		case had && rec.Number > 0 && rec.Number <= lastSlotNumber && !taken(a, rec.Number, self):
+			num = rec.Number // the number it had here before
+		case nr.wanted > 0 && nr.wanted <= lastSlotNumber && !taken(a, nr.wanted, self):
+			num = nr.wanted
+		default:
 			for n := firstSlotNumber; n <= lastSlotNumber; n++ {
-				if !taken(a, n) {
+				if !taken(a, n, self) {
 					num = n
 					break
 				}
@@ -184,15 +381,13 @@ func adoptRows(j *Job, sc *Schema, st *SkinTable, ut *UnlockTable, am *AdoptedMo
 			am.Problem = "an aircraft has no free skin numbers left for its skins"
 			continue
 		}
-		if reserved[a] == nil {
-			reserved[a] = map[int]bool{}
-		}
-		reserved[a][num] = true
+		ad.reserve(a, num)
 		newID := skinIDOf(a, num)
 		o := nr.row.Obj
 		o.Set(sc, "SkinID", int32(newID))
 		st.Insert(a, SkinRow{Key: skinRowKey(newID), Obj: o})
 		am.NewSkins = append(am.NewSkins, AdoptedSkin{Plane: nr.row.Plane(), Aircraft: a, Wanted: nr.wanted, Number: num, NameKey: o.Str("SkinNameTextID"), Moved: num != nr.wanted})
+		am.assign = append(am.assign, AdoptedAssign{Folder: am.Folder, Row: nr.row.Key, Aircraft: a, Number: num})
 		// its unlock rule, pointed at the skin's number; a skin without one is unlocked straight away
 		var e *Obj
 		if src := unlockFor[oldID]; src != nil {
@@ -205,9 +400,12 @@ func adoptRows(j *Job, sc *Schema, st *SkinTable, ut *UnlockTable, am *AdoptedMo
 			}
 		}
 		uid := int64(0)
-		if e != nil && !usedIDs[e.Int("ID")] && e.Int("ID") >= ut.MinID() && e.Int("ID") <= ut.MaxID() {
+		switch {
+		case had && rec.Number == num && rec.UnlockID != 0 && !usedIDs[rec.UnlockID] && inRange(rec.UnlockID):
+			uid = rec.UnlockID // the id its rule had here before
+		case e != nil && !usedIDs[e.Int("ID")] && inRange(e.Int("ID")):
 			uid = e.Int("ID")
-		} else {
+		default:
 			for x := ut.lastLowID() + unlockRoom + 1; x <= ut.MaxID(); x++ {
 				if !usedIDs[x] {
 					uid = x
@@ -219,7 +417,7 @@ func adoptRows(j *Job, sc *Schema, st *SkinTable, ut *UnlockTable, am *AdoptedMo
 			continue
 		}
 		usedIDs[uid] = true
-		reservedIDs[uid] = true
+		ad.reservedIDs[uid] = true
 		if e == nil {
 			var err error
 			if e, err = ut.NewUnlockEntry(uid, newID); err != nil {
@@ -229,6 +427,7 @@ func adoptRows(j *Job, sc *Schema, st *SkinTable, ut *UnlockTable, am *AdoptedMo
 			e.Set(sc, "ID", uint32(uid))
 		}
 		ut.Append(e)
+		am.assign[len(am.assign)-1].UnlockID = uid
 		am.Unlocks++
 	}
 	if len(am.NewSkins) > 0 || am.Changed > 0 || am.Unlocks > 0 {

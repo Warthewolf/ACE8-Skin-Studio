@@ -223,3 +223,100 @@ func TestReturningSkinDoesNotTakeNumber(t *testing.T) {
 		}
 	}
 }
+
+// A skin that ends up at another number (or on another aircraft) gets a new unlock id: the game
+// remembers that it carried out the old rule (when the skin was unlocked), and would never carry it
+// out again for the skin's new number. At the number it had, a skin keeps its unlock id.
+func TestMovedSkinGetsNewUnlockID(t *testing.T) {
+	st, ut := synthGameLists()
+	st.Rows = append(st.Rows, synthSkinRow(5001001, "/Game/Vehicles/Aircraft/PP/PP0005_f14d/Materials/001/MI_PP0005_f14d_001_Decal", "AircraftSkin_Name_f14d_001"))
+	arctic := fakeSlotMod("Arctic_abcde", UnlockMission)
+	crimson := fakeSlotMod("Crimson_abcde", UnlockMission)
+	records := []SlotAssign{
+		{Mod: "Arctic_abcde", Slot: "s1", Aircraft: 21, Number: 602, UnlockID: 1400689},  // parked: its mod was taken out
+		{Mod: "Crimson_abcde", Slot: "s1", Aircraft: 21, Number: 602, UnlockID: 1400690}, // got 602 after that
+	}
+	old := SkinListState{Assign: records, Mods: []string{"Crimson_abcde/s1"}, Retired: []int64{1400689, 1400690}}
+	_, assign, _ := assignNumbers(st, ut, []InstalledSlotMod{arctic, crimson}, old)
+	got := map[string]SlotAssign{}
+	for _, a := range assign {
+		got[a.Mod] = a
+	}
+	if c := got["Crimson_abcde"]; c.Number != 602 || c.UnlockID != 1400690 {
+		t.Fatalf("crimson %+v", c)
+	}
+	if a := got["Arctic_abcde"]; a.Number != 601 || a.UnlockID == 0 || a.UnlockID == 1400689 || a.UnlockID == 1400690 {
+		t.Fatalf("arctic %+v", a)
+	}
+	// back at its own number, it keeps its id
+	_, assign, _ = assignNumbers(st, ut, []InstalledSlotMod{arctic}, SkinListState{Assign: records[:1], Retired: old.Retired})
+	if len(assign) != 1 || assign[0].Number != 602 || assign[0].UnlockID != 1400689 {
+		t.Fatalf("arctic alone %+v", assign)
+	}
+	// "Update this skin" puts it on another aircraft: a new number there, and a new unlock id
+	f14 := fakeSlotMod("Arctic_abcde", UnlockMission)
+	f14.Manifest.Slots[0].Aircraft, f14.Manifest.Slots[0].Template, f14.Manifest.Slots[0].Plane = 5, 5001001, "f14d"
+	_, assign, _ = assignNumbers(st, ut, []InstalledSlotMod{f14}, SkinListState{Assign: records[:1], Mods: []string{"Arctic_abcde/s1"}, Retired: old.Retired})
+	if len(assign) != 1 || assign[0].Aircraft != 5 || assign[0].Number != 601 || assign[0].UnlockID == 1400689 || assign[0].UnlockID == 0 {
+		t.Fatalf("arctic on the F-14 %+v", assign)
+	}
+}
+
+// The key of a skin (or emblem) taken out of its mod is never given to a new one: the skin list
+// keeps the old one's record, so the new one would be taken for it and get its number and unlock id.
+func TestRemovedSkinKeyIsNotReused(t *testing.T) {
+	s := Settings{ModsDir: t.TempDir(), Workspace: t.TempDir()}
+	saveListState(s, SkinListState{
+		Assign:  []SlotAssign{{Mod: "Alpha_abcde", Slot: "s1", Aircraft: 21, Number: 601, UnlockID: 1400689}, {Mod: "Bravo_abcde", Slot: "s3", Aircraft: 21, Number: 602, UnlockID: 1400690}},
+		Emblems: []EmblemAssign{{Mod: "Alpha_abcde", Emblem: "e1", Number: 601, UnlockID: 1500202}},
+	})
+	alpha := &ModManifest{Key: "Alpha_abcde", Slots: []SlotDef{{Key: "s2"}}}
+	used := recordedKeys(s, alpha.Key)
+	if k := alpha.nextSlotKey(used); k != "s3" {
+		t.Errorf("new skin key %s", k)
+	}
+	if k := alpha.nextEmblemKey(used); k != "e2" {
+		t.Errorf("new emblem key %s", k)
+	}
+	bravo := &ModManifest{Key: "Bravo_abcde"}
+	if k := bravo.nextSlotKey(recordedKeys(s, bravo.Key)); k != "s1" {
+		t.Errorf("another mod's records count: %s", k)
+	}
+}
+
+// SkinSlotText reads \n in a text file as a line break. A real line break is written that way; a
+// backslash followed by n in the text itself stays as it is.
+func TestIniValueBackslashN(t *testing.T) {
+	// what SkinSlotText does with a value (load_file in skinslottext.c)
+	unescape := func(v string) string {
+		r := []rune(v)
+		var b strings.Builder
+		for k := 0; k < len(r); k++ {
+			if r[k] == '\\' && k+1 < len(r) && r[k+1] == 'n' {
+				b.WriteRune('\n')
+				k++
+			} else {
+				b.WriteRune(r[k])
+			}
+		}
+		return b.String()
+	}
+	for in, want := range map[string]string{
+		`Painted in D:\new skins`:    `Painted in D:\new skins`,
+		`C:\\new`:                    `C:\\new`,
+		"Two\r\nlines":               "Two\nlines",
+		"A backslash\\\nthen a line": "A backslash\\\nthen a line",
+		"  plain  ":                  "plain",
+	} {
+		v := iniValue(in)
+		if strings.ContainsAny(v, "\r\n") {
+			t.Errorf("%q: %q is more than one line", in, v)
+		}
+		if got := strings.ReplaceAll(unescape(v), "\u2060", ""); got != want {
+			t.Errorf("%q: written %q, shown %q", in, v, got)
+		}
+	}
+	if v := iniValue("Dark navy.\nWith feathers."); v != `Dark navy.\nWith feathers.` {
+		t.Errorf("line break written as %q", v)
+	}
+}

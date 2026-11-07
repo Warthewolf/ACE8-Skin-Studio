@@ -269,7 +269,7 @@ func doBuildSlot(j *Job, s Settings, r slotReq) (any, error) {
 			return nil, errors.New("that skin is no longer in the mod")
 		}
 	} else {
-		slotKey = m.nextSlotKey()
+		slotKey = m.nextSlotKey(recordedKeys(s, m.Key))
 	}
 	dir := slotInputDir(s, m, slotKey)
 	own := slotAssetDir(m.Key, slotKey)

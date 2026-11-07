@@ -188,10 +188,8 @@ func modKind(m InstalledMod) string {
 			return "slots"
 		}
 	}
-	for _, r := range m.Replaces {
-		if r == skinListLabel || r == unlockListLabel {
-			return "tables"
-		}
+	if carriesLists(m) {
+		return "tables"
 	}
 	return ""
 }

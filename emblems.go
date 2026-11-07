@@ -58,10 +58,12 @@ func (m *ModManifest) emblem(key string) *EmblemDef {
 	return nil
 }
 
-func (m *ModManifest) nextEmblemKey() string {
+// nextEmblemKey gives the key for a new emblem: the first one the mod does not have, and that is
+// not in used (see recordedKeys).
+func (m *ModManifest) nextEmblemKey(used map[string]bool) string {
 	for i := 1; ; i++ {
 		k := "e" + strconv.Itoa(i)
-		if m.emblem(k) == nil {
+		if m.emblem(k) == nil && !used[k] {
 			return k
 		}
 	}
@@ -253,14 +255,32 @@ func assignEmblemNumbers(et *SkinTable, ut *UnlockTable, mods []InstalledSlotMod
 			order = append(order, id)
 		}
 	}
-	// emblems that had a number first, in number order, then new ones
-	sort.SliceStable(order, func(i, j int) bool {
-		pi, hi := prev[order[i]]
-		pj, hj := prev[order[j]]
-		if hi != hj {
-			return hi
+	// Emblems that had a number first, in number order, so a newcomer never takes an old emblem's
+	// number: first those that were in the list when it was last built, then those coming back
+	// (their mod was taken out and is back; their old number may have gone to another emblem since),
+	// then new ones.
+	live := map[string]bool{}
+	for _, k := range old.Mods {
+		live[k] = true
+	}
+	rank := func(id string) int {
+		if _, ok := prev[id]; !ok {
+			return 2
 		}
-		return hi && pi.Number < pj.Number
+		if live[id] {
+			return 0
+		}
+		return 1
+	}
+	sort.SliceStable(order, func(i, j int) bool {
+		ri, rj := rank(order[i]), rank(order[j])
+		if ri != rj {
+			return ri < rj
+		}
+		if ri < 2 && prev[order[i]].Number != prev[order[j]].Number {
+			return prev[order[i]].Number < prev[order[j]].Number
+		}
+		return false
 	})
 	var placed []PlacedEmblem
 	var assign []EmblemAssign
@@ -290,8 +310,10 @@ func assignEmblemNumbers(et *SkinTable, ut *UnlockTable, mods []InstalledSlotMod
 			continue
 		}
 		taken[num] = true
+		// its unlock id stays with its emblem id: one that moved to another number gets a new rule
+		// (the game would not carry out the old one again)
 		uid := p.UnlockID
-		if !had || uid <= ut.MinID() || uid > ut.MaxID() || usedIDs[uid] {
+		if !had || p.Number != num || uid <= ut.MinID() || uid > ut.MaxID() || usedIDs[uid] {
 			uid = newID()
 		}
 		if uid == 0 {
@@ -545,7 +567,7 @@ func doBuildEmblem(j *Job, s Settings, r emblemReq) (any, error) {
 			return nil, errors.New("that emblem is no longer in the mod")
 		}
 	} else {
-		key = m.nextEmblemKey()
+		key = m.nextEmblemKey(recordedKeys(s, m.Key))
 	}
 	e := EmblemDef{Key: key, Number: r.Number, Name: r.Name, Description: strings.TrimSpace(r.Description)}
 	if old != nil {

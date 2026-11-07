@@ -105,13 +105,34 @@ func (m *ModManifest) slot(key string) *SlotDef {
 	return nil
 }
 
-func (m *ModManifest) nextSlotKey() string {
+// nextSlotKey gives the key for a new skin: the first one the mod does not have, and that is not in
+// used (see recordedKeys).
+func (m *ModManifest) nextSlotKey(used map[string]bool) string {
 	for i := 1; ; i++ {
 		k := "s" + strconv.Itoa(i)
-		if m.slot(k) == nil {
+		if m.slot(k) == nil && !used[k] {
 			return k
 		}
 	}
+}
+
+// recordedKeys gives the keys of a mod's skins and emblems that the skin list has a record of. A
+// skin taken out of its mod keeps its record (its number and unlock id), so its key is never given
+// to a new skin: that one would be taken for the old one, with its number and unlock rule.
+func recordedKeys(s Settings, modKey string) map[string]bool {
+	st := loadListState(s)
+	out := map[string]bool{}
+	for _, a := range st.Assign {
+		if a.Mod == modKey {
+			out[a.Slot] = true
+		}
+	}
+	for _, a := range st.Emblems {
+		if a.Mod == modKey {
+			out[a.Emblem] = true
+		}
+	}
+	return out
 }
 
 // slotAssetDir is the game folder a slot's own files live in.
@@ -274,6 +295,8 @@ type SkinListState struct {
 	// Emblems and EmblemRetired are the same records for new emblems (2.2.0 on).
 	Emblems       []EmblemAssign `json:"emblems,omitempty"`
 	EmblemRetired []int64        `json:"emblemRetired,omitempty"`
+	// AdoptedSkins are the numbers and unlock ids of skins from other mods' lists (see adopt.go).
+	AdoptedSkins []AdoptedAssign `json:"adoptedSkins,omitempty"`
 }
 
 // The SkinSlotTest experiment (before 2.0.0) gave its two skins the unlock ids right after the
@@ -384,10 +407,10 @@ func assignNumbers(st *SkinTable, ut *UnlockTable, mods []InstalledSlotMod, old 
 			retired[a.UnlockID2] = true
 		}
 	}
-	// An id a skin had before stays its own; a new one is one nobody ever had. New ids follow on from
-	// the game's own, after room for a game update's (see oldUnlockStart). Ids from oldUnlockStart up
-	// were given by 2.0.0 to 2.0.2 with rules the game did not act on, so a skin that had one gets a
-	// new one.
+	// An id a skin had before stays its own while it keeps its number; a new one is one nobody ever
+	// had. New ids follow on from the game's own, after room for a game update's (see oldUnlockStart).
+	// Ids from oldUnlockStart up were given by 2.0.0 to 2.0.2 with rules the game did not act on, so a
+	// skin that had one gets a new one.
 	last := ut.lastLowID() + unlockRoom
 	keepID := func(id int64) bool { return id > ut.MinID() && id < oldUnlockStart && !usedIDs[id] }
 	newID := func() int64 {
@@ -467,9 +490,12 @@ func assignNumbers(st *SkinTable, ut *UnlockTable, mods []InstalledSlotMod, old 
 			continue
 		}
 		taken[num] = true
+		// An unlock id stays with the skin id it unlocks. The game remembers which rules it has
+		// carried out, so a skin that moved to another number (or aircraft) gets a new rule; under
+		// its old one it would never be unlocked where it is now.
 		p, had := prev[id]
 		uid := p.UnlockID
-		if !had || !keepID(uid) {
+		if !had || p.Aircraft != sl.Aircraft || p.Number != num || !keepID(uid) {
 			uid = newID()
 		}
 		usedIDs[uid] = true
@@ -597,11 +623,14 @@ func (s Settings) textsDir() string {
 	return filepath.Join(u, "SkinSlotText", "Scripts", "texts")
 }
 
-// iniValue makes a text fit on one line of a SkinSlotText file.
+// iniValue makes a text fit on one line of a SkinSlotText file. SkinSlotText reads \n as a line
+// break and has no way to write a backslash itself, so a backslash followed by n in the text gets
+// an invisible word joiner (U+2060) between the two.
 func iniValue(s string) string {
 	s = strings.ReplaceAll(s, "\r\n", "\n")
 	s = strings.ReplaceAll(s, "\r", "\n")
 	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, `\n`, "\\\u2060n")
 	return strings.ReplaceAll(s, "\n", `\n`)
 }
 
@@ -848,33 +877,9 @@ func RebuildSkinList(j *Job, s Settings) (*ListResult, error) {
 	old := loadListState(s)
 	// Skins from other mods' lists go in first. They keep their own numbers where they can, but never
 	// take a number one of this program's skins already has.
-	avoid, avoidIDs := map[int]map[int]bool{}, map[int64]bool{}
-	ourKeys := map[string]bool{}
-	installed := map[string]bool{}
-	for _, m := range mods {
-		ourKeys[m.Manifest.Key] = true
-		for _, sl := range m.Manifest.Slots {
-			installed[m.Manifest.Key+"/"+sl.Key] = true
-		}
-	}
-	for _, a := range old.Assign {
-		avoidIDs[a.UnlockID] = true // ids ever given out are never given to another skin
-		if a.UnlockID2 != 0 {
-			avoidIDs[a.UnlockID2] = true
-		}
-		if installed[a.Mod+"/"+a.Slot] {
-			if avoid[a.Aircraft] == nil {
-				avoid[a.Aircraft] = map[int]bool{}
-			}
-			avoid[a.Aircraft][a.Number] = true
-		}
-	}
-	for _, id := range old.Retired {
-		avoidIDs[id] = true
-	}
 	baseIDs := ut.UsedIDs()
+	adoptAll(j, st, ut, mods, adopted, old)
 	for i := range adopted {
-		adoptRows(j, sc, st, ut, &adopted[i], avoid, avoidIDs, ourKeys)
 		res.Adopted = append(res.Adopted, adopted[i])
 		if adopted[i].Problem != "" {
 			res.Problems = append(res.Problems, adopted[i].Folder+": "+adopted[i].Problem+".")
@@ -975,7 +980,7 @@ func RebuildSkinList(j *Job, s Settings) (*ListResult, error) {
 	sort.Slice(ret, func(i, j int) bool { return ret[i] < ret[j] })
 	eAssign, eRetired := keepEmblemRecords(old, emblemAssign)
 	saveListState(s, SkinListState{Assign: assign, Game: paksSignature(s.PaksDir), Mods: built, Adopted: adoptedNames, Retired: ret, Foreign: foreign, Layout: slotLayout,
-		Emblems: eAssign, EmblemRetired: eRetired})
+		Emblems: eAssign, EmblemRetired: eRetired, AdoptedSkins: adoptedRecords(old, adopted)})
 	putListLast(s, adopted)
 	if len(mods) > 0 {
 		if err := installSkinSlotText(s); err != nil {
@@ -1006,9 +1011,12 @@ func RebuildSkinList(j *Job, s Settings) (*ListResult, error) {
 }
 
 // writeMaterialSlots writes every placed skin's material slot under root and notes in placed where
-// its material and icon now are. A skin whose files cannot be made keeps the paths in its mod.
+// its material and icon now are. A skin whose files cannot be made keeps the paths in its mod. st
+// holds the rows of the list so far (the game's, and other mods' skins taken in): the files they
+// use are never written over.
 func writeMaterialSlots(s Settings, root string, st *SkinTable, placed []PlacedSlot, refs map[string]slotRef) []string {
 	var notes []string
+	inUse := pathsInList(st)
 	for i := range placed {
 		p := &placed[i]
 		if p.Problem != "" {
@@ -1019,7 +1027,7 @@ func writeMaterialSlots(s Settings, root string, st *SkinTable, placed []PlacedS
 		if tmpl == nil {
 			continue
 		}
-		mat, icon, ns, err := numberedSlotFiles(s, root, tmpl, *r.mod, *r.slot, p.Number)
+		mat, icon, ns, err := numberedSlotFiles(s, root, tmpl, *r.mod, *r.slot, p.Number, inUse)
 		notes = append(notes, ns...)
 		if err != nil {
 			notes = append(notes, fmt.Sprintf("%s: its material slot could not be made (%v); it uses the files in its mod", p.Name, err))

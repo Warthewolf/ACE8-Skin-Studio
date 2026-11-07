@@ -613,8 +613,19 @@ func planImport(j *Job, s Settings, p string) (*ImportPlan, error) {
 			}
 		}
 		incoming := InstalledSlotMod{Dir: filepath.Join(s.ModsDir, plan.Folder), Manifest: m}
-		placed, _, _ := assignNumbers(st, ut, append(others, incoming), loadListState(s))
+		after := append(others, incoming)
+		old := loadListState(s)
+		// the skins of other mods' lists are taken in first, as the skin list does it (their log
+		// lines are left for the install)
+		tableMods := findTableMods(s, installed)
+		adoptAll(&Job{}, st, ut, after, tableMods, old)
+		placed, _, _ := assignNumbers(st, ut, after, old)
 		owner := map[string]string{}
+		for _, am := range tableMods {
+			for _, sk := range am.NewSkins {
+				owner[fmt.Sprintf("%d/%d", sk.Aircraft, sk.Number)] = "a skin from " + am.Folder
+			}
+		}
 		for _, ps := range placed {
 			if ps.Mod != m.Key && ps.Number > 0 {
 				owner[fmt.Sprintf("%d/%d", ps.Aircraft, ps.Number)] = ps.Name + " (" + ps.ModTitle + ")"

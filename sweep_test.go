@@ -52,7 +52,7 @@ func TestSweepMaterialSlots(t *testing.T) {
 			im := InstalledSlotMod{Dir: dir, Manifest: &ModManifest{Key: "Sweep_abcde"}}
 			writeSlotFiles(t, dir, map[string]*Package{obj: q})
 			s := Settings{Project: "Live"}
-			gotMat, gotIcon, notes, err := numberedSlotFiles(s, filepath.Join(dir, "out"), &r, im, sl, 777)
+			gotMat, gotIcon, notes, err := numberedSlotFiles(s, filepath.Join(dir, "out"), &r, im, sl, 777, nil)
 			done++
 			if err != nil || len(notes) > 0 || (p == mat && !strings.Contains(gotMat, "/777/")) || (p == icon && !strings.HasSuffix(gotIcon, "_777")) {
 				failed++

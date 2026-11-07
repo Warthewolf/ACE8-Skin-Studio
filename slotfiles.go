@@ -240,12 +240,32 @@ func parentPath(p string) string {
 	return p
 }
 
+// listPaths are the files the rows of a skin list use: materials and icons, and (ending in "/")
+// the folders of the materials, where their damage materials are too.
+type listPaths map[string]bool
+
+func pathsInList(st *SkinTable) listPaths {
+	out := listPaths{}
+	for _, r := range st.Rows {
+		if m := packagePathOf(r.Material()); strings.HasPrefix(m, "/Game/") {
+			out[m] = true
+			out[parentPath(m)+"/"] = true
+		}
+		if ic := packagePathOf(r.Obj.Str("MenuIconImageRef")); strings.HasPrefix(ic, "/Game/") {
+			out[ic] = true
+		}
+	}
+	return out
+}
+
 // numberedSlotFiles writes a skin's material slot under root (raw files, ready to pack): its
 // material and damage material in <aircraft>/Materials/<number>/, its icon next to the game's icons,
 // all named after its number. It gives the material and icon paths for the skin's row ("" where the
 // skin has none of its own). A file that cannot be renamed safely is written under the path it was
-// made with instead, which works just as well, and the reason is given back as a note.
-func numberedSlotFiles(s Settings, root string, tmpl *SkinRow, im InstalledSlotMod, sl SlotDef, number int) (mat, icon string, notes []string, err error) {
+// made with instead, which works just as well, and the reason is given back as a note. So are the
+// files when a numbered path is one another skin of the list uses (inUse): a skin from another
+// mod's list that was moved off this number still uses its files there.
+func numberedSlotFiles(s Settings, root string, tmpl *SkinRow, im InstalledSlotMod, sl SlotDef, number int, inUse listPaths) (mat, icon string, notes []string, err error) {
 	if number < firstSlotNumber || number > lastSlotNumber {
 		return "", "", nil, fmt.Errorf("skin number %d is out of range", number)
 	}
@@ -269,6 +289,7 @@ func numberedSlotFiles(s Settings, root string, tmpl *SkinRow, im InstalledSlotM
 		newPath        string
 	}
 	var moves []move
+	keep := "" // why the files keep the paths they were made with
 	for _, p := range pkgs {
 		obj := packageBaseName(p.Name)
 		mv := move{p: p, oldObj: obj}
@@ -281,9 +302,15 @@ func numberedSlotFiles(s Settings, root string, tmpl *SkinRow, im InstalledSlotM
 				mv.newObj = obj + "_" + nnn
 			}
 			mv.newPath = parentPath(tmplIcon) + "/" + mv.newObj
+			if inUse[mv.newPath] {
+				keep = "another skin in the list uses " + mv.newPath
+			}
 		default: // the material and its damage material
 			mv.newObj = swapNumber(obj, matFolder, nnn)
 			mv.newPath = matRoot + "/" + nnn + "/" + mv.newObj
+			if inUse[mv.newPath] || inUse[parentPath(mv.newPath)+"/"] {
+				keep = "another skin in the list uses the material folder " + parentPath(mv.newPath)
+			}
 		}
 		moves = append(moves, mv)
 	}
@@ -301,6 +328,9 @@ func numberedSlotFiles(s Settings, root string, tmpl *SkinRow, im InstalledSlotM
 	}
 	var outs []out
 	for _, mv := range moves {
+		if keep != "" {
+			break
+		}
 		renames := map[string]string{mv.oldObj: mv.newObj}
 		// the other files of this skin that this one refers to move with it
 		for i := range mv.p.Imports {
@@ -312,14 +342,17 @@ func numberedSlotFiles(s Settings, root string, tmpl *SkinRow, im InstalledSlotM
 		}
 		ua, ue, rerr := mv.p.Rename(mv.newPath, renames)
 		if rerr != nil {
-			notes = append(notes, fmt.Sprintf("%s keeps the paths it was made with: %v", sl.Name, rerr))
-			outs = nil
-			for _, mv := range moves {
-				outs = append(outs, out{mv.p.Name, mv.p.UAsset, mv.p.UExp})
-			}
+			keep = rerr.Error()
 			break
 		}
 		outs = append(outs, out{mv.newPath, ua, ue})
+	}
+	if keep != "" {
+		notes = append(notes, fmt.Sprintf("%s keeps the paths it was made with: %s", sl.Name, keep))
+		outs = nil
+		for _, mv := range moves {
+			outs = append(outs, out{mv.p.Name, mv.p.UAsset, mv.p.UExp})
+		}
 	}
 	placedAt := map[string]string{} // made-with path -> where it was written
 	for i, o := range outs {

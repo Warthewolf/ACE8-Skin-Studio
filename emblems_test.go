@@ -260,3 +260,43 @@ func TestEmblemSquareBleeds(t *testing.T) {
 		t.Errorf("corner %v", c[:4])
 	}
 }
+
+// An emblem whose mod was taken out and comes back does not take back a number another emblem has
+// had since; that emblem keeps it, whatever order the mods' folders are in. The one that moves gets
+// a new unlock id (the game would not carry out its old rule again for its new number).
+func TestReturningEmblemDoesNotTakeNumber(t *testing.T) {
+	sc := builtinSchema
+	et := &SkinTable{sc: sc, Rows: []SkinRow{{Key: "Emblem_010", Obj: &Obj{Props: []Prop{{Name: "EmblemID", Val: int32(1010001003)}}}}}}
+	o := &Obj{Struct: unlockStruct}
+	o.Set(sc, "MinId", uint32(1500000))
+	o.Set(sc, "MaxId", uint32(1509999))
+	o.Set(sc, "ConfigurationEntryList", []any{&Obj{Props: []Prop{{Name: "ID", Val: uint32(1500001)}}}, &Obj{Props: []Prop{{Name: "ID", Val: uint32(1500101)}}}})
+	eu := &UnlockTable{sc: sc, Obj: o, action: "UnlockEmblem", cutoff: 1510000}
+	mod := func(key string) InstalledSlotMod {
+		return InstalledSlotMod{Dir: "/x/" + key, Manifest: &ModManifest{Key: key, Title: key, Emblems: []EmblemDef{{Key: "e1", Name: key}}}}
+	}
+	alpha, zulu := mod("Alpha_abcde"), mod("Zulu_abcde")
+	records := []EmblemAssign{
+		{Mod: "Alpha_abcde", Emblem: "e1", Number: 601, UnlockID: 1500202}, // parked: its mod was taken out
+		{Mod: "Zulu_abcde", Emblem: "e1", Number: 601, UnlockID: 1500203},  // got 601 after that
+	}
+	old := SkinListState{Emblems: records, Mods: []string{"Zulu_abcde/e1"}, EmblemRetired: []int64{1500202, 1500203}}
+	for _, mods := range [][]InstalledSlotMod{{alpha, zulu}, {zulu, alpha}} {
+		_, assign, _ := assignEmblemNumbers(et, eu, mods, old)
+		got := map[string]EmblemAssign{}
+		for _, a := range assign {
+			got[a.Mod] = a
+		}
+		if z := got["Zulu_abcde"]; z.Number != 601 || z.UnlockID != 1500203 {
+			t.Fatalf("zulu %+v", z)
+		}
+		if a := got["Alpha_abcde"]; a.Number != 602 || a.UnlockID == 0 || a.UnlockID == 1500202 || a.UnlockID == 1500203 {
+			t.Fatalf("alpha %+v", a)
+		}
+	}
+	// back at its own number, it keeps its id
+	_, assign, _ := assignEmblemNumbers(et, eu, []InstalledSlotMod{alpha}, SkinListState{Emblems: records[:1], EmblemRetired: old.EmblemRetired})
+	if len(assign) != 1 || assign[0].Number != 601 || assign[0].UnlockID != 1500202 {
+		t.Fatalf("alpha alone %+v", assign)
+	}
+}
