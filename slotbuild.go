@@ -565,18 +565,23 @@ func installProject(s Settings, m *ModManifest, containerFiles []string) error {
 	if err := os.MkdirAll(dest, 0o755); err != nil {
 		return err
 	}
-	// old container files go first, so a mod that no longer has files of its own does not keep them
+	// the new container files go in all together (or not at all, see installFiles); then old ones
+	// the mod no longer has are taken out, so it does not keep them
+	if err := installFiles(dest, containerFiles); err != nil {
+		return err
+	}
+	now := map[string]bool{}
+	for _, f := range containerFiles {
+		now[strings.ToLower(filepath.Base(f))] = true
+	}
 	if es, err := os.ReadDir(dest); err == nil {
 		for _, e := range es {
-			if modFileExts[strings.ToLower(filepath.Ext(e.Name()))] {
+			if modFileExts[strings.ToLower(filepath.Ext(e.Name()))] && !now[strings.ToLower(e.Name())] {
 				if err := os.Remove(filepath.Join(dest, e.Name())); err != nil {
-					return fmt.Errorf("could not replace %s (%v). If the game is running, close it and try again", e.Name(), err)
+					return fmt.Errorf("could not take out the old file %s (%v). If the game is running, close it and try again", e.Name(), err)
 				}
 			}
 		}
-	}
-	if err := installFiles(dest, containerFiles); err != nil {
-		return err
 	}
 	if err := installSlotFiles(filepath.Join(s.projectDir(m.Key), slotFilesFolder), dest); err != nil {
 		return fmt.Errorf("could not write the skins' materials and icons into the mods folder: %v", err)

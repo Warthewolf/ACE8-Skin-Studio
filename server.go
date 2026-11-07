@@ -406,7 +406,11 @@ func makeThumb(p string, maxW int, alpha bool) ([]byte, error) {
 	}
 	thumbMu.Unlock()
 	defer tidyAfterThumbs()
-	im, err := LoadImage(p)
+	load := LoadImage
+	if e := strings.ToLower(filepath.Ext(p)); e == ".jpg" || e == ".jpeg" {
+		load = LoadPicture // photos kept with radio portraits before 2.5.0 can be JPEG
+	}
+	im, err := load(p)
 	if err != nil {
 		return nil, err
 	}
