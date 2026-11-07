@@ -117,8 +117,14 @@ func uniqueFolder(modsDir, want string) string {
 	}
 	name := base
 	for i := 2; ; i++ {
-		if _, err := os.Stat(filepath.Join(modsDir, name)); os.IsNotExist(err) && !strings.EqualFold(name, skinListMod) {
+		_, err := os.Stat(filepath.Join(modsDir, name))
+		if !strings.EqualFold(name, skinListMod) && (os.IsNotExist(err) || (err != nil && i > 2)) {
+			// free; or the mods folder cannot be looked into at all (an unplugged drive, no
+			// permission): writing there then says why, instead of looking for a name for ever
 			return name
+		}
+		if i > 10000 {
+			return fmt.Sprintf("%s_%d", base, i)
 		}
 		name = fmt.Sprintf("%s_%d", base, i)
 	}

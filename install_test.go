@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 )
 
 // folderFiles lists a folder's entries with each file's contents ("<dir>" for a folder).
@@ -227,5 +228,30 @@ func TestInstallFilesAfterInterruptedInstall(t *testing.T) {
 		if b, _ := os.ReadFile(filepath.Join(dest, n)); string(b) != "new "+n {
 			t.Fatalf("%s is %q", n, b)
 		}
+	}
+}
+
+// A mods folder that cannot be looked into gives a name at once instead of looking for one for ever.
+func TestUniqueFolderUnreadableModsFolder(t *testing.T) {
+	root := t.TempDir()
+	notDir := filepath.Join(root, "file")
+	os.WriteFile(notDir, []byte("x"), 0o644)
+	done := make(chan string, 1)
+	go func() { done <- uniqueFolder(notDir, "MySkin") }()
+	select {
+	case got := <-done:
+		if got == "" {
+			t.Fatal("no name")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("still looking for a folder name")
+	}
+	mods := filepath.Join(root, "Mods")
+	os.MkdirAll(filepath.Join(mods, "MySkin"), 0o755)
+	if got := uniqueFolder(mods, "MySkin"); got != "MySkin_2" {
+		t.Fatalf("taken name: %q", got)
+	}
+	if got := uniqueFolder(mods, skinListMod); strings.EqualFold(got, skinListMod) {
+		t.Fatalf("skin list name given out: %q", got)
 	}
 }
