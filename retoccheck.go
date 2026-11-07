@@ -271,7 +271,7 @@ func retocMissingNote() string {
 		if _, err := os.Stat(filepath.Join(dataDir, "retoc.exe")); err == nil {
 			return "retoc.exe next to this program is the Windows version, which does not run on Linux. The Linux package of Skin Studio comes with retoc for Linux: get it again, or download " + retocLinuxAsset() + " from " + retocReleases + ", unpack it, and put the file retoc next to this program."
 		}
-		return "retoc was not found. It comes with Skin Studio, next to the program: get the Linux package again, or download " + retocLinuxAsset() + " from " + retocReleases + ", unpack it, and put the file retoc next to this program (or choose it here)."
+		return "retoc was not found. It comes with Skin Studio, next to the program: get the Linux package again, or download " + retocLinuxAsset() + " from " + retocReleases + ", unpack it, and put the file retoc next to this program (or choose it as the retoc program in Settings)."
 	}
-	return "retoc was not found. It comes with Skin Studio, next to the program: get the package again (antivirus programs sometimes remove it), or download it from " + retocReleases + " and choose " + exeName + " here."
+	return "retoc was not found. It comes with Skin Studio, next to the program: get the package again (antivirus programs sometimes remove it), or download it from " + retocReleases + " and choose " + exeName + " as the retoc program in Settings."
 }

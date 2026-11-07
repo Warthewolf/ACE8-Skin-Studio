@@ -43,11 +43,7 @@ function defaultPilotMod() {
 
 function renderPilots() {
   const idx = pilots.idx, has = !!(idx && (idx.pilots.length || idx.portraits.length));
-  const c = STATE && STATE.checks;
-  const need = c ? ['workspace', 'retoc', 'paks', 'aes'].filter(k => !c[k].ok) : [];
-  const su = $('#piSetup');
-  su.hidden = !need.length;
-  if (need.length) su.replaceChildren(el('strong', { text: 'Pilots needs a little setup first. ' }), need.map(k => c[k].note).join(' '), ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+  setupBanner($('#piSetup'), STATE ? needsOf('pilots') : [], 'Pilots needs a little setup first.');
   $('#piFind').textContent = has ? 'Look again' : 'Find pilots in the game files';
   $('#piFindHint').textContent = !has
     ? 'Reads the game\'s file list, fetches the radio portraits (they are small) and makes a small picture of each helmet. The full-size helmet files are deleted again.'
@@ -64,7 +60,14 @@ function renderPilots() {
   if (!pilots.nameTouched) $('#piName').value = defaultPilotMod();
   renderPilotHelmet();
   renderPortraits();
+  renumberSteps('#page-pilots');
   pilotsButtons();
+}
+// Steps are numbered as they are shown: blocks that are hidden until pilots are found do not leave
+// gaps in the numbers.
+function renumberSteps(page) {
+  let n = 0;
+  $$(page + ' .block').forEach(b => { const st = $('h2 .step', b); if (st && !b.hidden) st.textContent = String(++n).padStart(2, '0'); });
 }
 
 function pickPilot(id) {
@@ -145,6 +148,7 @@ async function replanPilot() {
 }
 wireDrop($('#piDrop'), files => addPilotFiles(files, ''));
 $('#piPick').addEventListener('click', async () => {
+  if (!canPick()) { const files = await browserFiles({ folder: true }); if (files.length) addPilotFiles(files, ''); return; }
   try {
     const r = await api('/api/pick', { kind: 'folder', title: 'Choose the folder with your helmet pictures' });
     if (!r.paths || !r.paths.length) return;
@@ -351,7 +355,7 @@ async function openComposer(name) {
   const own = !!pc.base.path;
   $('#pcKeepPhoto').textContent = own ? 'Keep this portrait\'s photo' : 'Keep the game\'s photo';
   $('#pcKeepText').textContent = own ? 'Keep this portrait\'s text' : 'Keep the game\'s text';
-  $('#pcBox').hidden = false;
+  $('#pcBox').hidden = false; $('#pcMsg').replaceChildren();
   $('#pcTitle').textContent = pt.label; $('#pcName').textContent = pt.name;
   document.querySelector('input[name=pcPhoto][value=' + pc.photo + ']').checked = true;
   document.querySelector('input[name=pcText][value=' + pc.text + ']').checked = true;
@@ -368,7 +372,11 @@ async function openComposer(name) {
     if (!pc || pc.name !== name) return;
     pc.orig = orig;
     // a kept portrait opens as it was made: its photo and the portrait it took one from
-    if (pc.photo === 'mine' && pc.photoPath) { try { pc.mine = await loadImg(fullPic(pc.photoPath, ed && ed.saved)); } catch (e) { pc.photo = 'keep'; } }
+    // (if it cannot be read, it stays chosen and kept: Use waits until a picture is chosen again)
+    if (pc.photo === 'mine' && pc.photoPath) {
+      try { pc.mine = await loadImg(fullPic(pc.photoPath, ed && ed.saved)); }
+      catch (e) { notice($('#pcMsg'), 'warn', el('strong', { text: 'The photo kept with this portrait could not be opened. ' }), 'Choose it again with "Choose a picture". The portrait in the mod stays as it is until you press "Put it in the mod".'); }
+    }
     if (pc.other) { try { pc.otherImg = await loadImg(pimg('portrait', pc.other)); } catch (e) {} }
     if (!pc || pc.name !== name) return;
     document.querySelector('input[name=pcPhoto][value=' + pc.photo + ']').checked = true;
@@ -430,6 +438,19 @@ $('#pcRemove').addEventListener('click', async () => {
   await loadSavedPortraits();
   openComposer(name); // starts again from the game's own portrait
 });
+// keepablePhoto: the photo as it is kept with the portrait. The program reads kept photos back as
+// PNG (or TGA), so a JPEG, WebP, BMP or GIF is turned into a PNG first, at most 2048 pixels on its
+// longer side (more than the largest zoom needs). Moving and zooming do not depend on its size.
+async function keepablePhoto(file, img) {
+  if (/\.png$/i.test(file.name) && (!file.type || file.type === 'image/png')) return file;
+  const k = Math.min(1, 2048 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  if (!blob) throw new Error('That picture could not be turned into a PNG to keep it. Choose a PNG picture instead.');
+  return new File([blob], file.name.replace(/\.[^.]*$/, '') + '.png', { type: 'image/png' });
+}
 // how a portrait was made, kept with it so it opens the same way next time
 const portraitState = () => ({ photo: pc.photo, text: pc.text, zoom: pc.zoom, ox: pc.ox, oy: pc.oy, soften: pc.soften, other: pc.other || '', fields: { ...pc.fields }, mineLabel: pc.mineLabel || '' });
 $('#pcUse').addEventListener('click', async () => {
@@ -441,7 +462,7 @@ $('#pcUse').addEventListener('click', async () => {
     pilots.batches.push(batch);
     // the photo is kept with the portrait, so it can be moved or zoomed again later
     let photo = pc.photo === 'mine' ? pc.photoPath : '';
-    if (pc.photo === 'mine' && pc.mineFile) photo = await upload(pc.mineFile, batch);
+    if (pc.photo === 'mine' && pc.mineFile) photo = await upload(await keepablePhoto(pc.mineFile, pc.mine), batch);
     const state = portraitState();
     for (const [name, orig, base] of targets) {
       const cv = composePortrait(orig, pc.otherImg);
@@ -463,7 +484,7 @@ $('#piName').addEventListener('input', () => { pilots.nameTouched = true; pilots
 function pilotsNotReady() {
   const pics = pilots.plan ? pilots.plan.sheets.reduce((n, s) => n + Object.keys(s.uses).length, 0) : 0;
   const ports = Object.keys(pilots.edits).length;
-  if (!STATE || !STATE.checks.retoc.ok) return 'Set up retoc in Settings first.';
+  if (!STATE || !STATE.checks.retoc.ok || !STATE.checks.workspace.ok) return 'Finish the setup in Settings first.';
   if (!pics && !ports) return 'Add helmet pictures or a new portrait first.';
   if (pilots.plan && pilots.plan.problems.length) return 'Sort out the helmet pictures first (see above).';
   if (pilots.plan && pilots.plan.unplaced.length) return 'Drop each picture on the helmet part it is for.';
@@ -473,17 +494,16 @@ function pilotsNotReady() {
 function pilotsButtons() {
   if (!$('#piGo')) return;
   const busy = !!activeJob;
-  const exOK = STATE && ['workspace', 'retoc', 'paks', 'aes'].every(k => STATE.checks[k].ok);
+  const exOK = STATE && !needsOf('pilots').length;
   $('#piFind').disabled = busy || !exOK;
   $('#piPaint').disabled = busy || !exOK || !pilotNow();
   const why = pilotsNotReady();
   $('#piGo').disabled = busy || !!why;
-  $('#piGoHint').textContent = busy ? '' : why;
+  setGoHint('#piGoHint', busy ? '' : why);
   if (STATE) {
     $('#piInstall').disabled = !STATE.checks.mods.ok;
     if (!STATE.checks.mods.ok) $('#piInstall').checked = false;
     $('#piInstallHint').textContent = STATE.checks.mods.ok ? STATE.settings.modsDir : 'Set your mods folder in Settings to use this.';
-    $('#piPick').hidden = !STATE.canPick;
   }
   if (pc) $('#pcUse').disabled = busy || (pc.photo === 'keep' && pc.text === 'keep') || (pc.photo === 'mine' && !pc.mine) || (pc.photo === 'other' && !pc.otherImg);
 }

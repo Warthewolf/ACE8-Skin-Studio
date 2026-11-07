@@ -24,6 +24,19 @@ try { sessionStorage.setItem('ace8-token', TOKEN); history.replaceState(null, ''
 // Every open window gives itself a name, so the program can tell when its last window has closed.
 const CLIENT = 'w' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
+// sentence makes a message from the program read as a sentence of its own: a capital first letter
+// (retoc and UE4SS keep their own spelling, and so do file names) and a full stop at the end. The
+// program's messages are written to be put after other words, so they start in small letters.
+function sentence(s) {
+  s = String(s == null ? '' : s).trim();
+  if (!s) return s;
+  if (/^[a-z]/.test(s) && !/^(retoc|ue4ss)\b/i.test(s) && !/^[\w-]+\.[a-z0-9]{2,5}\b/i.test(s)) s = s[0].toUpperCase() + s.slice(1);
+  if (!/[.!?…:]["'”’)\]]*$/.test(s)) s += '.';
+  return s;
+}
+
+// api calls the program. A failed call throws an Error with the program's message as a sentence,
+// its HTTP status in .status and the whole answer in .data.
 async function api(path, body) {
   let res;
   try {
@@ -37,7 +50,11 @@ async function api(path, body) {
   }
   let data = null;
   try { data = await res.json(); } catch (e) {}
-  if (!res.ok) throw new Error((data && data.error) || (res.status === 403 ? 'This window is out of date. Close it and start the program again.' : 'Request failed (' + res.status + ').'));
+  if (!res.ok) {
+    const err = new Error(sentence((data && data.error) || (res.status === 403 ? 'This window is out of date. Close it and start the program again.' : 'Request failed (' + res.status + ').')));
+    err.status = res.status; err.data = data;
+    throw err;
+  }
   return data;
 }
 const thumbURL = p => '/api/thumb?t=' + encodeURIComponent(TOKEN) + '&path=' + encodeURIComponent(p);
@@ -51,7 +68,7 @@ function upload(file, batch, onProgress) {
     x.upload.onprogress = e => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
     x.onload = () => {
       let d = null; try { d = JSON.parse(x.responseText); } catch (e) {}
-      if (x.status === 200 && d && d.path) resolve(d.path); else reject(new Error((d && d.error) || 'Could not copy ' + file.name + ' into the program.'));
+      if (x.status === 200 && d && d.path) resolve(d.path); else reject(new Error(sentence((d && d.error) || 'Could not copy ' + file.name + ' into the program.')));
     };
     x.onerror = () => reject(new Error('Could not copy ' + file.name + ' into the program.'));
     x.send(file);
@@ -79,24 +96,41 @@ async function droppedFiles(dt) {
 }
 const isPicture = name => /\.(png|tga)$/i.test(name);
 
+// Without a file chooser of the system's own (Linux without zenity or kdialog), the "Choose" buttons
+// open the browser's: its files are copied into the program, the same way as dropped ones.
+const canPick = () => !!(STATE && STATE.canPick);
+function browserFiles({ accept = '', multiple = false, folder = false } = {}) {
+  return new Promise(resolve => {
+    const inp = el('input', { type: 'file', accept: accept || null, multiple, webkitdirectory: folder });
+    inp.addEventListener('change', () => resolve(Array.from(inp.files || [])));
+    inp.addEventListener('cancel', () => resolve([]));
+    inp.click();
+  });
+}
+
 function notice(target, kind, ...content) {
   target.replaceChildren(el('div', { class: 'notice ' + kind, role: kind === 'error' ? 'alert' : 'status' }, ...content));
 }
 const openFolderBtn = (path, label = 'Open folder') => el('button', { class: 'btn small', onclick: () => api('/api/open', { path }).catch(e => alertLine(e.message)) }, label);
-function alertLine(msg) { const d = $('#dock'); showDockMessage(msg); d.hidden = false; }
+// alertLine shows a problem in the task dock. While a task runs, the task keeps the dock (its
+// progress, Cancel and Show details) and the problem is a line of its own under it.
+function alertLine(msg) {
+  msg = sentence(msg);
+  if (activeJob) { const m = $('#dockMsg'); m.textContent = msg; m.hidden = false; return; }
+  showDockMessage(msg);
+  $('#dock').hidden = false;
+}
 
 // ---------------------------------------------------------------- state
 let STATE = null;
 async function refreshState() {
   STATE = await api('/api/state');
   const c = STATE.checks;
-  const missingExtract = ['workspace', 'retoc', 'paks', 'aes'].filter(k => !c[k].ok);
+  const missing = setupMissing();
   const st = $('#setupStatus');
-  st.classList.toggle('bad', missingExtract.length > 0);
-  $('#setupText').textContent = missingExtract.length ? 'Setup: ' + missingExtract.length + (missingExtract.length === 1 ? ' thing' : ' things') + ' missing. Open Settings.' : 'Setup is complete';
-  const ex = $('#exSetup');
-  ex.hidden = missingExtract.length === 0;
-  if (missingExtract.length) ex.replaceChildren(el('strong', { text: 'Extracting needs a little setup first. ' }), missingExtract.map(k => c[k].note).join(' '), ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+  st.classList.toggle('bad', missing.length > 0);
+  $('#setupText').textContent = missing.length ? 'Setup: ' + missing.length + (missing.length === 1 ? ' thing' : ' things') + ' to do. Open Settings.' : 'Setup is complete';
+  setupBanner($('#exSetup'), needsOf('extract'), 'Extracting needs a little setup first.');
   renderRepackSetup();
   renderEmblemSetup();
   $('#rpInstallHint').textContent = c.mods.ok ? STATE.settings.modsDir : 'Set your mods folder in Settings to use this.';
@@ -104,49 +138,77 @@ async function refreshState() {
   if (!c.mods.ok) $('#rpInstall').checked = false;
   if (!$('#spOut').value) $('#spOut').value = STATE.folders.split;
   $('#seAbout').textContent = STATE.app + ' ' + STATE.version + '. Program folder: ' + STATE.folders.data;
+  // Settings' Browse buttons have a box to type in instead; a folder of raw files and the 1.x
+  // folder get one when there is no file chooser.
   $$('[data-pick-folder],[data-pick-file]').forEach(b => { b.hidden = !STATE.canPick; });
-  $('#spPick').hidden = !STATE.canPick; $('#rpPick').hidden = !STATE.canPick; $('#mdPick').hidden = !STATE.canPick;
-  $('#imPick').hidden = !STATE.canPick; $('#slPicPick').hidden = !STATE.canPick; $('#seImportOld').disabled = !STATE.canPick;
+  $('#libAdd').hidden = $('#rpAddRaw').hidden = $('#seImportOld').hidden = !STATE.canPick;
+  $('#libAddPathRow').hidden = $('#rpAddPathRow').hidden = $('#seImportPathRow').hidden = STATE.canPick;
   setHud();
   return STATE;
 }
 
 // The strip along the top: setup, the task that is running, the loader and the new skins.
-const HUD = { op: '', loader: null, slots: null };
+const HUD = { op: '', loader: null, slots: null, modsOk: null };
 function setHud() {
   if (!STATE) return;
-  const c = STATE.checks;
-  const missing = ['workspace', 'retoc', 'paks', 'aes', 'mods'].filter(k => !c[k].ok);
+  const missing = setupMissing();
   const s = $('#hudSession');
-  s.textContent = missing.length ? 'Setup needed' : 'Ready';
+  s.textContent = missing.length ? 'Setup: ' + missing.length + ' to do' : 'Ready';
   s.className = 'val ' + (missing.length ? 'bad' : 'good');
+  $('#hudSessionBtn').title = missing.length ? 'Still to set up: ' + missing.map(x => x.title).join(', ') + '. Click to open Settings.' : 'Open Settings';
   const op = $('#hudOp');
-  op.textContent = HUD.op || 'No data'; op.title = HUD.op || '';
+  op.textContent = HUD.op || 'Standing by'; op.title = HUD.op || '';
   op.className = 'val' + (HUD.op ? ' warn' : '');
   const lo = $('#hudLoader');
-  if (HUD.loader == null) { lo.textContent = '—'; lo.className = 'val'; }
+  lo.title = '';
+  if (HUD.modsOk === false) { lo.textContent = 'No mods folder'; lo.className = 'val'; lo.title = 'Set your mods folder in Settings'; }
+  else if (HUD.loader == null) { lo.textContent = '—'; lo.className = 'val'; }
   else if (!HUD.loader) { lo.textContent = 'Not found'; lo.className = 'val bad'; }
   else { lo.textContent = 'v' + HUD.loader; lo.className = 'val ' + (versionLess(HUD.loader, '1.1.0') ? 'bad' : 'good'); lo.title = versionLess(HUD.loader, '1.1.0') ? 'New skin slots need AC8 Mod Loader 1.1.0 or newer' : ''; }
   const sl = $('#hudSlots');
-  sl.textContent = HUD.slots == null ? '—' : HUD.slots + (HUD.slots === 1 ? ' skin' : ' skins');
-  sl.className = 'val' + (HUD.slots ? ' good' : '');
+  sl.textContent = HUD.slots == null || HUD.modsOk === false ? '—' : HUD.slots + (HUD.slots === 1 ? ' skin' : ' skins');
+  sl.className = 'val' + (HUD.slots && HUD.modsOk !== false ? ' good' : '');
 }
+$('#hudSessionBtn').addEventListener('click', () => { const m = setupMissing()[0]; if (m) goSetting(m.field); else showPage('settings'); });
 function versionLess(a, b) {
   const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
   for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) < (pb[i] || 0);
   return false;
 }
+
+// What each screen needs set up before its main button works (the keys of STATE.checks).
+const SCREEN_NEEDS = {
+  extract: ['paks', 'aes', 'retoc', 'workspace'], pilots: ['paks', 'aes', 'retoc', 'workspace'],
+  slot: ['paks', 'aes', 'mods', 'retoc', 'workspace'], emblem: ['paks', 'aes', 'mods', 'retoc', 'workspace'],
+  replace: ['retoc', 'workspace'],
+};
+const needsOf = screen => (SCREEN_NEEDS[screen] || []).filter(k => STATE && STATE.checks[k] && !STATE.checks[k].ok);
+// setupBanner fills a screen's setup notice: each setting still missing on a line of its own, what
+// is wrong with it, and a button that goes straight to it in Settings. notes overrides a check's
+// note (a screen that was told by the program itself). Returns how many are missing.
+function setupBanner(box, keys, lead, after, notes) {
+  box.hidden = !keys.length;
+  if (!keys.length) { box.replaceChildren(); return 0; }
+  box.replaceChildren(...[el('strong', { text: lead }),
+    el('ul', { class: 'setup-need' }, keys.map(k => {
+      const x = SETUP.find(s => s.check === k) || { title: k, field: '' };
+      const note = (notes && notes[k]) || (STATE && STATE.checks[k] ? STATE.checks[k].note : '');
+      return el('li', {}, el('div', {}, el('b', { text: x.title }), note ? el('span', { text: sentence(note) }) : null),
+        el('button', { class: 'btn small', type: 'button', onclick: () => goSetting(x.field) }, 'Set it'));
+    })),
+    after ? el('p', { class: 'hint setup-need-foot', text: after }) : null].filter(Boolean));
+  return keys.length;
+}
 function renderRepackSetup() {
   if (!STATE) return;
-  const c = STATE.checks, rp = $('#rpSetup');
-  const need = repack.mode === 'slot' ? ['workspace', 'retoc', 'paks', 'aes', 'mods'].filter(k => !c[k].ok) : ['workspace', 'retoc'].filter(k => !c[k].ok);
-  rp.hidden = !need.length;
-  if (need.length) rp.replaceChildren(el('strong', { text: repack.mode === 'slot' ? 'New skin slots need a little setup first. ' : 'Packing needs retoc. ' }), need.map(k => c[k].note).join(' '), ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+  setupBanner($('#rpSetup'), needsOf(repack.mode), repack.mode === 'slot' ? 'New skin slots need a little setup first.' : 'Packing needs a little setup first.');
 }
 
 // ---------------------------------------------------------------- pages and appearance
+let PAGE = '';
 function showPage(name, mode) {
   if (name === 'repack' && mode) setRepackMode(mode);
+  PAGE = name;
   $$('.page').forEach(p => { p.hidden = p.id !== 'page-' + name; });
   $$('.nav button[data-page]').forEach(b => {
     const on = b.dataset.page === name && (!b.dataset.mode || b.dataset.mode === repack.mode);
@@ -154,7 +216,10 @@ function showPage(name, mode) {
   });
   $('#scroll').scrollTop = 0;
   try { sessionStorage.setItem('ace8-page', name); } catch (e) {}
-  if (!activeJob && $('#dock').classList.contains('done')) $('#dock').hidden = true;
+  // A finished task's dock goes when you move on; a failed one stays on the screen that started it,
+  // whose own box says what went wrong too.
+  const dock = $('#dock');
+  if (!activeJob && !dock.hidden && (dock.classList.contains('done') || (dock.classList.contains('failed') && dock.dataset.page !== name))) dock.hidden = true;
   if (name === 'extract') { loadLibrary(); loadVehicles(); }
   if (name === 'repack') { loadLibrary(); loadSlots(true); }
   if (name === 'mods') loadMods();
@@ -165,8 +230,26 @@ function showPage(name, mode) {
   if (name === 'settings') fillSettings();
   if (name === 'links') showLinks();
 }
-$$('.nav button[data-page]').forEach(b => b.addEventListener('click', () => showPage(b.dataset.page, b.dataset.mode)));
-$('#setupStatus').addEventListener('click', () => showPage('settings'));
+// focusHeading puts the keyboard on the new screen's title, so the next Tab is on that screen and a
+// screen reader says where you are.
+function focusHeading() {
+  const h = $('#page-' + PAGE + ' h1');
+  if (!h) return;
+  h.tabIndex = -1;
+  h.focus({ preventScroll: true });
+}
+// "New skin slot" and "New emblem" in the menu always start a new one: a skin or emblem that was
+// being changed (or was just built) is not updated by mistake.
+function newSkinSlot() { showPage('repack', 'slot'); if (repack.rebuild) startAnotherSkin(true); }
+function newEmblem() { showPage('emblem'); if (emb.rebuild) startAnotherEmblem(true); }
+$$('.nav button[data-page]').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.page === 'repack' && b.dataset.mode === 'slot') newSkinSlot();
+  else if (b.dataset.page === 'emblem') newEmblem();
+  else showPage(b.dataset.page, b.dataset.mode);
+  focusHeading();
+}));
+$('#skipLink').addEventListener('click', ev => { ev.preventDefault(); focusHeading(); });
+$('#setupStatus').addEventListener('click', () => { const m = setupMissing()[0]; if (m) goSetting(m.field); else showPage('settings'); });
 
 function applyTheme(t) {
   if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
@@ -202,13 +285,18 @@ window.addEventListener('drop', e => e.preventDefault());
 // ---------------------------------------------------------------- tasks (dock)
 let activeJob = null;
 function showDockMessage(msg) {
-  $('#dock').className = 'dock failed';
+  const dock = $('#dock');
+  dock.className = 'dock failed'; dock.dataset.page = PAGE;
   $('#dockTitle').textContent = 'Problem';
-  $('#dockStep').textContent = msg; $('#dockStep').title = msg;
+  $('#dockStep').textContent = msg; $('#dockStep').title = '';
   $('#dockBar').className = 'bar'; $('#dockBar').firstElementChild.style.width = '100%';
   $('#dockCancel').hidden = true; $('#dockClose').hidden = false; $('#dockLogBtn').hidden = true; $('#dockLog').hidden = true;
-  $('#dockReport').hidden = true;
+  $('#dockReport').hidden = true; $('#dockMsg').hidden = true;
+  dockFixFor(msg);
 }
+// A problem that is fixed in Settings gets a button that goes there.
+function dockFixFor(msg) { $('#dockFix').hidden = !/\bSettings\b/.test(msg || '') || PAGE === 'settings'; }
+$('#dockFix').addEventListener('click', () => { const m = setupMissing()[0]; if (m) goSetting(m.field); else showPage('settings'); });
 
 // The support report: copied to the clipboard, and shown so the person can see what they are sharing.
 function legacyCopy(text) {
@@ -237,7 +325,7 @@ $('#dockReport').addEventListener('click', async () => {
   $('#seReportOut').scrollIntoView({ block: 'nearest' });
   b.textContent = ok ? 'Copied' : 'Copy report'; setTimeout(() => { b.textContent = 'Copy report'; }, 2500);
 });
-$('#dockClose').addEventListener('click', () => { $('#dock').hidden = true; });
+$('#dockClose').addEventListener('click', () => { $('#dock').hidden = true; $('#dockMsg').hidden = true; });
 $('#dockLogBtn').addEventListener('click', () => {
   const log = $('#dockLog'); log.hidden = !log.hidden;
   $('#dockLogBtn').setAttribute('aria-expanded', String(!log.hidden));
@@ -250,8 +338,9 @@ $('#dockCancel').addEventListener('click', () => { if (activeJob) fetch('/api/jo
 function watchJob(id) {
   activeJob = id;
   const dock = $('#dock'), log = $('#dockLog');
-  dock.hidden = false; dock.className = 'dock';
-  log.textContent = ''; $('#dockLogBtn').hidden = false; $('#dockReport').hidden = true;
+  dock.hidden = false; dock.className = 'dock'; dock.dataset.page = PAGE;
+  log.textContent = ''; $('#dockLogBtn').hidden = false; $('#dockReport').hidden = true; $('#dockFix').hidden = true;
+  $('#dockMsg').hidden = true; $('#dockMsg').textContent = '';
   $('#dockCancel').hidden = false; $('#dockClose').hidden = true;
   let since = 0;
   setBusy(true);
@@ -259,7 +348,7 @@ function watchJob(id) {
     const tick = async () => {
       let v;
       try { v = await api('/api/job?id=' + id + '&since=' + since); }
-      catch (e) { setBusy(false); showDockMessage(e.message); reject(e); return; }
+      catch (e) { activeJob = null; setBusy(false); showDockMessage(e.message); reject(e); return; }
       since = v.next;
       v.lines = v.lines || [];
       if (v.lines.length) { const atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 8; log.append(v.lines.join('\n') + '\n'); if (atEnd) log.scrollTop = log.scrollHeight; }
@@ -267,6 +356,9 @@ function watchJob(id) {
       HUD.op = v.status === 'running' ? v.title : ''; setHud();
       const bar = $('#dockBar');
       if (v.status === 'running') {
+        // the task owns the dock while it runs, whatever was shown in it meanwhile
+        dock.className = 'dock'; dock.hidden = false;
+        $('#dockCancel').hidden = false; $('#dockClose').hidden = true; $('#dockLogBtn').hidden = false; $('#dockFix').hidden = true;
         $('#dockStep').textContent = v.step || 'Working'; $('#dockStep').title = v.step || '';
         bar.className = 'bar' + (v.progress < 0 ? ' unknown' : '');
         bar.firstElementChild.style.width = v.progress < 0 ? '' : Math.round(v.progress * 100) + '%';
@@ -280,12 +372,14 @@ function watchJob(id) {
       $('#dockReport').hidden = v.status !== 'failed';
       const secs = Math.max(1, Math.round(v.seconds));
       if (v.status === 'done') { $('#dockStep').textContent = 'Finished in ' + secs + ' s'; resolve(v.result); }
-      else { const msg = v.error || 'Stopped.'; $('#dockStep').textContent = msg; $('#dockStep').title = msg; const err = new Error(msg); err.result = v.result; reject(err); }
+      else { const msg = sentence(v.error || 'Stopped.'); $('#dockStep').textContent = msg; $('#dockStep').title = ''; dockFixFor(msg); const err = new Error(msg); err.result = v.result; reject(err); }
     };
     tick();
   });
 }
-function setBusy(b) { $$('.btn.primary, #exFind').forEach(x => { x.dataset.busy = b ? '1' : ''; }); if (!b) { HUD.op = ''; setHud(); } updateButtons(); }
+// One screen's buttons failing to update must not stop the others, or the watching of a task.
+function safely(fn) { try { fn(); } catch (e) { console.error(e); } }
+function setBusy(b) { $$('.btn.primary, #exFind').forEach(x => { x.dataset.busy = b ? '1' : ''; }); if (!b) { HUD.op = ''; setHud(); } safely(updateButtons); }
 async function runJob(path, body) { const r = await api(path, body === undefined ? {} : body); return watchJob(r.job); }
 
 // ---------------------------------------------------------------- split
@@ -331,7 +425,9 @@ async function addSplitPaths(paths) {
   for (const f of r.files) if (!split.files.some(x => x.path === f.path)) split.files.push(f);
   renderSplit();
 }
-wireDrop($('#spDrop'), async files => {
+wireDrop($('#spDrop'), splitFiles);
+async function splitFiles(files) {
+  if (!files.length) return;
   const pics = files.filter(f => isPicture(f.name));
   if (!pics.length) { notice($('#spResult'), 'error', 'Only PNG and TGA pictures can be split.'); return; }
   $('#spResult').replaceChildren();
@@ -347,8 +443,9 @@ wireDrop($('#spDrop'), async files => {
     } catch (e) { entry.uploading = null; entry.error = e.message; }
     renderSplit();
   }
-});
+}
 $('#spPick').addEventListener('click', async () => {
+  if (!canPick()) { splitFiles(await browserFiles({ accept: '.png,.tga', multiple: true })); return; }
   try { const r = await api('/api/pick', { kind: 'files', filter: 'images', title: 'Choose skin pictures' }); await addSplitPaths(r.paths || []); }
   catch (e) { notice($('#spResult'), 'error', e.message); }
 });
@@ -427,7 +524,9 @@ function renderModel() {
   $('#mdTable').replaceChildren(el('thead', {}, el('tr', {}, el('th', { text: '' }), el('th', { text: 'Material and file' }), el('th', { text: 'Size' }), el('th', { text: 'Texture area' }))), el('tbody', {}, rows));
   updateButtons();
 }
-wireDrop($('#mdDrop'), async files => {
+wireDrop($('#mdDrop'), modelFiles);
+async function modelFiles(files) {
+  if (!files.length) return;
   const glbs = files.filter(f => isModel(f.name));
   if (!glbs.length) { notice($('#mdError'), 'error', 'Only .glb models can be used here. In FModel, export the model as glTF (.glb).'); return; }
   const batch = newBatch(); model.batches.push(batch);
@@ -437,8 +536,9 @@ wireDrop($('#mdDrop'), async files => {
   catch (e) { notice($('#mdError'), 'error', e.message); }
   up.hidden = true; bar.style.width = '0';
   await addModels(paths);
-});
+}
 $('#mdPick').addEventListener('click', async () => {
+  if (!canPick()) { modelFiles(await browserFiles({ accept: '.glb', multiple: true })); return; }
   try { const r = await api('/api/pick', { kind: 'files', filter: 'glb', title: 'Choose .glb models' }); await addModels(r.paths || []); }
   catch (e) { notice($('#mdError'), 'error', e.message); }
 });
@@ -457,10 +557,14 @@ $('#mdGo').addEventListener('click', async () => {
 
 let LIB = [];
 const KIND_LABEL = { colour: 'colour', finish: 'finish (metal and roughness)', normal: 'normal map', other: 'other' };
-async function loadLibrary(fresh) {
-  try { LIB = (await api('/api/library' + (fresh === true ? '?fresh=1' : ''))).skins; } catch (e) { LIB = []; }
-  repack.guess = null;
-  renderLibrary(); fillSkinSelect();
+// loadLibrary.pending is the latest load, for code that needs LIB as it is now.
+function loadLibrary(fresh) {
+  loadLibrary.pending = (async () => {
+    try { LIB = (await api('/api/library' + (fresh === true ? '?fresh=1' : ''))).skins; } catch (e) { LIB = []; }
+    repack.guess = null;
+    renderLibrary(); fillSkinSelect();
+  })();
+  return loadLibrary.pending;
 }
 function renderLibrary() {
   const box = $('#libList');
@@ -475,7 +579,7 @@ function renderLibrary() {
         el('div', { class: 'row' },
           el('button', { class: 'btn small', disabled: !usable.length, onclick: () => makeTiles(usable) }, 'Make tiles'),
           el('button', { class: 'btn small', disabled: !sk.textures.some(t => t.supported), onclick: () => { showPage('repack', 'replace'); chooseSkin(sk.dir); skinChanged(); } }, 'Repack this skin'),
-          el('button', { class: 'btn small', disabled: !sk.textures.some(t => t.supported), onclick: () => { showPage('repack', 'slot'); chooseSkin(sk.dir); skinChanged(); } }, 'New skin from it'),
+          el('button', { class: 'btn small', disabled: !sk.textures.some(t => t.supported), onclick: () => { newSkinSlot(); chooseSkin(sk.dir); skinChanged(); } }, 'New skin from it'),
           openFolderBtn(sk.dir, 'Open'))),
       face && face.blocksH === 1 ? stripFor(face.blocksW, null, '/api/texthumb?t=' + encodeURIComponent(TOKEN) + '&uexp=' + encodeURIComponent(face.uexp)) : null);
   })));
@@ -489,13 +593,16 @@ async function makeTiles(texs) {
 }
 const samePath = (a, b) => a.replace(/[\\/]+$/, '').toLowerCase() === b.replace(/[\\/]+$/, '').toLowerCase();
 const underPath = (p, dir) => { p = p.toLowerCase().replace(/\\/g, '/'); dir = dir.toLowerCase().replace(/\\/g, '/').replace(/\/+$/, ''); return p === dir || p.startsWith(dir + '/'); };
+// A folder of raw files is added by choosing it, or by typing its path where there is no file chooser.
 async function addRawFolder(ev) {
-  const fromRepack = ev && ev.currentTarget && ev.currentTarget.id === 'rpAddRaw';
+  const fromRepack = !!(ev && ev.currentTarget && /^rpAdd/.test(ev.currentTarget.id));
+  const typed = ev && ev.currentTarget && /PathGo$/.test(ev.currentTarget.id) ? $(fromRepack ? '#rpAddPath' : '#libAddPath') : null;
   const out = fromRepack ? $('#rpSkinAuto') : $('#exResult');
   try {
-    const r = await api('/api/pick', { kind: 'folder', title: 'Choose a folder that holds raw .uasset, .uexp and .ubulk files' });
-    if (!r.paths || !r.paths.length) return;
-    const dir = r.paths[0];
+    let dir = '';
+    if (typed) dir = typed.value.trim();
+    else { const r = await api('/api/pick', { kind: 'folder', title: 'Choose a folder that holds raw .uasset, .uexp and .ubulk files' }); dir = (r.paths || [])[0] || ''; }
+    if (!dir) { if (typed) typed.focus(); return; }
     const before = STATE.settings.extraRawDirs || [];
     const list = before.filter(p => !samePath(p, dir)).concat(dir);
     await api('/api/settings', { extraRawDirs: list }); await refreshState(); await loadLibrary();
@@ -514,11 +621,12 @@ async function addRawFolder(ev) {
       const pick = (g.found && found.find(sk => sk.dir === g.dir)) || (found.length === 1 ? found[0] : null);
       if (pick && chooseSkin(pick.dir)) skinChanged();
       else skinNote('ok', el('span', { text: found.length + ' skins were found there. Choose one in the list above.' }));
-    }
-  } catch (e) { alertLine(e.message); }
+    } else notice(out, 'good', el('strong', { text: found.length + (found.length === 1 ? ' skin was' : ' skins were') + ' found there. ' }), 'They are listed under "Extracted skins".');
+    if (typed) typed.value = '';
+  } catch (e) { if (fromRepack) skinNote('warn', el('span', { text: e.message })); else notice(out, 'error', e.message); }
 }
-$('#libAdd').addEventListener('click', addRawFolder);
-$('#rpAddRaw').addEventListener('click', addRawFolder);
+['#libAdd', '#rpAddRaw', '#libAddPathGo', '#rpAddPathGo'].forEach(s => $(s).addEventListener('click', addRawFolder));
+['#libAddPath', '#rpAddPath'].forEach(s => $(s).addEventListener('keydown', ev => { if (ev.key === 'Enter') $(s + 'Go').click(); }));
 $('#libRefresh').addEventListener('click', () => loadLibrary(true));
 $('#libOpenPaint').addEventListener('click', () => api('/api/open', { path: STATE.folders.paint }).catch(() => notice($('#exResult'), 'warn', 'There is no paint-ready folder yet. It appears after the first tiles are made.')));
 
@@ -775,7 +883,9 @@ const texOptions = () => ({ bc7: $('#rpBC7').checked, noMips: $('#rpNoMips').che
   texOptsShown.touched = true;
   api('/api/settings', { tex: texOptions() }).then(st => { STATE = st; }).catch(() => {});
 }));
-wireDrop($('#rpDrop'), async files => {
+wireDrop($('#rpDrop'), repackFiles);
+async function repackFiles(files) {
+  if (!files.length) return;
   const pics = files.filter(f => isPicture(f.name));
   if (!pics.length) { notice($('#rpPlan'), 'error', 'Drop PNG or TGA pictures, or the folder that holds them.'); return; }
   if (repack.batches.length && !activeJob) api('/api/inbox/clean', { batches: repack.batches }).catch(() => {});
@@ -791,8 +901,9 @@ wireDrop($('#rpDrop'), async files => {
   } catch (e) { notice($('#rpPlan'), 'error', e.message); }
   up.hidden = true; bar.style.width = '0';
   replan();
-});
+}
 $('#rpPick').addEventListener('click', async () => {
+  if (!canPick()) { repackFiles(await browserFiles({ folder: true })); return; }
   try {
     const r = await api('/api/pick', { kind: 'folder', title: 'Choose the folder with your exported pictures', start: repack.paintDir });
     if (r.paths && r.paths.length) { repack.paintDir = r.paths[0]; repack.files = []; repack.touched = false; repack.choices = {}; replan(); }
@@ -804,15 +915,28 @@ function syncExtras() {
   const mode = radio('rxIcon');
   $('#rxColourBox').hidden = mode !== 'recolour'; $('#rxPicBox').hidden = mode !== 'picture';
   $('#rxColour').disabled = $('#rxColourAuto').checked;
-  $('#rxPicName').textContent = repack.rxPicture || '';
+  $('#rxPicName').textContent = repack.rxPicLabel || repack.rxPicture || '';
   updateButtons();
 }
 ['#rxOn', '#rxColourAuto'].forEach(s => $(s).addEventListener('change', syncExtras));
 $$('input[name="rxIcon"]').forEach(r => r.addEventListener('change', syncExtras));
+// The replaced skin's icon from a picture: chosen, or dropped on its box (copied into the program).
+async function rxIconFiles(files) {
+  if (!files.length) return;
+  const pic = files.find(f => /\.(png|jpe?g|tga)$/i.test(f.name));
+  if (!pic) { alertLine('Drop a PNG, JPEG or TGA picture for the icon.'); return; }
+  try {
+    repack.rxBatch = repack.rxBatch || newBatch();
+    repack.rxPicture = await upload(pic, repack.rxBatch); repack.rxPicLabel = pic.name;
+    syncExtras();
+  } catch (e) { alertLine(e.message); }
+}
+wireDrop($('#rxPicBox'), rxIconFiles);
 $('#rxPicPick').addEventListener('click', async () => {
+  if (!canPick()) { rxIconFiles(await browserFiles({ accept: '.png,.jpg,.jpeg,.tga' })); return; }
   try {
     const r = await api('/api/pick', { kind: 'file', filter: 'pictures', title: 'Choose a picture for the icon' });
-    if (r.paths && r.paths.length) { repack.rxPicture = r.paths[0]; syncExtras(); }
+    if (r.paths && r.paths.length) { repack.rxPicture = r.paths[0]; repack.rxPicLabel = ''; syncExtras(); }
   } catch (e) { alertLine(e.message); }
 });
 $('#rpGo').addEventListener('click', async () => {
@@ -852,9 +976,9 @@ async function loadMods(quiet) {
   const badge = $('#navModsBadge');
   badge.hidden = !clashing; badge.textContent = clashing; badge.title = clashing ? clashing + ' mods replace the same game files as another mod' : '';
   if (quiet === true) return;
-  const setup = $('#moSetup');
-  setup.hidden = r.ok; $('#moBlock').hidden = !r.ok;
-  if (!r.ok) { setup.replaceChildren(el('strong', { text: 'No mods folder yet. ' }), r.note, ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings')); return; }
+  $('#moBlock').hidden = !r.ok;
+  setupBanner($('#moSetup'), r.ok ? [] : ['mods'], 'No mods folder yet.', 'Once it is set, this screen lists every mod in it: what each one replaces, and which ones get in each other\'s way.', { mods: r.note });
+  if (!r.ok) return;
   $('#moDir').textContent = r.dir;
   $('#moOpenRemoved').hidden = !r.haveRemoved;
   $('#moSummary').textContent = r.mods.length ? r.mods.length + (r.mods.length === 1 ? ' mod' : ' mods') + (clashing ? ', ' + clashing + ' in conflict' : ', no conflicts') : 'No mods yet';
@@ -899,11 +1023,26 @@ async function loadMods(quiet) {
 }
 async function removeMod(m) {
   const out = $('#moResult'); out.replaceChildren();
+  let r;
   try {
-    const r = await api('/api/mods/remove', { name: m.name, loose: m.loose });
+    r = await api('/api/mods/remove', { name: m.name, loose: m.loose });
     await loadMods();
     notice(out, 'good', el('strong', { text: m.name + ' was taken out of the mods folder. ' }), 'Nothing was deleted; it is now in ', el('span', { class: 'path', text: r.movedTo }), ' ', openFolderBtn(r.movedTo));
-  } catch (e) { notice(out, 'error', e.message); }
+  } catch (e) { notice(out, 'error', e.message); return; }
+  // A mod with its own skin list had its skins copied into the shared one: the shared list is made
+  // again without them.
+  if (m.kind !== 'tables') return;
+  const box = out.firstElementChild;
+  box.append(el('p', { class: 'hint', text: 'Its skins were in the shared skin list, so the list is being made again without them.' }));
+  try {
+    const res = await runJob('/api/skinlist/rebuild', {});
+    const list = res && (res.list || (res.slots ? res : null));
+    box.append(el('p', { class: 'hint', text: 'The shared skin list is up to date.' }));
+    const saved = savedLine(list); if (saved) box.append(saved);
+    for (const p of (list && list.problems) || []) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: sentence(p) }));
+  } catch (e) { out.append(el('div', { class: 'notice error', role: 'alert', style: 'margin-top:8px' }, el('strong', { text: 'The skin list could not be made again. ' }), e.message, ' ', el('button', { class: 'btn small', type: 'button', onclick: () => showPage('slots') }, 'Open Skin slots'))); }
+  await loadSlots(true);
+  loadMods(true);
 }
 $('#moRefresh').addEventListener('click', () => { $('#moResult').replaceChildren(); loadMods(); });
 $('#moOpen').addEventListener('click', () => { if (MODS) api('/api/open', { path: MODS.dir }).catch(e => notice($('#moResult'), 'error', e.message)); });
@@ -920,17 +1059,28 @@ function replaceNotReady() {
   if ($('#rxOn').checked && radio('rxIcon') === 'picture' && !repack.rxPicture) return 'Choose the picture for the icon.';
   return '';
 }
-// The reason beside the build button takes you to the step it is about.
+// The reason beside a grey main button takes you to the step it is about. A target is a selector,
+// or a function that returns one (or goes there itself and returns nothing).
+const goFirstSetting = () => { const k = needsOf(PAGE === 'repack' ? repack.mode : PAGE)[0]; const x = k && SETUP.find(s => s.check === k); if (x) goSetting(x.field); else showPage('settings'); };
 const HINT_TARGETS = [
-  [/Settings/, () => showPage('settings')],
-  [/skin to (start from|replace)/, '#rpSkin'],
+  [/Settings/, goFirstSetting],
+  [/skin to (start from|replace)|Choose a skin of the/, '#rpSkin'],
   [/number of the game skin/, '#rpTemplate'],
   [/painted pictures/, '#rpPick'],
   [/Tick the textures|colour the icon/, '#rpPlan'],
-  [/Give the mod a name/, '#rpName'],
+  [/Give the mod a name/, () => PAGE === 'pilots' ? '#piName' : '#rpName'],
   [/Give the skin a name/, '#slName'],
-  [/skin mod to add/, '#slMod'],
+  [/skin mod to add/, () => PAGE === 'emblem' ? '#emMod' : '#slMod'],
   [/picture for the icon/, () => repack.mode === 'slot' ? '#slPicPick' : '#rxPicPick'],
+  [/emblem's picture/, '#emPick'],
+  [/Give the emblem a name/, '#emName'],
+  [/letters of the aircraft/, '#exFilter'],
+  [/Drop PNG or TGA pictures/, '#spPick'],
+  [/how many pieces/, '#spPieces'],
+  [/Tick at least one part/, '#mdTable'],
+  [/Give the new model a name/, '#mdName'],
+  [/helmet pictures or a new portrait/, () => pilotNow() ? '#piDrop' : pilots.idx && pilots.idx.pilots.length ? '#piList' : '#piFind'],
+  [/helmet pictures first|helmet part it is for/, '#piPlan'],
 ];
 function goToStep(target) {
   if (typeof target === 'function') { target = target(); if (!target) return; }
@@ -941,38 +1091,52 @@ function goToStep(target) {
   block.classList.remove('flash'); void block.offsetWidth; block.classList.add('flash');
   setTimeout(() => { try { n.focus({ preventScroll: true }); } catch (e) {} }, 400);
 }
-function setGoHint(text) {
-  const h = $('#rpGoHint');
+// setGoHint says beside a main button why it cannot be pressed yet ('' when it can).
+function setGoHint(hint, text) {
+  const h = typeof hint === 'string' ? $(hint) : hint;
+  if (!h) return;
   if (!text) { h.replaceChildren(); return; }
   const t = HINT_TARGETS.find(([re]) => re.test(text));
   h.replaceChildren(t ? el('button', { type: 'button', class: 'linkbtn', title: 'Show me', onclick: () => goToStep(t[1]) }, text) : text);
+}
+function splitNotReady() {
+  if (!split.files.length) return 'Drop PNG or TGA pictures above, or choose them.';
+  if (splitReady().length) return '';
+  if (split.files.some(f => f.uploading != null)) return 'Wait until the pictures are copied in.';
+  if (split.files.every(f => f.error)) return 'None of these pictures could be read. Remove them, or drop others.';
+  return 'Choose how many pieces to cut under "Pieces".';
 }
 function updateButtons() {
   const busy = !!activeJob;
   const ready = splitReady().length;
   $('#spGo').disabled = busy || !ready;
   $('#spGo').textContent = ready > 1 ? 'Split ' + ready + ' pictures' : 'Split';
-  const exOK = STATE && ['workspace', 'retoc', 'paks', 'aes'].every(k => STATE.checks[k].ok);
-  $('#exGo').disabled = busy || !exOK || $('#exFilter').value.trim().length < 3;
+  setGoHint('#spGoHint', busy ? '' : splitNotReady());
+  const exOK = STATE && !needsOf('extract').length;
+  const exWhy = !STATE ? '' : !exOK ? 'Finish the setup in Settings first.' : $('#exFilter').value.trim().length < 3 ? 'Type at least 3 letters of the aircraft folder name.' : '';
+  $('#exGo').disabled = busy || !!exWhy || !STATE;
+  setGoHint('#exGoHint', busy ? '' : exWhy);
   $('#exFind').disabled = busy || !exOK;
   $('#exPreview').disabled = busy || !exOK;
   if (repack.mode === 'slot') {
     const why = slotNotReady();
     $('#rpGo').disabled = busy || !!why;
-    const updating = repack.rebuild && radio('slModMode') === 'add' && $('#slMod').value === repack.rebuild.mod;
-    $('#rpGo').textContent = updating ? 'Update this skin' : 'Build new skin';
-    setGoHint(busy ? '' : why);
+    $('#rpGo').textContent = slotUpdating() ? 'Update this skin' : 'Build new skin';
+    setGoHint('#rpGoHint', busy ? '' : why);
   } else {
     const why = replaceNotReady();
     $('#rpGo').disabled = busy || !!why;
     $('#rpGo').textContent = repack.picked.size > 1 ? 'Build mod with ' + repack.picked.size + ' textures' : 'Build mod';
-    setGoHint(busy ? '' : why);
+    setGoHint('#rpGoHint', busy ? '' : why);
   }
-  $('#mdGo').disabled = busy || !model.keep.size || !$('#mdName').value.trim();
-  pilotsButtons();
-  if (pn.view) namesButtons();
-  emblemButtons();
-  if (SAVE) saveButtons();
+  const mdWhy = !model.keep.size ? 'Tick at least one part to keep.' : !$('#mdName').value.trim() ? 'Give the new model a name.' : '';
+  $('#mdGo').disabled = busy || !!mdWhy;
+  setGoHint('#mdGoHint', busy ? '' : mdWhy);
+  safely(pilotsButtons);
+  if (pn.view) safely(namesButtons);
+  safely(emblemButtons);
+  if (SAVE) safely(saveButtons);
+  safely(slotsButtons);
 }
 
 // ---------------------------------------------------------------- settings
@@ -981,41 +1145,87 @@ function fillSettings() {
   const s = STATE.settings;
   $('#sePaks').value = s.paksDir; $('#seAes').value = s.aesKey; $('#seUsmap').value = s.usmap; $('#seRetoc').value = s.retocPath; $('#seUe4ss').value = s.ue4ssMods || ''; $('#seSaveDir').value = s.saveDir || '';
   $('#seMods').value = s.modsDir; $('#seWork').value = s.workspace; $('#seFormat').value = s.imageFormat; $('#seBrowser').checked = s.defaultBrowser;
+  // settings.json could not be read (the program kept a copy of it and started afresh)
+  const file = STATE.checks.settings;
+  $('#seFileNote').hidden = !file || file.ok;
+  if (file && !file.ok) $('#seFileNote').replaceChildren(el('strong', { text: 'Your settings could not be read. ' }), sentence(file.note));
   showChecks();
   const raws = s.extraRawDirs || [];
   $('#seRawBox').hidden = !raws.length;
   $('#seRaw').replaceChildren(...raws.map(p => el('div', { class: 'skin' }, el('span', { class: 'path grow', text: p }), el('button', { class: 'btn small', onclick: async () => { await api('/api/settings', { extraRawDirs: raws.filter(x => x !== p) }); await refreshState(); fillSettings(); } }, 'Remove'))));
 }
 function showChecks() {
-  $$('[data-check]').forEach(n => { const c = STATE.checks[n.dataset.check]; n.textContent = c.note; n.classList.toggle('bad', !c.ok); });
+  $$('[data-check]').forEach(n => {
+    const c = STATE.checks[n.dataset.check], optional = (SETUP.find(x => x.check === n.dataset.check) || {}).optional;
+    n.textContent = c.note; n.classList.toggle('bad', !c.ok && !optional); n.classList.toggle('warn', !c.ok && !!optional);
+  });
   $('#seWorkDefault').hidden = STATE.checks.workspace.ok || STATE.settings.workspace === STATE.folders.defaultWorkspace;
 }
-$('#seWorkDefault').addEventListener('click', ev => { ev.preventDefault(); $('#seWorkDefault').hidden = true; $('#seWork').value = STATE.folders.defaultWorkspace; saveSettings(); });
-async function saveSettings() {
+$('#seWorkDefault').addEventListener('click', ev => { ev.preventDefault(); $('#seWorkDefault').hidden = true; $('#seWork').value = STATE.folders.defaultWorkspace; saveSettings({ target: $('#seWork') }); });
+// Every setting is saved as soon as it changes. "Saved" (or what went wrong) shows next to it.
+function savedMark(field, text, bad) {
+  const box = field && field.closest('label.field, label.row, label.check');
+  if (!box) return;
+  $$('.saved-chip', box).forEach(n => n.remove());
+  const chip = el('span', { class: 'saved-chip' + (bad ? ' bad' : ''), role: bad ? 'alert' : 'status', text });
+  box.append(chip);
+  if (!bad) setTimeout(() => chip.remove(), 2500);
+}
+async function saveSettings(ev) {
+  const field = ev && ev.target && ev.target !== $('#seSave') ? ev.target : null;
   const body = { paksDir: $('#sePaks').value, aesKey: $('#seAes').value, usmap: $('#seUsmap').value, retocPath: $('#seRetoc').value, modsDir: $('#seMods').value, ue4ssMods: $('#seUe4ss').value, saveDir: $('#seSaveDir').value, workspace: $('#seWork').value, imageFormat: $('#seFormat').value, defaultBrowser: $('#seBrowser').checked };
   try {
     await api('/api/settings', body); await refreshState(); fillSettings();
     $('#exFormat').value = STATE.settings.imageFormat;
-    $('#seSaved').textContent = 'Saved.'; setTimeout(() => { $('#seSaved').textContent = ''; }, 2500);
+    if (field) savedMark(field, 'Saved');
+    else { $('#seSaved').textContent = 'Saved and checked again.'; setTimeout(() => { $('#seSaved').textContent = 'Settings are saved as soon as you change them.'; }, 2500); }
     updateButtons();
-  } catch (e) { $('#seSaved').textContent = e.message; }
+  } catch (e) { if (field) savedMark(field, e.message, true); else $('#seSaved').textContent = e.message; }
 }
 $('#seSave').addEventListener('click', saveSettings);
-$$('#page-settings input[type=text], #page-settings input[type=password]').forEach(i => i.addEventListener('change', saveSettings));
+$$('#page-settings input[type=text], #page-settings input[type=password], #seFormat, #seBrowser').forEach(i => i.addEventListener('change', saveSettings));
 $('#seAesShow').addEventListener('click', () => { const show = $('#seAes').classList.toggle('masked') === false; $('#seAesShow').textContent = show ? 'Hide' : 'Show'; });
 $('#seReport').addEventListener('click', () => copyReport($('#seReportOut')));
-$('#seImportOld').addEventListener('click', async () => {
+async function importOldSettings(path) {
   const note = $('#seImportNote');
   try {
-    const r = await api('/api/pick', { kind: 'folder', title: 'Choose the folder of AC8 Skin Studio 1.x (where AC8SkinStudio.exe is)' });
-    if (!r.paths || !r.paths.length) return;
-    await api('/api/settings/import', { path: r.paths[0] });
+    if (!path) {
+      const r = await api('/api/pick', { kind: 'folder', title: 'Choose the folder of AC8 Skin Studio 1.x (where AC8SkinStudio.exe is)' });
+      path = (r.paths || [])[0];
+      if (!path) return;
+    }
+    await api('/api/settings/import', { path });
     await refreshState(); fillSettings(); loadLibrary(true);
     note.textContent = 'Copied. Check the settings below.';
   } catch (e) { note.textContent = e.message; }
-});
+}
+$('#seImportOld').addEventListener('click', () => importOldSettings(''));
+$('#seImportPathGo').addEventListener('click', () => { const p = $('#seImportPath').value.trim(); if (p) importOldSettings(p); else { $('#seImportNote').textContent = 'Type the folder of AC8 Skin Studio 1.x first.'; $('#seImportPath').focus(); } });
+$('#seImportPath').addEventListener('keydown', ev => { if (ev.key === 'Enter') $('#seImportPathGo').click(); });
 $('#seOpenWork').addEventListener('click', () => api('/api/open', { path: STATE.settings.workspace }).catch(() => { $('#seSaved').textContent = 'The workspace folder is created the first time something is saved in it.'; }));
-$('#seQuit').addEventListener('click', async () => { try { await api('/api/quit', {}); } catch (e) {} document.body.replaceChildren(el('p', { style: 'padding:40px;font-size:17px', text: 'The program has stopped. You can close this window.' })); });
+// Quit. While a task runs, the program answers 409 with busy set; quitting then needs a yes, and
+// {force: true} stops the task first.
+async function quitProgram(force) {
+  const ask = $('#seQuitAsk');
+  try { await api('/api/quit', force ? { force: true } : {}); }
+  catch (e) {
+    if (e.status === 409 && e.data && e.data.busy) { askQuit(e.message); return; }
+    if (e.status) { notice(ask, 'error', e.message); return; }
+    // no answer at all: it has stopped already
+  }
+  document.body.replaceChildren(el('p', { style: 'padding:40px;font-size:17px', text: 'The program has stopped. You can close this window.' }));
+}
+function askQuit(msg) {
+  const ask = $('#seQuitAsk');
+  // msg is the program's own words (it knows the task, even one started in another window)
+  ask.replaceChildren(el('div', { class: 'notice warn', role: 'alert' },
+    el('p', {}, el('strong', { text: 'Quit while a task is running? ' }), msg || 'A task is still running' + (HUD.op ? ': ' + HUD.op : '') + '.', ' Quitting stops it, and what it was making is not finished.'),
+    el('div', { class: 'row', style: 'margin-top:8px' },
+      el('button', { class: 'btn small danger', type: 'button', onclick: () => { ask.replaceChildren(); quitProgram(true); } }, 'Stop it and quit'),
+      el('button', { class: 'btn small', type: 'button', onclick: () => { ask.replaceChildren(); $('#seQuit').focus(); } }, 'Keep working'))));
+  $$('button', ask)[1].focus();
+}
+$('#seQuit').addEventListener('click', () => { if (activeJob) askQuit(''); else quitProgram(false); });
 
 // ---------------------------------------------------------------- tutorial
 // Written for someone who has never modded a game before: plain words first, the program's own
@@ -1050,7 +1260,9 @@ const TERMS = [
   [/\bworkspace\b/i, 'Workspace'], [/\bnormal map\b/, 'Texture'], [/\bskin numbers?\b/, 'Skin number'],
 ];
 
-// The setup checks, in plain words. "field" is the box in Settings; "for" is what needs it.
+// The setup checks, in plain words. "field" is the box in Settings; "for" is what needs it;
+// "optional" ones are found by themselves and only needed for a few things, so they are not
+// counted as setup still to do (Settings shows them in amber, not red).
 const SETUP = [
   { check: 'paks', field: 'sePaks', title: `Where the game is installed`, for: `Extract, New skin slot, New emblem, Pilots`,
     what: `The game's Paks folder, so Skin Studio can read skins out of the game.`,
@@ -1061,10 +1273,10 @@ const SETUP = [
   { check: 'mods', field: 'seMods', title: `Your mods folder`, for: `Installing skins, New skin slot, New emblem`,
     what: `The folder your mod loader reads. Finished mods are put there for you.`,
     how: `With AC8 Mod Loader it is …\\ACE COMBAT 8\\Game\\Binaries\\Win64\\ue4ss\\Mods\\IoStoreLoaderMod. Install the mod loader first if that folder is not there.` },
-  { check: 'ue4ss', field: 'seUe4ss', title: `UE4SS (comes with the mod loader)`, for: `The names of new skins, the backup at game start`,
+  { check: 'ue4ss', field: 'seUe4ss', optional: true, title: `UE4SS (comes with the mod loader)`, for: `The names of new skins, the backup at game start`,
     what: `Found by itself once the mods folder is set, when the mods folder is inside ue4ss\\Mods.`,
     how: `Usually nothing to do. If it stays red, choose the ue4ss\\Mods folder (the one with mods.txt in it).` },
-  { check: 'save', field: 'seSaveDir', title: `Your save folder`, for: `Save tools and save backups`,
+  { check: 'save', field: 'seSaveDir', optional: true, title: `Your save folder`, for: `Save tools and save backups`,
     what: `Found by itself on most computers once the game has been played.`,
     how: `If it stays red, start the game once and come back, or choose …\\AppData\\Local\\BANDAI NAMCO Entertainment\\ACE COMBAT 8\\Saved\\SaveGames.` },
   { check: 'retoc', field: 'seRetoc', title: `retoc (comes with Skin Studio)`, for: `Everything that reads or packs game files`,
@@ -1074,7 +1286,8 @@ const SETUP = [
     what: `Where Skin Studio keeps its work. Green unless the folder cannot be used.`,
     how: `If it is red, press "Use the folder next to the program" in Settings.` },
 ];
-const setupMissing = () => STATE ? SETUP.filter(x => STATE.checks[x.check] && !STATE.checks[x.check].ok) : [];
+const setupNeeded = SETUP.filter(x => !x.optional);
+const setupMissing = () => STATE ? setupNeeded.filter(x => STATE.checks[x.check] && !STATE.checks[x.check].ok) : [];
 
 const TUTORIAL = [
   { id: 'start', group: 'Getting started', topic: 'Start here', title: 'Welcome to ACE8 Skin Studio',
@@ -1195,7 +1408,7 @@ const TUTORIAL = [
   { id: 'settings', topic: 'Settings', page: 'settings', title: 'Settings: everything in one place',
     short: `Where the game, your mods and your save are, plus a few preferences. The "First-time setup" topic explains each line in plain words.`,
     steps: [
-      { t: `Each setting shows a green dot when it is right, and a red one with what to do when it is not.` },
+      { t: `Each setting shows a green dot when it is right, and a red one with what to do when it is not. UE4SS and the save folder are found by themselves and show amber until they are.` },
       { t: `Coming from AC8 Skin Studio 1.x? "Use the settings of AC8 Skin Studio 1.x" copies them over.` },
       { t: `Settings are saved by themselves when you leave a box, in settings.json next to the program.` },
       { t: `"Copy a support report" under About copies your version, settings and the last task's log, ready to paste into a message to whoever helps you. The AES key is never included.` } ] },
@@ -1258,7 +1471,7 @@ function renderGoals(t, body) {
   ];
   body.append(
     miss.length ? el('div', { class: 'notice warn tut-setup-note' }, el('strong', { text: 'First, a little setup. ' }),
-      (miss.length === 1 ? '1 of ' : miss.length + ' of ') + SETUP.length + ' setup lines ' + (miss.length === 1 ? 'is' : 'are') + ' not done yet. It takes a few minutes and is done once. ',
+      (miss.length === 1 ? '1 thing is' : miss.length + ' things are') + ' still to set up. It takes a few minutes and is done once. ',
       el('button', { class: 'btn small', type: 'button', onclick: () => tutGo('setup') }, 'Show me')) :
       el('div', { class: 'notice good tut-setup-note' }, el('strong', { text: 'Setup is done. ' }), 'Pick what you want to do below.'),
     el('h3', { class: 'tut-h3', text: 'What do you want to do?' }),
@@ -1271,9 +1484,9 @@ function renderSetup(t, body) {
   if (!STATE) { body.append(el('p', { class: 'hint', text: 'Checking…' })); return; }
   const rows = SETUP.map(x => {
     const c = STATE.checks[x.check] || { ok: false, note: '' };
-    return el('div', { class: 'setup-item' + (c.ok ? ' ok' : '') },
-      el('span', { class: 'dot', role: 'img', 'aria-label': c.ok ? 'Done' : 'Not done yet' }),
-      el('div', {}, el('b', { text: x.title }), el('small', { class: 'for', text: 'Needed for: ' + x.for }),
+    return el('div', { class: 'setup-item' + (c.ok ? ' ok' : x.optional ? ' opt' : '') },
+      el('span', { class: 'dot', role: 'img', 'aria-label': c.ok ? 'Done' : x.optional ? 'Optional, not found yet' : 'Not done yet' }),
+      el('div', {}, el('b', { text: x.title }), el('small', { class: 'for', text: (x.optional ? 'Optional. Only needed for: ' : 'Needed for: ') + x.for }),
         el('p', { text: c.ok ? c.note : x.what }),
         c.ok ? null : el('p', { class: 'how', text: x.how }),
         c.ok ? null : el('p', { class: 'now', text: 'Now: ' + c.note })),
@@ -1281,7 +1494,7 @@ function renderSetup(t, body) {
   });
   const left = setupMissing().length;
   body.append(
-    el('p', { class: 'hint', text: left ? left + ' of ' + SETUP.length + ' still to do.' : 'Everything is set. You are ready to go.' }),
+    el('p', { class: 'hint', text: (left ? left + ' of ' + setupNeeded.length + ' still to do.' : 'Everything needed is set. You are ready to go.') + ' The two marked optional are found by themselves and only needed for what they say.' }),
     el('div', { class: 'setup-list' }, rows),
     el('div', { class: 'row' }, el('button', { class: 'btn small', type: 'button', onclick: async () => { try { await refreshState(); } catch (e) {} renderTutorial(); } }, 'Check again'),
       el('button', { class: 'btn small', type: 'button', onclick: () => { $('#tut').close(); showPage('settings'); } }, 'Open Settings')),
@@ -1341,6 +1554,7 @@ $('#tutHide').addEventListener('change', async ev => {
   catch (e) { ev.target.checked = !want; }
 });
 $('#tut').addEventListener('click', ev => { if (ev.target === $('#tut')) $('#tut').close(); }); // a click on the dimmed area closes it
+$('#tutClose').addEventListener('click', () => $('#tut').close());
 $('#navTutorial').addEventListener('click', () => openTutorial(0));
 // Every screen gets a "How this works" button that opens the tutorial at its own topic.
 const PAGE_TOPIC = { extract: 'extract', split: 'split', model: 'model', emblem: 'emblem', pilots: 'pilots', slots: 'slots', mods: 'mods', save: 'save', settings: 'setup' };

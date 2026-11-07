@@ -1,4 +1,5 @@
 <body>
+<a class="skip" href="#scroll" id="skipLink">Skip to the screen</a>
 <div class="app">
   <aside class="rail">
     <div class="brand" aria-label="ACE8 Skin Studio">
@@ -39,8 +40,8 @@
 
   <div class="main">
     <header class="hud" aria-label="Status">
-      <div class="cell"><span class="mono-label">Session status</span><span class="val" id="hudSession">—</span></div>
-      <div class="cell"><span class="mono-label">Operation</span><span class="val" id="hudOp">No data</span></div>
+      <button class="cell" id="hudSessionBtn" type="button" title="Open Settings"><span class="mono-label">Session status</span><span class="val" id="hudSession">—</span></button>
+      <div class="cell"><span class="mono-label">Operation</span><span class="val" id="hudOp">Standing by</span></div>
       <div class="cell grow"></div>
       <div class="cell"><span class="mono-label">Mod loader</span><span class="val" id="hudLoader">—</span></div>
       <div class="cell"><span class="mono-label">New skins</span><span class="val" id="hudSlots">—</span></div>
@@ -89,6 +90,7 @@
             <label class="row mono-label" style="gap:8px">Tile format
               <select id="exFormat"><option value="png">PNG</option><option value="tga">TGA</option></select>
             </label>
+            <span class="hint" id="exGoHint"></span>
           </div>
           <div id="exResult"></div>
         </div>
@@ -102,6 +104,7 @@
             <button class="btn small" id="libRefresh">Refresh</button>
             <button class="btn small" id="libOpenPaint">Open the paint-ready folder</button>
           </div>
+          <div class="setrow" id="libAddPathRow" hidden><input type="text" id="libAddPath" class="mono" spellcheck="false" placeholder="A folder of raw files you already have: type or paste its path" aria-label="Folder of raw files"><button class="btn small" id="libAddPathGo" type="button">Add this folder</button></div>
         </div>
       </section>
 
@@ -142,6 +145,7 @@
           <div class="row">
             <button class="btn primary" id="spGo" disabled>Split</button>
             <button class="btn quiet" id="spClear" hidden>Clear the list</button>
+            <span class="hint" id="spGoHint"></span>
           </div>
           <div id="spResult"></div>
         </div>
@@ -174,6 +178,7 @@
           <div class="row">
             <button class="btn primary" id="mdGo" disabled>Save paint model</button>
             <button class="btn quiet" id="mdClear">Clear the list</button>
+            <span class="hint" id="mdGoHint"></span>
           </div>
           <div id="mdResult"></div>
         </div>
@@ -199,6 +204,7 @@
             <select id="rpSkin" class="grow" style="width:100%" aria-label="Skin"></select>
             <button class="btn" id="rpAddRaw">Add a folder of raw files</button>
           </div>
+          <div class="setrow" id="rpAddPathRow" hidden><input type="text" id="rpAddPath" class="mono" spellcheck="false" placeholder="A folder of raw files: type or paste its path" aria-label="Folder of raw files"><button class="btn" id="rpAddPathGo" type="button">Add this folder</button></div>
           <p class="hint" id="rpSkinHint">Extract the skin first (Extract in the menu), or add a folder that already holds its raw .uasset, .uexp and .ubulk files.</p>
           <div class="skinauto" id="rpSkinAuto" role="status" hidden></div>
           <div class="row slot-only" id="rpTemplateRow" hidden>
@@ -305,7 +311,7 @@
                 </div>
                 <label class="check"><input type="radio" name="rxIcon" value="picture"><span>My own picture</span></label>
                 <div class="sub" id="rxPicBox" hidden>
-                  <div class="row"><button class="btn small" id="rxPicPick" type="button">Choose a picture</button></div>
+                  <div class="row"><button class="btn small" id="rxPicPick" type="button">Choose a picture</button><span class="hint">or drop one here</span></div>
                   <span class="hint path" id="rxPicName"></span>
                 </div>
               </div>
@@ -483,7 +489,7 @@
           <details class="namemore" id="pnFlightBox"><summary>Flight names (Joker 3, Queen 1 ...)</summary>
             <p class="hint">A flight name belongs to a place in the flight, not to a pilot: in missions where someone else flies as Joker 2, they get the new name too.</p>
             <div class="namelist" id="pnFlights"></div></details>
-          <div class="row"><button class="btn primary" id="pnSave" type="button">Save names</button><button class="btn quiet" id="pnClear" type="button">Put the game's names back</button><span class="hint" id="pnHint"></span></div>
+          <div class="row"><button class="btn primary" id="pnSave" type="button">Save names</button><button class="btn quiet" id="pnClear" type="button">Put the game's names back</button><span class="hint" id="pnHint"></span><span class="row" id="pnAsk" hidden></span></div>
           <div id="pnResult"></div>
         </div>
 
@@ -634,10 +640,12 @@
           <h1>Settings</h1>
           <p class="lead">Set these once. They are saved in settings.json next to the program.</p>
         </div>
+        <div class="notice warn" id="seFileNote" role="alert" hidden></div>
         <div class="block" id="seImportBlock">
           <h2>Coming from AC8 Skin Studio 1.x</h2>
           <p class="hint">Copies the game folder, AES key, mods folder and your extracted skins' location from the old program's settings, so you do not have to type them again. The old program is not changed.</p>
           <div class="row"><button class="btn" id="seImportOld">Use the settings of AC8 Skin Studio 1.x</button><span class="hint" id="seImportNote"></span></div>
+          <div class="setrow" id="seImportPathRow" hidden><input type="text" id="seImportPath" class="mono" spellcheck="false" placeholder="The folder of AC8 Skin Studio 1.x (where AC8SkinStudio.exe is)" aria-label="Folder of AC8 Skin Studio 1.x"><button class="btn" id="seImportPathGo" type="button">Use its settings</button></div>
         </div>
         <div class="block">
           <h2>Game files</h2>
@@ -695,8 +703,8 @@
           </label>
           <label class="check"><input type="checkbox" id="seBrowser"><span>Open in my default browser instead of a separate window<span class="hint">Takes effect the next time the program starts.</span></span></label>
           <div class="row">
-            <button class="btn primary" id="seSave">Save settings</button>
-            <span class="hint" id="seSaved" role="status"></span>
+            <button class="btn" id="seSave">Save and check again</button>
+            <span class="hint" id="seSaved" role="status">Settings are saved as soon as you change them.</span>
           </div>
         </div>
         <div class="block">
@@ -704,6 +712,7 @@
           <p class="hint" id="seAbout"></p>
           <p class="hint">Mods made here replace or add game files, so the game needs a mod loader that accepts them; new skin slots need AC8 Mod Loader 1.1.0 or newer. Use modded files offline and in single player only.</p>
           <div class="row"><button class="btn" id="seReport">Copy a support report</button><button class="btn" id="seOpenWork">Open the workspace folder</button><button class="btn" id="seQuit">Quit the program</button></div>
+          <div id="seQuitAsk"></div>
           <p class="hint">The report holds the version, these settings and the last task's log, ready to paste to whoever is helping you. The AES key is never included, and your Windows user name is taken out of the folder paths.</p>
           <div id="seReportOut"></div>
         </div>
@@ -715,11 +724,13 @@
       <div class="head">
         <span class="title" id="dockTitle"></span>
         <span class="step" id="dockStep"></span>
+        <button class="btn small" id="dockFix" type="button" hidden>Open Settings</button>
         <button class="btn small" id="dockReport" hidden>Copy report</button>
         <button class="btn small" id="dockLogBtn" aria-expanded="false">Show details</button>
         <button class="btn small" id="dockCancel">Cancel</button>
         <button class="btn small" id="dockClose" hidden>Close</button>
       </div>
+      <div class="msg" id="dockMsg" role="alert" hidden></div>
       <div class="bar" id="dockBar"><i></i></div>
       <pre class="log" id="dockLog" hidden tabindex="0"></pre>
     </div>
@@ -729,6 +740,7 @@
 </div>
 
 <dialog class="tut" id="tut" aria-labelledby="tutTitle">
+  <button class="btn small tut-close" id="tutClose" type="button" aria-label="Close the tutorial">&times; Close</button>
   <nav class="tut-topics" aria-label="Tutorial topics">
     <div class="head">// Briefing</div>
     <div id="tutTopics" style="display:contents"></div>

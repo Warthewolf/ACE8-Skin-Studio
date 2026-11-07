@@ -44,6 +44,7 @@ function renderEmblemPreview() {
 }
 
 async function useEmblemFiles(files) {
+  if (!files.length) return;
   const pic = files.find(f => /\.(png|jpe?g|tga)$/i.test(f.name));
   if (!pic) { notice($('#emResult'), 'error', 'Drop a PNG, JPEG or TGA picture for the emblem.'); return; }
   const up = $('#emUp'), bar = $('.upbar i', up);
@@ -59,6 +60,7 @@ async function useEmblemFiles(files) {
 wireDrop($('#emDrop'), useEmblemFiles);
 wireDrop($('#emPreview'), useEmblemFiles);
 $('#emPick').addEventListener('click', async () => {
+  if (!canPick()) { useEmblemFiles(await browserFiles({ accept: '.png,.jpg,.jpeg,.tga' })); return; }
   try {
     const r = await api('/api/pick', { kind: 'file', filter: 'pictures', title: 'Choose the emblem\'s picture' });
     if (r.paths && r.paths.length) { emb.picture = r.paths[0]; renderEmblemPreview(); updateButtons(); }
@@ -67,16 +69,12 @@ $('#emPick').addEventListener('click', async () => {
 
 function renderEmblemSetup() {
   if (!STATE) return;
-  const c = STATE.checks, box = $('#emSetup');
-  const need = ['workspace', 'retoc', 'paks', 'aes', 'mods'].filter(k => !c[k].ok);
-  box.hidden = !need.length;
-  if (need.length) box.replaceChildren(el('strong', { text: 'New emblems need a little setup first. ' }), need.map(k => c[k].note).join(' '), ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+  setupBanner($('#emSetup'), needsOf('emblem'), 'New emblems need a little setup first.');
 }
 
 function emblemNotReady() {
   if (!STATE) return '';
-  const c = STATE.checks;
-  for (const k of ['workspace', 'retoc', 'paks', 'aes', 'mods']) if (!c[k].ok) return 'Finish the setup in Settings first.';
+  if (needsOf('emblem').length) return 'Finish the setup in Settings first.';
   if (!emb.picture && !emblemUpdating()) return 'Choose the emblem\'s picture.';
   if (!$('#emName').value.trim()) return 'Give the emblem a name.';
   if (radio('emModMode') === 'add' && !$('#emMod').value) return 'Choose the skin mod to add it to.';
@@ -86,7 +84,7 @@ function emblemButtons() {
   const why = emblemNotReady();
   $('#emGo').disabled = !!activeJob || !!why;
   $('#emGo').textContent = emblemUpdating() ? 'Update this emblem' : 'Build new emblem';
-  $('#emGoHint').textContent = activeJob ? '' : why;
+  setGoHint('#emGoHint', activeJob ? '' : why);
 }
 
 async function buildEmblem() {
@@ -129,16 +127,17 @@ function emblemResultCard(res) {
     el('button', { class: 'btn small', onclick: () => exportMod(res.mod, $('#emResult')) }, 'Share as a .zip'),
     el('button', { class: 'btn small', onclick: startAnotherEmblem }, 'Start another emblem')));
   const wrap = el('div', { style: 'display:flex;flex-direction:column;gap:10px' }, box);
-  for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) wrap.append(el('div', { class: 'notice warn', text: p }));
+  for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) wrap.append(el('div', { class: 'notice warn', text: sentence(p) }));
   return wrap;
 }
 
-function startAnotherEmblem() {
+// quiet: the keyboard stays where it is (the menu's "New emblem").
+function startAnotherEmblem(quiet) {
   emb.rebuild = null; emb.picture = '';
   $('#emName').value = ''; $('#emDesc').value = '';
   $('#emResult').replaceChildren();
   renderEmblemPreview(); updateButtons();
-  $('#emName').focus();
+  if (quiet !== true) $('#emName').focus();
 }
 
 // "Change picture" on the Skin slots screen: this screen, set up to change that emblem.
@@ -158,7 +157,6 @@ function showEmblemPage() {
   renderEmblemSetup();
   fillEmblemModSelect();
   renderEmblemPreview();
-  $('#emPick').hidden = !(STATE && STATE.canPick);
   loadSlots(true).then(() => { fillEmblemModSelect(); updateButtons(); });
 }
 

@@ -15,7 +15,9 @@ function renderSave() {
   const auto = S.autoBackup || {};
   $('#svStats').replaceChildren(
     stat('Save', S.found ? 'found' : 'not found', S.found && !S.problem ? 'good' : 'bad', S.found ? 'Last saved ' + fmtWhen(S.modified) : 'Set its folder in Settings'),
-    stat('Game', S.gameRunning ? 'running' : 'closed', S.gameRunning ? 'bad' : 'good', S.gameRunning ? 'Close it to use these tools' : 'Ready'),
+    // without the save there is nothing to be ready for
+    S.found ? stat('Game', S.gameRunning ? 'running' : 'closed', S.gameRunning ? 'bad' : 'good', S.gameRunning ? 'Close it to use these tools' : 'Ready')
+      : stat('Game', S.gameRunning ? 'running' : '—', S.gameRunning ? 'bad' : '', 'Needs the save first'),
     stat('New skins and emblems', items.length ? unlocked + ' of ' + items.length + ' unlocked' : 'none yet', items.length ? (unlocked === items.length ? 'good' : 'warn') : '', items.length ? 'In the game\'s lists now' : 'Build one first'),
     stat('Backup at game start', auto.installed ? 'on' : (auto.dir ? 'off' : 'needs UE4SS'), auto.installed ? 'good' : 'warn', (S.backups || []).length + ((S.backups || []).length === 1 ? ' backup kept' : ' backups kept')));
 
@@ -23,9 +25,9 @@ function renderSave() {
   probs.replaceChildren();
   const warn = (...c) => probs.append(el('div', { class: 'notice warn', style: 'margin-bottom:8px' }, ...c));
   const canPutBack = (S.backups || []).some(b => (b.files || []).includes('Campaign.sav'));
-  if (S.problem) warn(el('strong', { text: 'The save cannot be used. ' }), S.problem, canPutBack ? (/[.!?]$/.test(S.problem) ? ' ' : '. ') : ' ',
+  if (S.problem) warn(el('strong', { text: 'The save cannot be used. ' }), sentence(S.problem), ' ',
     canPutBack ? 'If it was working before, close the game and press Put this back next to a backup below. ' : '',
-    el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+    el('button', { class: 'btn small', type: 'button', onclick: () => goSetting('seSaveDir') }, 'Set the save folder'));
   if (S.gameRunning) warn(el('strong', { text: 'The game is running. ' }), 'Close it first: the game writes its save when it closes, which would undo any change made now. ', el('button', { class: 'btn small', onclick: loadSave }, 'Check again'));
 
   // what Unlock now would unlock
@@ -61,7 +63,7 @@ function renderSave() {
     a.replaceChildren(el('p', { class: 'hint' }, el('strong', { text: 'Back up the save each time the game starts? ' }), 'This adds SkinStudioSaveBackup, a small UE4SS mod that copies the save when the game starts, keeping the last 20 starts. It only reads the save.'),
       el('div', { class: 'row', style: 'margin-bottom:12px' }, el('button', { class: 'btn small', type: 'button', onclick: () => autoMod(true) }, 'Turn it on')));
   } else {
-    a.replaceChildren(el('p', { class: 'hint', text: auto.problem || '' }));
+    a.replaceChildren(el('p', { class: 'hint', text: sentence(auto.problem || '') }));
   }
 
   // the list of backups
@@ -97,6 +99,9 @@ function saveButtons() {
   // a backup can be put back when the save is damaged or missing: that is when it is needed most
   $$('#svBackups button').forEach(b => { b.disabled = !!activeJob || !S || !S.dir || !!S.gameRunning; });
   $('#svBackupNow').disabled = !!activeJob || !S || !S.found;
+  // the backups folder sits next to the save folder, so it needs that first
+  $('#svOpen').disabled = !S || !S.backupsDir;
+  $('#svOpen').title = S && !S.backupsDir ? 'Set the game\'s save folder in Settings first' : '';
 }
 
 async function saveJob(path, body, okText) {
@@ -132,4 +137,5 @@ $('#svBackupNow').addEventListener('click', async () => {
   catch (e) { notice(out, 'error', e.message); }
   loadSave();
 });
-$('#svOpen').addEventListener('click', () => api('/api/open', { path: SAVE && SAVE.backupsDir }).catch(() => notice($('#svResult'), 'warn', 'There are no backups yet. Press Back up now to make one.')));
+$('#svOpen').addEventListener('click', () => api('/api/open', { path: SAVE && SAVE.backupsDir }).catch(() => notice($('#svResult'), 'warn',
+  SAVE && SAVE.found ? 'There are no backups yet. Press Back up now to make one.' : 'Set the game\'s save folder in Settings first.')));

@@ -384,7 +384,7 @@ func (s Settings) checks() map[string]check {
 	}
 	switch {
 	case s.ModsDir == "":
-		out["mods"] = check{false, "Choose your mods folder if you want finished mods copied there automatically."}
+		out["mods"] = check{false, "Choose the folder your mod loader reads (" + hostPath(`…\ACE COMBAT 8\Game\Binaries\Win64\ue4ss\Mods\IoStoreLoaderMod`) + "). New skins, emblems and imported skin mods are installed there."}
 	default:
 		if st, err := os.Stat(s.ModsDir); err != nil || !st.IsDir() {
 			out["mods"] = check{false, "That folder does not exist."}

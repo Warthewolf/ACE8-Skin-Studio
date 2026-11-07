@@ -843,7 +843,7 @@ func installFiles(dest string, files []string) error {
 
 func needModsFolder(s Settings) error {
 	if c := s.checks()["mods"]; !c.OK {
-		return errors.New("new skin slots go straight into your mods folder; set it in Settings first (" + c.Note + ")")
+		return errors.New("choose your mods folder in Settings first: new skins, emblems and imported skin mods are installed straight into it")
 	}
 	return nil
 }

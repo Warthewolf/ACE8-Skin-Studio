@@ -5,16 +5,25 @@ const pad3 = n => String(n).padStart(3, '0');
 function selectedSkin() { return LIB.find(sk => sk.dir === $('#rpSkin').value); }
 function folderNumberOf(sk) { return sk && /^\d{3}$/.test(sk.folder) ? +sk.folder : 0; }
 
+// The game skin a new skin starts from: the number typed under step 01, or the chosen folder's.
 function templateHint() {
   const sk = selectedSkin();
   const n = folderNumberOf(sk);
   const box = $('#rpTemplate');
   box.placeholder = n ? pad3(n) : 'number';
-  $('#rpTemplateHint').textContent = sk
-    ? (n ? 'The new skin starts as a copy of ' + sk.aircraft + ' skin ' + pad3(n) + ': its material, finish and normal map, and where emblems may go. Type another number to start from a different skin of this aircraft.'
-         : 'This folder is not named after a skin number, so type the number of the game skin to start from.')
-    : 'Choose the skin first.';
+  const typed = +box.value || 0, from = typed || n;
+  let text = 'Choose the skin first.';
+  if (sk && !from) text = 'This folder is not named after a skin number, so type the number of the game skin to start from.';
+  else if (sk) {
+    text = 'The new skin starts as a copy of ' + sk.aircraft + ' skin ' + pad3(from) + ': its material, finish and normal map, and where emblems may go.' +
+      (typed && typed !== n ? ' Empty the box to start from the chosen folder\'s skin' + (n ? ' (' + pad3(n) + ')' : '') + ' instead.' : ' Type another number to start from a different skin of this aircraft.');
+    const rb = slotUpdating() ? repack.rebuild : null;
+    if (rb && rb.template && from !== rb.template) text += ' ' + rb.name + ' is based on skin ' + pad3(rb.template) + ' now: updating it from another skin starts it again from that skin, without the paint it has.';
+  }
+  $('#rpTemplateHint').textContent = text;
 }
+// slotUpdating: the build button changes the skin being changed (or just built), not a new one.
+function slotUpdating() { return !!(repack.rebuild && radio('slModMode') === 'add' && $('#slMod').value === repack.rebuild.mod); }
 
 function fillModSelect() {
   const sel = $('#slMod'), keep = sel.value;
@@ -63,8 +72,9 @@ $$('input[name="slIcon"]').forEach(r => r.addEventListener('change', () => { ren
 $('#slColourAuto').addEventListener('change', () => { renderIconPreview(); updateButtons(); });
 $('#slColour').addEventListener('input', renderIconPreview);
 ['#slName', '#slModTitle'].forEach(s => $(s).addEventListener('input', updateButtons));
-$('#rpTemplate').addEventListener('input', () => { updateButtons(); clearTimeout(repack.tplTimer); repack.tplTimer = setTimeout(renderIconPreview, 400); });
-wireDrop($('#slIconPreview'), async files => {
+$('#rpTemplate').addEventListener('input', () => { templateHint(); updateButtons(); clearTimeout(repack.tplTimer); repack.tplTimer = setTimeout(renderIconPreview, 400); });
+async function slotIconFiles(files) {
+  if (!files.length) return;
   const pic = files.find(f => /\.(png|jpe?g|tga)$/i.test(f.name));
   if (!pic) { alertLine('Drop a PNG, JPEG or TGA picture for the icon.'); return; }
   try {
@@ -73,8 +83,10 @@ wireDrop($('#slIconPreview'), async files => {
     document.querySelector('input[name="slIcon"][value="picture"]').checked = true;
     renderIconPreview(); updateButtons();
   } catch (e) { alertLine(e.message); }
-});
+}
+wireDrop($('#slIconPreview'), slotIconFiles);
 $('#slPicPick').addEventListener('click', async () => {
+  if (!canPick()) { slotIconFiles(await browserFiles({ accept: '.png,.jpg,.jpeg,.tga' })); return; }
   try {
     const r = await api('/api/pick', { kind: 'file', filter: 'pictures', title: 'Choose a picture for the icon' });
     if (r.paths && r.paths.length) { repack.iconPicture = r.paths[0]; renderIconPreview(); updateButtons(); }
@@ -86,7 +98,10 @@ function slotNotReady() {
   const c = STATE.checks;
   for (const k of ['workspace', 'retoc', 'paks', 'aes', 'mods']) if (!c[k].ok) return 'Finish the setup in Settings first.';
   if (!$('#rpSkin').value) return 'Choose the skin to start from.';
-  if (!folderNumberOf(selectedSkin()) && !+$('#rpTemplate').value) return 'Type the number of the game skin to start from.';
+  // a skin being changed stays a skin of its own aircraft
+  const rb = slotUpdating() ? repack.rebuild : null, sk = selectedSkin();
+  if (rb && rb.vehicle && sk && sk.aircraft.toLowerCase() !== rb.vehicle.toLowerCase()) return 'Choose a skin of the ' + rb.vehicle + ': ' + rb.name + ' is one of its skins.';
+  if (!folderNumberOf(sk) && !+$('#rpTemplate').value) return 'Type the number of the game skin to start from.';
   if (!$('#slName').value.trim()) return 'Give the skin a name.';
   if (radio('slModMode') === 'add' && !$('#slMod').value) return 'Choose the skin mod to add it to.';
   if (radio('slIcon') === 'picture' && !repack.iconPicture) return 'Choose the picture for the icon.';
@@ -116,17 +131,19 @@ async function buildSlot() {
     await loadSlots(true);
     loadMods(true);
     // pressing Build again now updates this skin instead of making a second one
-    repack.rebuild = { mod: res.mod, slot: res.slot };
+    repack.rebuild = { mod: res.mod, slot: res.slot, name: res.name, vehicle: sk ? sk.aircraft : '', template: +$('#rpTemplate').value || folderNumberOf(sk) };
     document.querySelector('input[name="slModMode"][value="add"]').checked = true;
-    fillModSelect(); $('#slMod').value = res.mod; syncModMode(); updateButtons();
+    fillModSelect(); $('#slMod').value = res.mod; syncModMode(); templateHint(); updateButtons();
   } catch (e) { notice(out, 'error', e.message); }
 }
-function startAnotherSkin() {
+// startAnotherSkin leaves the skin just built (or being changed) alone: the next build makes a new
+// one. quiet: the keyboard stays where it is.
+function startAnotherSkin(quiet) {
   repack.rebuild = null;
-  $('#slName').value = ''; $('#slDesc').value = '';
+  $('#slName').value = ''; $('#slDesc').value = ''; $('#rpTemplate').value = '';
   $('#rpResult').replaceChildren();
-  $('#slName').focus();
-  updateButtons();
+  if (quiet !== true) $('#slName').focus();
+  templateHint(); updateButtons();
 }
 function aircraftNumber(name) { const m = /^[A-Za-z]+0*(\d+)_/.exec(name || ''); return m ? +m[1] : 0; }
 
@@ -157,7 +174,7 @@ function slotResultCard(res) {
     el('button', { class: 'btn small', onclick: () => exportMod(res.mod, $('#rpResult')) }, 'Share as a .zip'),
     el('button', { class: 'btn small', onclick: startAnotherSkin }, 'Start another skin')));
   const wrap = el('div', { style: 'display:flex;flex-direction:column;gap:10px' }, box);
-  for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) wrap.append(el('div', { class: 'notice warn', text: p }));
+  for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) wrap.append(el('div', { class: 'notice warn', text: sentence(p) }));
   return wrap;
 }
 
@@ -165,7 +182,7 @@ function slotResultCard(res) {
 let SLOTS = null;
 async function loadSlots(quiet) {
   try { SLOTS = await api('/api/slots'); } catch (e) { if (quiet !== true) notice($('#slList'), 'error', e.message); return; }
-  HUD.loader = SLOTS.ok ? (SLOTS.loader || '') : null;
+  HUD.loader = SLOTS.ok ? (SLOTS.loader || '') : null; HUD.modsOk = !!SLOTS.ok;
   HUD.slots = SLOTS.mods.reduce((a, m) => a + m.slots.length, 0);
   setHud();
   const b = $('#navSlotsBadge');
@@ -182,9 +199,10 @@ function stat(label, val, cls, hint) {
 
 function renderSlots() {
   const S = SLOTS;
-  const setup = $('#slSetupNote');
-  setup.hidden = S.ok;
-  if (!S.ok) setup.replaceChildren(el('strong', { text: 'No mods folder yet. ' }), S.note, ' ', el('button', { class: 'btn small', onclick: () => showPage('settings') }, 'Open Settings'));
+  setupBanner($('#slSetupNote'), S.ok ? [] : ['mods'], 'No mods folder yet.', 'Once it is set, this screen lists every skin mod in it, with its skins and emblems.', { mods: S.note });
+  // without a mods folder nothing here can be known yet
+  $('#slStats').hidden = !S.ok;
+  slotsButtons();
   const sst = S.sst || {};
   const count = S.mods.reduce((a, m) => a + m.slots.length, 0);
   const emblems = S.mods.reduce((a, m) => a + (m.emblems || []).length, 0);
@@ -194,7 +212,7 @@ function renderSlots() {
     stat('Skin list', S.stale ? 'out of date' : S.listBuilt ? 'up to date' : (count ? 'not built' : 'not needed yet'), S.stale ? 'bad' : S.listBuilt ? 'good' : (count ? 'bad' : ''), S.listBuilt ? 'Built ' + new Date(S.listBuilt).toLocaleString() : 'Built when skins are added'),
     stat('New skins', String(count), count ? 'good' : '', S.mods.length + (S.mods.length === 1 ? ' skin mod' : ' skin mods') + (emblems ? ', and ' + emblems + (emblems === 1 ? ' new emblem' : ' new emblems') : '')));
   const probs = $('#slProblems');
-  probs.replaceChildren(...(S.setup || []).concat(S.problems || []).map(p => el('div', { class: 'notice warn', style: 'margin-bottom:8px', text: p })));
+  probs.replaceChildren(...(S.setup || []).concat(S.problems || []).map(p => el('div', { class: 'notice warn', style: 'margin-bottom:8px', text: sentence(p) })));
   if (S.stale) probs.prepend(el('div', { class: 'notice error', style: 'margin-bottom:8px' }, el('strong', { text: 'The skin list needs rebuilding. ' }), S.stale, ' ',
     el('button', { class: 'btn small', onclick: () => slotJob('/api/skinlist/rebuild', {}, 'The skin list is up to date.') }, 'Rebuild the skin list')));
 
@@ -277,17 +295,29 @@ function slotCard(m, sl) {
   return card;
 }
 
-// "Change paint or icon": the New skin slot screen, set up to rebuild this skin.
-function rebuildSlot(m, sl) {
+// "Change paint or icon": the New skin slot screen, set up to rebuild this skin and nothing else.
+// Nothing chosen earlier on that screen carries over: not the pictures, the skin, a typed skin
+// number or the icon, so the skin keeps its own paint and stays based on its own game skin.
+async function rebuildSlot(m, sl) {
   showPage('repack', 'slot');
-  repack.rebuild = { mod: m.key, slot: sl.key };
+  const n = Math.floor(sl.template % 1000000 / 1000);
+  repack.rebuild = { mod: m.key, slot: sl.key, name: sl.name, vehicle: sl.vehicle, template: n };
+  if (repack.batches.length && !activeJob) api('/api/inbox/clean', { batches: repack.batches }).catch(() => {});
+  Object.assign(repack, { paintDir: '', files: [], batches: [], rows: [], picked: new Set(), touched: false, choices: {}, iconPicture: '', autoSkin: '' });
+  $('#rpPlan').replaceChildren(); $('#rpSource').hidden = true;
+  document.querySelector('input[name="slIcon"][value="base"]').checked = true;
   document.querySelector('input[name="slModMode"][value="add"]').checked = true;
   fillModSelect(); $('#slMod').value = m.key; syncModMode();
   $('#slName').value = sl.name; $('#slDesc').value = sl.description || '';
-  const n = Math.floor(sl.template % 1000000 / 1000);
-  const sk = LIB.find(s => s.aircraft === sl.vehicle && s.folder === pad3(n) && s.textures.some(t => t.supported));
-  if (sk) { chooseSkin(sk.dir); skinChanged(); } else $('#rpTemplate').value = n;
-  notice($('#rpResult'), 'info', el('strong', { text: 'Changing ' + sl.name + '. ' }), sk ? 'Drop new pictures if the paint changes (its own textures are kept otherwise), choose the icon and press Update this skin. It keeps its number.' : 'Extract ' + sl.vehicle + ' skin ' + pad3(n) + ' first (or add its raw files), then drop the new pictures.');
+  await loadLibrary.pending; // the extracted skins may still be loading
+  if (!repack.rebuild || repack.rebuild.slot !== sl.key) return; // another skin was chosen meanwhile
+  const sk = LIB.find(s => s.aircraft.toLowerCase() === (sl.vehicle || '').toLowerCase() && s.folder === pad3(n) && s.textures.some(t => t.supported));
+  if (sk) { chooseSkin(sk.dir); $('#rpTemplate').value = ''; }
+  else { $('#rpSkin').value = ''; $('#rpTemplate').value = n; }
+  skinChanged();
+  notice($('#rpResult'), 'info', el('strong', { text: 'Changing ' + sl.name + '. ' }),
+    sk ? 'Drop new pictures if the paint changes (its own textures are kept otherwise), choose the icon (it is made again from what you choose) and press Update this skin. It keeps its number.'
+       : 'Extract ' + sl.vehicle + ' skin ' + pad3(n) + ' first (or add its raw files), then choose it under step 01 and drop the new pictures.');
   updateButtons();
 }
 
@@ -300,7 +330,7 @@ async function slotJob(path, body, okText) {
     out.replaceChildren(box);
     const list = res && (res.list || (res.slots ? res : null));
     const saved = savedLine(list); if (saved) box.append(saved);
-    for (const p of (list && list.problems) || []) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: p }));
+    for (const p of (list && list.problems) || []) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: sentence(p) }));
   } catch (e) { notice(out, 'error', e.message); }
   await loadSlots();
   loadMods(true);
@@ -343,6 +373,7 @@ async function importFiles(files) {
   planImportUI();
 }
 $('#imPick').addEventListener('click', async () => {
+  if (!canPick()) { const files = await browserFiles({ accept: '.zip' }); if (files.length) importFiles(files); return; }
   try {
     const r = await api('/api/pick', { kind: 'file', filter: 'zip', title: 'Choose a skin mod (.zip)' });
     if (r.paths && r.paths.length) { imp.path = r.paths[0]; imp.batch = ''; planImportUI(); }
@@ -398,14 +429,21 @@ async function planImportUI() {
       if (plan.studio && (plan.skins.length || (plan.emblems || []).length)) done.append(el('p', { class: 'hint' }, 'New skins and emblems unlock when you finish a campaign mission, or straight away with ', el('button', { class: 'linkbtn', type: 'button', onclick: () => showPage('save') }, 'Unlock now'), ' on the Save tools screen.'));
       const saved = savedLine(res.list); if (saved) done.append(saved);
       out.replaceChildren(done);
-      for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: p }));
+      for (const p of (res.setup || []).concat((res.list && res.list.problems) || [])) out.append(el('div', { class: 'notice warn', style: 'margin-top:8px', text: sentence(p) }));
     } catch (e) { notice(out, 'error', e.message); }
     loadSlots(); loadMods(true);
   } }, plan.update ? 'Update it' : 'Install');
-  box.replaceChildren(card, ...plan.notes.map(n => el('div', { class: 'notice info', style: 'margin-top:8px', text: n })), el('div', { class: 'row', style: 'margin-top:12px' }, go, el('button', { class: 'btn quiet', onclick: () => box.replaceChildren() }, 'Cancel')));
+  box.replaceChildren(card, ...plan.notes.map(n => el('div', { class: 'notice info', style: 'margin-top:8px', text: sentence(n) })), el('div', { class: 'row', style: 'margin-top:12px' }, go, el('button', { class: 'btn quiet', onclick: () => box.replaceChildren() }, 'Cancel')));
 }
 
+// Rebuild the skin list needs the mods folder, and no other task running.
+function slotsButtons() {
+  const noMods = !!(SLOTS && !SLOTS.ok);
+  const b = $('#slRebuild');
+  b.disabled = !!activeJob || noMods;
+  b.title = noMods ? 'Set your mods folder in Settings first' : activeJob ? 'Wait for the task that is running' : '';
+}
 $('#slRefresh').addEventListener('click', () => { $('#slResult').replaceChildren(); loadSlots(); });
-$('#slNew').addEventListener('click', () => showPage('repack', 'slot'));
+$('#slNew').addEventListener('click', () => { newSkinSlot(); focusHeading(); });
 $('#slRebuild').addEventListener('click', () => slotJob('/api/skinlist/rebuild', {}, 'The skin list is up to date.'));
 $('#slOpenShared').addEventListener('click', () => api('/api/open', { path: STATE.folders.shared }).catch(() => notice($('#slResult'), 'warn', 'Nothing has been shared yet. "Share as .zip" on a skin mod makes one.')));
