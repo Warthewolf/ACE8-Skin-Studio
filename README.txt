@@ -1,4 +1,4 @@
-ACE8 Skin Studio 2.4.5
+ACE8 Skin Studio 2.5.0
 ======================
 
 Extract, paint and repack aircraft skins for Ace Combat 8, and add your own
@@ -61,6 +61,11 @@ folder and your extracted skins are copied over. Otherwise fill in:
 - Mappings (.usmap)  optional; see "After a game update" below
 
 The Appearance switch at the bottom left chooses Dark, Day or System.
+
+New to modding? The Tutorial (in the menu, and shown the first time) asks
+what you want to do and walks you through it, checks your setup with a
+green or red light per setting, and explains every word the program uses.
+Each screen also has a "How this works" button.
 
 
 The screens
@@ -229,6 +234,15 @@ Skin slots
   - Rebuild the skin list: makes the shared skin list again. The screen says
     when this is needed: after a game update, or when skin mods were added
     or removed by hand.
+  - How new skins are unlocked: new skins unlock when you finish a campaign
+    mission, and the game writes that into your save itself. An experiment
+    (off unless you tick it) also gives them a rule with no conditions,
+    which the game may act on at start; the steps to try it are on the
+    screen. "How the game unlocks skins" is a read-only report of the
+    game's DLC skins and unlock rules and of your save, with Copy report.
+    Why new skins are not made as DLC: see the docs folder of the source,
+    dlc-research.md (in short, the game only shows DLC skins to people who
+    own that DLC).
 
 Mods
   Lists the mods in your mods folder with the game files each one replaces,
@@ -253,7 +267,10 @@ Save tools
     next to the game's SaveGames folder. "Put this back" restores one; the
     save as it is then is backed up first, so a restore can be undone.
     System.sav (controls, sound and screen settings) is only put back when
-    you tick it.
+    you tick it. The save is also backed up by itself whenever the skin
+    list changes (a skin or emblem built, imported, changed or taken out),
+    unless the newest backup already has it; the last 20 of those are kept.
+    "Put this back" works even when the save is damaged or missing.
   - Backup at game start: SkinStudioSaveBackup, a small UE4SS mod installed
     with SkinSlotText, copies both saves each time the game starts and keeps
     the last 20. It only reads the save. Turn it off or on here.

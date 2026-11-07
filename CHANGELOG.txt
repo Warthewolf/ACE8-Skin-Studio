@@ -1,6 +1,102 @@
 ACE8 Skin Studio - what changed
 ===============================
 
+2.5.0
+-----
+For players who are new to modding
+- A new Tutorial. "Start here" asks what you want to do (install a skin
+  someone made, add your own skin or emblem, repaint a game skin, change
+  pilots, play without mods again) and takes you to the steps for it.
+  "First-time setup" shows each setting with a green or red light, says in
+  plain words what it is and where to find it, and "Set it" jumps to the
+  box. New topics: "Install a skin someone else made", "Something went
+  wrong" (the usual problems and their fixes) and "Words you will see" (a
+  plain-language glossary; underlined words in the steps link to it).
+  Every screen has a "How this works" button for its own topic.
+- Messages from the program are written as sentences, and every greyed-out
+  button says why, with a link to the step that is missing.
+
+Your save is safer
+- The save is now backed up before every change to the skin list as well:
+  building, importing, changing or taking out a skin or emblem, and
+  rebuilding the list. It is skipped when the newest backup already holds
+  the same save; the last 20 of these are kept, other backups are never
+  deleted by the program. Build results say the save was backed up.
+- "Put this back" now works when the save is damaged or missing, which is
+  when it is needed most. Restoring only System.sav backs it up first.
+- Backups and the new save are written to the disk before the old save is
+  replaced. A backup folder that cannot be made says so at once (before,
+  the program could wait for ever).
+- The game-start backup follows a save folder changed in Settings, and no
+  longer mixes an old file into a new slot (SkinStudioSaveBackup 1.1).
+
+New skins as DLC? (research)
+- New skins cannot be shipped as DLC: in Ace Combat 8 a skin's DLC id is
+  an ownership check that can only hide a skin. Making one appear for
+  everyone would mean faking DLC ownership, which this program will not
+  do. The details are in docs/dlc-research.md.
+- Skin slots, "How new skins are unlocked": an experiment, off by default.
+  Each new skin and emblem also gets an unlock rule with no conditions,
+  the way the game unlocks its own music player. If the game acts on it,
+  new skins appear at game start without a mission, written into the save
+  by the game itself; if not, finishing a mission still unlocks them.
+  The steps to try it are on the screen.
+- "How the game unlocks skins": a read-only report of the game's DLC
+  skins, unlock rules and your save, with Copy report.
+
+Linux
+- retoc for Linux now comes with the Linux package, and retoc.exe with the
+  Windows one (both from retoc 0.1.5).
+- Settings checks retoc before it is used and explains why it cannot run:
+  the Windows retoc.exe chosen on Linux (reported by players), retoc for
+  ARM, a Linux older than retoc needs (glibc 2.34; before, this showed as
+  a message about the AES key), a missing library, or a drive that does
+  not allow programs. A retoc made for this computer is used over a
+  retoc.exe left in Settings; retoc is marked as a program when it is not,
+  and found in the folder its download unpacks to.
+- Oodle goes next to the real retoc when retoc is a link (as installed by
+  cargo or a package).
+- retoc's reasons for a file it cannot convert are shown on Linux too.
+- LINUX.txt describes the Linux build.
+
+Fixes from a full review
+- A shared .zip can no longer write files outside the mods folder, crash
+  the program, make it hang or run it out of memory. Damaged containers
+  and packages give a plain message instead of crashing (a looping .utoc
+  crashed the program at every start).
+- Updating an imported skin mod, installing a built mod and moving a mod
+  aside are all-or-nothing: a failure part-way keeps the old files.
+  Installing recovers from an install that was cut off.
+- Skin and emblem numbers: two other tools' skin lists with the same new
+  skin both keep their skins; skins taken in from other tools keep their
+  numbers; a skin that moves to another number gets a new unlock rule (it
+  could never unlock under the old one); a removed skin's key is not
+  reused; a returning emblem does not take another emblem's number.
+- Removing another tool's skin-list mod on the Mods screen rebuilds the
+  shared skin list.
+- "Change paint or icon" no longer keeps an old skin number or another
+  aircraft's skin, which could rebuild the wrong skin without its paint.
+  "Make a new skin" starts a new skin instead of changing the last one.
+- Pilots: confirming "Put the game's names back" no longer leaves the
+  window stuck; typed names survive leaving the screen; photos kept with
+  portraits load again (JPEG photos included).
+- Repack: a project name with "metal", "rough" or "_ao" in it no longer
+  sends pictures to the wrong channel; missing tiles are named; a mod is
+  never installed into another mod's folder; the new skin name is only
+  written once the mod is built.
+- Pictures: damaged or tiny TGA/PNG files give a message instead of a
+  crash; 16-bit TGA colours and transparency are right.
+- The window opens with a one-time launch code instead of the access key
+  on the browser's command line. Starting the program a second time shows
+  the running copy without wiping its log; copies with different data
+  folders run side by side.
+- An unreadable settings.json is kept as a copy (it holds your AES key)
+  and Settings says where, instead of being overwritten.
+- Quit asks first when a task is running.
+- The layout works at half-screen widths and short screens, focus is
+  visible for keyboard use, text contrast meets WCAG AA in both themes,
+  and the Day theme's coloured notices look right.
+
 2.4.5
 -----
 - New screen: Useful links. Pages with templates for the game's skins, to
