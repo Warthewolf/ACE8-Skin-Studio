@@ -285,7 +285,7 @@ func reportLines(r *skinReport) []string {
 		}
 	}
 	if r.NoCondition > 0 {
-		out = append(out, fmt.Sprintf("The game itself has %d unlock rules with no conditions.", r.NoCondition))
+		out = append(out, "The game itself has "+countOf(r.NoCondition, "unlock rule")+" with no conditions.")
 	}
 	starts, acted := 0, 0
 	for _, o := range r.Ours {
@@ -301,9 +301,9 @@ func reportLines(r *skinReport) []string {
 	case !r.SaveFound:
 		out = append(out, "The experimental start rules cannot be checked: the save was not found.")
 	case acted > 0:
-		out = append(out, fmt.Sprintf("The game acted on %d of %d experimental start rules: new skins can be unlocked at game start, by the game itself.", acted, starts))
+		out = append(out, fmt.Sprintf("The game acted on %d of the %s: new skins can be unlocked at game start, by the game itself.", acted, countOf(starts, "experimental start rule")))
 	default:
-		out = append(out, fmt.Sprintf("The game has not acted on any of the %d experimental start rules yet. If the game has been started since they were added, it does not act on rules with no conditions for skins.", starts))
+		out = append(out, fmt.Sprintf("The game has not acted on the %s yet. If the game has been started since they were added, it does not act on rules with no conditions for skins.", countOf(starts, "experimental start rule")))
 	}
 	return out
 }

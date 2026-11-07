@@ -308,6 +308,7 @@ type stateView struct {
 	Folders  map[string]string `json:"folders"`
 	CanPick  bool              `json:"canPick"`
 	Busy     string            `json:"busy"`
+	OS       string            `json:"os"` // windows, linux: the window writes example paths the way this system does
 }
 
 func currentState() stateView {
@@ -318,7 +319,7 @@ func currentState() stateView {
 		busy = jobs.current.ID
 	}
 	jobs.mu.Unlock()
-	return stateView{App: appName, Version: appVersion, Settings: s, Checks: s.checks(), CanPick: canPick, Busy: busy,
+	return stateView{App: appName, Version: appVersion, Settings: s, Checks: s.checks(), CanPick: canPick, Busy: busy, OS: runtime.GOOS,
 		Folders: map[string]string{"data": dataDir, "defaultWorkspace": defaultWorkspace(), "raw": s.rawDir(), "paint": s.paintDir(), "split": s.splitDir(), "mods": s.modsOut(), "models": s.modelsDir(), "removedMods": s.removedModsDir(),
 			"shared": s.exportsDir(), "slotMods": s.slotModsDir(), "ue4ss": s.ue4ssModsDir(), "pilots": s.pilotsDir()}}
 }

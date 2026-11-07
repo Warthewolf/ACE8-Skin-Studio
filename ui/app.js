@@ -1228,6 +1228,24 @@ function askQuit(msg) {
 }
 $('#seQuit').addEventListener('click', () => { if (activeJob) askQuit(''); else quitProgram(false); });
 
+// ---------------------------------------------------------------- paths the way this system writes them
+// Example paths in the page are written for Windows; on Linux they are shown with / and in the
+// places Steam and Proton use there.
+const onWindows = () => !STATE || !STATE.os || STATE.os === 'windows';
+function osText(s) {
+  if (onWindows() || !s || !s.includes('\\')) return s;
+  return s.replace(/C:\\Program Files \(x86\)\\Steam/g, '~/.local/share/Steam')
+    .replace(/…\\AppData\\Local\\BANDAI/g, '…/steamapps/compatdata/<game>/pfx/drive_c/users/steamuser/AppData/Local/BANDAI')
+    .replace(/\\/g, '/');
+}
+function osPaths(root) {
+  if (onWindows()) return;
+  root.querySelectorAll('.hint, [placeholder]').forEach(n => {
+    if (n.placeholder && n.placeholder.includes('\\')) n.placeholder = osText(n.placeholder);
+    if (!n.children.length && n.textContent.includes('\\')) n.textContent = osText(n.textContent);
+  });
+}
+
 // ---------------------------------------------------------------- tutorial
 // Written for someone who has never modded a game before: plain words first, the program's own
 // terms explained (GLOSSARY; a term in a step is a link to its explanation), and the setup checks
@@ -1488,8 +1506,8 @@ function renderSetup(t, body) {
     return el('div', { class: 'setup-item' + (c.ok ? ' ok' : x.optional ? ' opt' : '') },
       el('span', { class: 'dot', role: 'img', 'aria-label': c.ok ? 'Done' : x.optional ? 'Optional, not found yet' : 'Not done yet' }),
       el('div', {}, el('b', { text: x.title }), el('small', { class: 'for', text: (x.optional ? 'Optional. Only needed for: ' : 'Needed for: ') + x.for }),
-        el('p', { text: c.ok ? c.note : x.what }),
-        c.ok ? null : el('p', { class: 'how', text: x.how }),
+        el('p', { text: c.ok ? c.note : osText(x.what) }),
+        c.ok ? null : el('p', { class: 'how', text: osText(x.how) }),
         c.ok ? null : el('p', { class: 'now', text: 'Now: ' + c.note })),
       c.ok ? el('span', { class: 'chip blue', text: 'Done' }) : el('button', { class: 'btn small', type: 'button', onclick: () => goSetting(x.field) }, 'Set it'));
   });
@@ -1516,7 +1534,7 @@ function renderTrouble(t, body) {
   body.append(el('div', { class: 'qa' }, TROUBLE.map(([q, a]) => el('details', {}, el('summary', { text: q }), el('p', { text: a })))));
 }
 function renderGlossary(t, body) {
-  body.append(el('dl', { class: 'glossary' }, GLOSSARY.flatMap(([w, d]) => [el('dt', { 'data-term': w, text: w }), el('dd', { 'data-term': w, text: d })])));
+  body.append(el('dl', { class: 'glossary' }, GLOSSARY.flatMap(([w, d]) => [el('dt', { 'data-term': w, text: w }), el('dd', { 'data-term': w, text: osText(d) })])));
 }
 
 function renderTutorial() {
@@ -1528,10 +1546,10 @@ function renderTutorial() {
   body.replaceChildren(...[
     el('h2', { id: 'tutTitle', text: t.title }),
     t.why ? el('p', { class: 'why', text: t.why }) : null,
-    t.short ? el('p', { class: 'why' }, el('strong', { text: 'In short: ' }), ...explain(t.short, seen)) : null,
-    t.need ? el('div', { class: 'need' }, el('span', { class: 'mono-label', text: 'Before you start' }), el('ul', {}, t.need.map(n => el('li', {}, ...explain(n, seen))))) : null,
-    t.steps ? el('ol', {}, t.steps.map(s => el('li', {}, el('span', {}, ...explain(s.t, seen), s.eg ? el('span', { class: 'eg', text: 'Example: ' + s.eg }) : null)))) : null,
-    t.tip ? el('p', { class: 'tip' }, ...explain(t.tip, seen)) : null].filter(Boolean));
+    t.short ? el('p', { class: 'why' }, el('strong', { text: 'In short: ' }), ...explain(osText(t.short), seen)) : null,
+    t.need ? el('div', { class: 'need' }, el('span', { class: 'mono-label', text: 'Before you start' }), el('ul', {}, t.need.map(n => el('li', {}, ...explain(osText(n), seen))))) : null,
+    t.steps ? el('ol', {}, t.steps.map(s => el('li', {}, el('span', {}, ...explain(osText(s.t), seen), s.eg ? el('span', { class: 'eg', text: 'Example: ' + osText(s.eg) }) : null)))) : null,
+    t.tip ? el('p', { class: 'tip' }, ...explain(osText(t.tip), seen)) : null].filter(Boolean));
   if (t.render) t.render(t, body);
   if (t.page) body.append(el('div', {}, el('button', { class: 'btn small', type: 'button', onclick: () => { $('#tut').close(); showPage(t.page, t.mode); } }, 'Open the ' + (t.page === 'slots' && t.id === 'install' ? 'Skin slots' : t.topic) + ' screen')));
   body.scrollTop = 0;
@@ -1600,6 +1618,7 @@ window.addEventListener('pageshow', ev => { if (ev.persisted) api('/api/ping').c
 (async () => {
   try {
     await refreshState();
+    osPaths(document);
     applyTheme(STATE.settings.theme);
     $('#exFormat').value = STATE.settings.imageFormat;
     let page = 'extract', mode = 'replace';

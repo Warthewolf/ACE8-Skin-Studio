@@ -102,7 +102,7 @@ func TestSkinReportLines(t *testing.T) {
 		{DLCID: "DLC0000", Category: "None", Count: 3, NoRule: 3},
 	}, Ours: []reportRule{{Kind: "skin", Name: "Navy", ID: 1400689}, {Kind: "skin", Name: "Navy", ID: 1400690, Start: true, Activated: true}}}
 	lines := strings.Join(reportLines(r), "\n")
-	for _, want := range []string{"5 DLC skins (DLC0002, DLC0000); 5 of them have no unlock rule", "Your save lists 2 DLC skins", "1 unlock rules with no conditions", "acted on 1 of 1 experimental start rules"} {
+	for _, want := range []string{"5 DLC skins (DLC0002, DLC0000); 5 of them have no unlock rule", "Your save lists 2 DLC skins", "1 unlock rule with no conditions", "acted on 1 of the 1 experimental start rule:"} {
 		if !strings.Contains(lines, want) {
 			t.Errorf("missing %q in:\n%s", want, lines)
 		}
@@ -110,7 +110,7 @@ func TestSkinReportLines(t *testing.T) {
 	r.Ours[1].Activated = false
 	r.Groups[1].InSave = 0
 	lines = strings.Join(reportLines(r), "\n")
-	if !strings.Contains(lines, "has not acted on any of the 1") || !strings.Contains(lines, "lists no DLC skins") {
+	if !strings.Contains(lines, "has not acted on the 1 experimental start rule yet") || !strings.Contains(lines, "lists no DLC skins") {
 		t.Errorf("not acted on:\n%s", lines)
 	}
 	if txt := reportText(r); !strings.Contains(txt, "DLC0002 / Campaign / false: 2, 0, 2") || !strings.Contains(txt, "1400690: skin, Navy, true") {
