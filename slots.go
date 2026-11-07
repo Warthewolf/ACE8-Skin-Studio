@@ -756,6 +756,19 @@ func installFiles(dest string, files []string) error {
 		}
 		return fmt.Errorf("could not %s %s in the mods folder (%v). Nothing there was changed. If the game is running, close it and try again", what, st.name, err)
 	}
+	// what an install that stopped half-way (a crash or power cut) left behind: an old file moved
+	// aside whose new one never arrived is put back; otherwise the leftovers go (Windows cannot
+	// rename onto a file that is there, so they would block every later install)
+	for _, st := range steps {
+		if _, err := os.Lstat(old(st)); err == nil {
+			if _, err := os.Lstat(st.target); os.IsNotExist(err) {
+				os.Rename(old(st), st.target)
+			} else {
+				os.Remove(old(st))
+			}
+		}
+		os.Remove(part(st))
+	}
 	// the new files, under other names: nothing there has changed yet
 	for _, st := range steps {
 		if err := copyFile(st.src, part(st)); err != nil {

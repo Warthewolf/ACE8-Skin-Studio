@@ -192,3 +192,40 @@ func TestSkinIconMustBeNamed(t *testing.T) {
 		t.Errorf("got %q, %v", got, err)
 	}
 }
+
+// An install that stopped half-way leaves old files moved aside; the next install puts back the
+// ones whose new file never arrived and removes the rest, instead of failing for ever.
+func TestInstallFilesAfterInterruptedInstall(t *testing.T) {
+	root := t.TempDir()
+	src, dest := filepath.Join(root, "packed"), filepath.Join(root, "Mods", "MySu57")
+	os.MkdirAll(src, 0o755)
+	os.MkdirAll(dest, 0o755)
+	var files []string
+	for _, n := range []string{"MySu57_P.utoc", "MySu57_P.ucas", "MySu57_P.pak"} {
+		p := filepath.Join(src, n)
+		os.WriteFile(p, []byte("new "+n), 0o644)
+		files = append(files, p)
+	}
+	// left behind: .utoc moved aside and never replaced; .ucas replaced but its .old not removed;
+	// a stray .part
+	os.WriteFile(filepath.Join(dest, "MySu57_P.utoc.old"), []byte("old utoc"), 0o644)
+	os.WriteFile(filepath.Join(dest, "MySu57_P.ucas"), []byte("newer ucas"), 0o644)
+	os.WriteFile(filepath.Join(dest, "MySu57_P.ucas.old"), []byte("old ucas"), 0o644)
+	os.WriteFile(filepath.Join(dest, "MySu57_P.pak.part"), []byte("half"), 0o644)
+	if err := installFiles(dest, files); err != nil {
+		t.Fatal(err)
+	}
+	es, _ := os.ReadDir(dest)
+	if len(es) != 3 {
+		var names []string
+		for _, e := range es {
+			names = append(names, e.Name())
+		}
+		t.Fatalf("left in the mods folder: %v", names)
+	}
+	for _, n := range []string{"MySu57_P.utoc", "MySu57_P.ucas", "MySu57_P.pak"} {
+		if b, _ := os.ReadFile(filepath.Join(dest, n)); string(b) != "new "+n {
+			t.Fatalf("%s is %q", n, b)
+		}
+	}
+}
