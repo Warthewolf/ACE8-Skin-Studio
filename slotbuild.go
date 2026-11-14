@@ -223,8 +223,14 @@ func doBuildSlot(j *Job, s Settings, r slotReq) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	named := aircraft
 	aircraft = skinAircraft(st, vehicle, aircraft)
 	template := r.Template
+	if template != 0 && aircraftOf(template) == named && named != aircraft {
+		// a number typed in the window is made from the vehicle's name (38 for PP0038_adfx02);
+		// the skin list keeps this aircraft under another number (138)
+		template = skinIDOf(aircraft, slotOf(template))
+	}
 	if template == 0 {
 		if n := folderNumber(folder); n > 0 {
 			template = skinIDOf(aircraft, n)

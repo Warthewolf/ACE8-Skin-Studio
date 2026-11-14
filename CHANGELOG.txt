@@ -74,6 +74,9 @@ Fixes from a full review
   reused; a returning emblem does not take another emblem's number.
 - Removing another tool's skin-list mod on the Mods screen rebuilds the
   shared skin list.
+- The ADF-X02 can have new skin slots. The game's skin list keeps it under
+  aircraft 138, not the 38 in its name (PP0038_adfx02), so building one
+  stopped with "is not in the game's skin list".
 - "Change paint or icon" no longer keeps an old skin number or another
   aircraft's skin, which could rebuild the wrong skin without its paint.
   "Make a new skin" starts a new skin instead of changing the last one.

@@ -42,3 +42,12 @@ func TestSkinAircraftGame(t *testing.T) {
 		t.Fatalf("PP0038_adfx02 -> %d", got)
 	}
 }
+
+// A "based on" number typed in the window is made from the vehicle's name (38); for the ADF-X02
+// it is moved to the number the skin list uses (138) when the slot is built.
+func TestSkinAircraftTypedTemplate(t *testing.T) {
+	typed := skinIDOf(38, 2) // what the window sends for PP0038_adfx02, skin 002
+	if got := skinIDOf(138, slotOf(typed)); got != 138002001 || aircraftOf(typed) != 38 {
+		t.Fatalf("typed %d -> %d", typed, got)
+	}
+}
