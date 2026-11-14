@@ -69,6 +69,7 @@ func applySkinExtras(j *Job, s Settings, r planReq, mod, input string, paintColo
 	if err != nil {
 		return nil, "", err
 	}
+	aircraft = skinAircraft(st, vehicle, aircraft)
 	row := st.Find(skinIDOf(aircraft, n))
 	if row == nil {
 		return nil, "", fmt.Errorf("%s has no skin %03d in the game's skin list", vehicle, n)

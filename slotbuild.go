@@ -86,6 +86,24 @@ func vehicleOfTexture(pkg string) (vehicle string, aircraft int, folder string, 
 	return vehicle, aircraft, folder, nil
 }
 
+// skinAircraft is the aircraft number the skin list uses for a vehicle. It is
+// usually the number in the vehicle's name (PP0022_f16c -> 22), but some
+// aircraft are listed under another one (PP0038_adfx02 -> 138), so when the
+// list has no skins under the name's number, the number is taken from the
+// rows whose material is in the vehicle's own folder.
+func skinAircraft(st *SkinTable, vehicle string, aircraft int) int {
+	if st == nil || len(st.UsedSlots(aircraft)) > 0 {
+		return aircraft
+	}
+	key := "/" + vehicle + "/"
+	for _, r := range st.Rows {
+		if id := r.SkinID(); id > 0 && strings.Contains(r.Material(), key) {
+			return aircraftOf(id)
+		}
+	}
+	return aircraft
+}
+
 func folderNumber(folder string) int {
 	if len(folder) == 3 {
 		if n, err := strconv.Atoi(folder); err == nil {
@@ -205,6 +223,7 @@ func doBuildSlot(j *Job, s Settings, r slotReq) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	aircraft = skinAircraft(st, vehicle, aircraft)
 	template := r.Template
 	if template == 0 {
 		if n := folderNumber(folder); n > 0 {

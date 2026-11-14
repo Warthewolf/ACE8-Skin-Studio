@@ -483,7 +483,7 @@ func templateIcon(j *Job, s Settings, skinDir, number string) (string, error) {
 			break
 		}
 	}
-	_, aircraft, folder, err := vehicleOfTexture(pkg)
+	vehicle, aircraft, folder, err := vehicleOfTexture(pkg)
 	if err != nil {
 		return "", err
 	}
@@ -504,6 +504,7 @@ func templateIcon(j *Job, s Settings, skinDir, number string) (string, error) {
 			return "", err
 		}
 	}
+	aircraft = skinAircraft(st, vehicle, aircraft)
 	row := st.Find(skinIDOf(aircraft, n))
 	if row == nil {
 		return "", errors.New("no such skin")
