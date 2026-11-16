@@ -207,6 +207,7 @@ function renderSlots() {
   const count = S.mods.reduce((a, m) => a + m.slots.length, 0);
   const emblems = S.mods.reduce((a, m) => a + (m.emblems || []).length, 0);
   $('#slStats').replaceChildren(
+    S.loader === 'found' ? stat('Mod loader', 'found', 'good', 'Version not readable; needs 1.1.0+') :
     stat('Mod loader', S.loader ? 'v' + S.loader : 'not found', S.loader ? (versionLess(S.loader, '1.1.0') ? 'bad' : 'good') : 'bad', S.loader && versionLess(S.loader, '1.1.0') ? 'New skins need 1.1.0 or newer' : (S.loader ? 'Loads new skin files' : 'Needed: AC8 Mod Loader 1.1.0+')),
     stat('Names (SkinSlotText)', sst.installed ? (sst.disabled ? 'switched off' : 'installed') : (sst.dir ? 'not yet' : 'UE4SS not found'), sst.installed && !sst.disabled ? 'good' : (sst.dir ? 'warn' : 'bad'), sst.installed ? '' : 'Installed with the first new skin'),
     stat('Skin list', S.stale ? 'out of date' : S.listBuilt ? 'up to date' : (count ? 'not built' : 'not needed yet'), S.stale ? 'bad' : S.listBuilt ? 'good' : (count ? 'bad' : ''), S.listBuilt ? 'Built ' + new Date(S.listBuilt).toLocaleString() : 'Built when skins are added'),

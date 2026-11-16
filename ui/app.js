@@ -164,6 +164,7 @@ function setHud() {
   if (HUD.modsOk === false) { lo.textContent = 'No mods folder'; lo.className = 'val'; lo.title = 'Set your mods folder in Settings'; }
   else if (HUD.loader == null) { lo.textContent = '—'; lo.className = 'val'; }
   else if (!HUD.loader) { lo.textContent = 'Not found'; lo.className = 'val bad'; }
+  else if (HUD.loader === 'found') { lo.textContent = 'Found'; lo.className = 'val good'; lo.title = 'Its version could not be read; new skins need AC8 Mod Loader 1.1.0 or newer'; }
   else { lo.textContent = 'v' + HUD.loader; lo.className = 'val ' + (versionLess(HUD.loader, '1.1.0') ? 'bad' : 'good'); lo.title = versionLess(HUD.loader, '1.1.0') ? 'New skin slots need AC8 Mod Loader 1.1.0 or newer' : ''; }
   const sl = $('#hudSlots');
   sl.textContent = HUD.slots == null || HUD.modsOk === false ? '—' : HUD.slots + (HUD.slots === 1 ? ' skin' : ' skins');

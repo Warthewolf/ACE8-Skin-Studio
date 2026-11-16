@@ -629,15 +629,45 @@ func installProject(s Settings, m *ModManifest, containerFiles []string) error {
 // ------------------------------------------------------------------ setup checks
 
 // loaderVersion reads the mod loader's version from its DLL next to the mods folder ("" if unknown).
+// loaderFound is what loaderVersion gives when the loader is there but its version could not be
+// read from its file (a build that stores it another way).
+const loaderFound = "found"
+
+// loaderDLLs are the places the mod loader's DLL may be: in the mods folder itself (the usual
+// ...\ue4ss\Mods\IoStoreLoaderMod), in an IoStoreLoaderMod folder next to it, and in any UE4SS mod
+// whose folder name says it is the loader.
+func loaderDLLs(s Settings) []string {
+	var out []string
+	add := func(dir string) { out = append(out, filepath.Join(dir, "dlls", "main.dll")) }
+	if s.ModsDir != "" {
+		add(s.ModsDir)
+		add(filepath.Join(filepath.Dir(s.ModsDir), "IoStoreLoaderMod"))
+	}
+	if u := s.ue4ssModsDir(); u != "" {
+		es, _ := os.ReadDir(u)
+		for _, e := range es {
+			n := strings.ToLower(e.Name())
+			if e.IsDir() && (strings.Contains(n, "iostore") || strings.Contains(n, "modloader") || strings.Contains(n, "mod_loader")) {
+				add(filepath.Join(u, e.Name()))
+			}
+		}
+	}
+	return out
+}
+
+// loaderVersion gives the mod loader's version ("1.3.1"), loaderFound when its DLL is there but
+// says no version, or "" when it was not found.
 func loaderVersion(s Settings) string {
-	for _, p := range []string{filepath.Join(s.ModsDir, "dlls", "main.dll"), filepath.Join(filepath.Dir(s.ModsDir), "IoStoreLoaderMod", "dlls", "main.dll")} {
+	found := false
+	for _, p := range loaderDLLs(s) {
 		b, err := os.ReadFile(p)
 		if err != nil || len(b) > 32<<20 {
 			continue
 		}
+		found = true
 		best := ""
-		for _, v := range utf16Strings(b, 5) {
-			if reVersion.MatchString(v) && versionLess(best, v) {
+		for _, v := range append(utf16Strings(b, 5), asciiStrings(b, 5)...) {
+			if v = loaderVersionText(v); v != "" && versionLess(best, v) {
 				best = v
 			}
 		}
@@ -645,10 +675,42 @@ func loaderVersion(s Settings) string {
 			return best
 		}
 	}
+	if found {
+		return loaderFound
+	}
 	return ""
 }
 
-var reVersion = regexp.MustCompile(`^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,3}$`)
+// loaderVersionText reads a version as a DLL may write it: 1.3.1, 1.3.1.0 or v1.3.1 ("" if not one).
+func loaderVersionText(v string) string {
+	v = strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(v), "v"), "V")
+	m := reVersion.FindStringSubmatch(v)
+	if m == nil {
+		return ""
+	}
+	return m[1]
+}
+
+var reVersion = regexp.MustCompile(`^([0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,3})(\.[0-9]{1,5})?$`)
+
+// asciiStrings finds runs of printable single-byte text in a file.
+func asciiStrings(b []byte, minLen int) []string {
+	var out []string
+	start := -1
+	for i := 0; i <= len(b); i++ {
+		if i < len(b) && b[i] >= 0x20 && b[i] < 0x7f {
+			if start < 0 {
+				start = i
+			}
+			continue
+		}
+		if start >= 0 && i-start >= minLen && i-start <= 64 {
+			out = append(out, string(b[start:i]))
+		}
+		start = -1
+	}
+	return out
+}
 
 func versionLess(a, b string) bool {
 	if a == "" {
@@ -693,6 +755,8 @@ func slotSetupProblems(s Settings) []string {
 	switch v := loaderVersion(s); {
 	case v == "":
 		out = append(out, "The mod loader's version could not be found next to your mods folder. New skins need AC8 Mod Loader 1.1.0 or newer; older loaders do not find files that are new to the game.")
+	case v == loaderFound:
+		// there, but it does not say its version: nothing to warn about
 	case versionLess(v, "1.1.0"):
 		out = append(out, "Your mod loader is version "+v+". New skins need AC8 Mod Loader 1.1.0 or newer; older loaders do not find files that are new to the game, so the skin would show without its paint and icon.")
 	}
