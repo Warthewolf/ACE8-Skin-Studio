@@ -259,6 +259,12 @@ type check struct {
 }
 
 // checks reports what is set up and what is still missing, in plain words.
+// ue4ssFolder tells whether dir is UE4SS's own Mods folder (it holds mods.txt).
+func ue4ssFolder(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, "mods.txt"))
+	return err == nil
+}
+
 // hostPath writes a Windows path hint the way this system writes paths: on Linux with /, and the
 // save folder as it is inside Proton's prefix.
 func hostPath(p string) string {
@@ -388,6 +394,14 @@ func (s Settings) checks() map[string]check {
 	default:
 		if st, err := os.Stat(s.ModsDir); err != nil || !st.IsDir() {
 			out["mods"] = check{false, "That folder does not exist."}
+		} else if ue4ssFolder(s.ModsDir) {
+			// UE4SS's own Mods folder: the mod loader does not read mods put here
+			inner := filepath.Join(s.ModsDir, "IoStoreLoaderMod")
+			if st, err := os.Stat(inner); err == nil && st.IsDir() {
+				out["mods"] = check{false, "This is UE4SS's own Mods folder (it holds mods.txt), not the folder the mod loader reads. Choose the folder inside it: " + inner}
+			} else {
+				out["mods"] = check{false, "This is UE4SS's own Mods folder (it holds mods.txt), not the folder the mod loader reads. Install AC8 Mod Loader, then choose its IoStoreLoaderMod folder inside this one."}
+			}
 		} else {
 			out["mods"] = check{true, "Folder found"}
 		}

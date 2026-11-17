@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"unicode/utf16"
 )
@@ -49,5 +50,26 @@ func TestLoaderVersion(t *testing.T) {
 	os.WriteFile(filepath.Join(other, "main.dll"), utf16Bytes("1.4.0"), 0o644)
 	if v := loaderVersion(s); v != "1.4.0" {
 		t.Fatalf("loader in its own UE4SS mod: %q", v)
+	}
+}
+
+// UE4SS's own Mods folder chosen as the mods folder is caught in Settings, which names the loader's
+// folder inside it; the loader is still found there.
+func TestModsFolderIsUE4SSFolder(t *testing.T) {
+	ue := filepath.Join(t.TempDir(), "ue4ss", "Mods")
+	loader := filepath.Join(ue, "IoStoreLoaderMod", "dlls")
+	os.MkdirAll(loader, 0o755)
+	os.WriteFile(filepath.Join(ue, "mods.txt"), []byte("IoStoreLoaderMod : 1\n"), 0o644)
+	os.WriteFile(filepath.Join(loader, "main.dll"), utf16Bytes("1.3.1"), 0o644)
+	s := Settings{ModsDir: ue}
+	c := s.checks()["mods"]
+	if c.OK || !strings.Contains(c.Note, filepath.Join(ue, "IoStoreLoaderMod")) {
+		t.Fatalf("check: %+v", c)
+	}
+	if v := loaderVersion(s); v != "1.3.1" {
+		t.Fatalf("loader: %q", v)
+	}
+	if c := (Settings{ModsDir: filepath.Join(ue, "IoStoreLoaderMod")}).checks()["mods"]; !c.OK {
+		t.Fatalf("the right folder: %+v", c)
 	}
 }

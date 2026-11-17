@@ -642,6 +642,7 @@ func loaderDLLs(s Settings) []string {
 	if s.ModsDir != "" {
 		add(s.ModsDir)
 		add(filepath.Join(filepath.Dir(s.ModsDir), "IoStoreLoaderMod"))
+		add(filepath.Join(s.ModsDir, "IoStoreLoaderMod")) // UE4SS's Mods folder chosen by mistake
 	}
 	if u := s.ue4ssModsDir(); u != "" {
 		es, _ := os.ReadDir(u)
