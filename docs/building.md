@@ -19,7 +19,7 @@ CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w -H=wi
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o ACE8SkinStudio .
 ```
 
-Both build from any system (Go cross-compiles). `ui/index.html` is embedded into the program, so **run `build.py` after changing anything in `ui/`**. `rsrc_windows_amd64.syso` gives the Windows program its icon.
+Both build from any system (Go cross-compiles). `ui/index.html` is embedded into the program, so **run `build.py` after changing anything in `ui/`**. `rsrc_windows_amd64.syso` gives the Windows program its icon and version details (made from `winres/`).
 
 Running a build without a window, on a fixed port and token (handy for testing the page in a browser or with Playwright):
 
@@ -56,7 +56,12 @@ With LLVM 18 the result is byte for byte the shipped `SkinSlotText.dll` (compare
 
 ## Releasing
 
-1. Set the version: `appVersion` in `settings.go`, the first line of `README.txt`, and a new section at the top of `CHANGELOG.txt`.
+1. Set the version: `appVersion` in `settings.go`, the first line of `README.txt`, a new section at the top of `CHANGELOG.txt`, and the four version fields in `winres/winres.json` (what Windows shows under Properties, Details). Then make the Windows resource again (the icon is `winres/icon.ico`):
+   ```sh
+   go install github.com/tc-hib/go-winres@v0.3.3
+   go-winres make --in winres/winres.json --arch amd64 --out rsrc   # writes rsrc_windows_amd64.syso
+   ```
+   A test (`TestWindowsVersionResource`) fails when the resource and `appVersion` disagree.
 2. Build the page and both programs as above; run the tests.
 3. Make the packages, each with the retoc for its system:
 

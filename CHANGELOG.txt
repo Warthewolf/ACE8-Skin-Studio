@@ -81,6 +81,7 @@ Fixes from a full review
 - Settings catches UE4SS's own Mods folder (the one with mods.txt) chosen as
   the mods folder, and names the mod loader's IoStoreLoaderMod folder inside
   it. Mods put in UE4SS's folder are not loaded by the mod loader.
+- ACE8SkinStudio.exe has version details (Properties, Details: 2.5.0).
 - The ADF-X02 can have new skin slots. The game's skin list keeps it under
   aircraft 138, not the 38 in its name (PP0038_adfx02), so building one
   stopped with "is not in the game's skin list".
