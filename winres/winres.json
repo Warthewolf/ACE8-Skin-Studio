@@ -8,19 +8,19 @@
     "#1": {
       "0000": {
         "fixed": {
-          "file_version": "2.5.0.0",
-          "product_version": "2.5.0.0"
+          "file_version": "2.5.1.0",
+          "product_version": "2.5.1.0"
         },
         "info": {
           "0409": {
             "CompanyName": "ACE8 Skin Studio",
             "FileDescription": "ACE8 Skin Studio",
-            "FileVersion": "2.5.0",
+            "FileVersion": "2.5.1",
             "InternalName": "ACE8SkinStudio",
             "LegalCopyright": "ACE8 Skin Studio",
             "OriginalFilename": "ACE8SkinStudio.exe",
             "ProductName": "ACE8 Skin Studio",
-            "ProductVersion": "2.5.0"
+            "ProductVersion": "2.5.1"
           }
         }
       }

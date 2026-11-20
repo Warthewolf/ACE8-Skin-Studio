@@ -1,4 +1,4 @@
-ACE8 Skin Studio 2.5.0
+ACE8 Skin Studio 2.5.1
 ======================
 
 Extract, paint and repack aircraft skins for Ace Combat 8, and add your own
