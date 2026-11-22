@@ -870,7 +870,7 @@ func routes() http.Handler {
 			fail(w, 400, err)
 			return
 		}
-		writeJSON(w, 200, map[string]any{"rows": rows, "pictures": n})
+		writeJSON(w, 200, map[string]any{"rows": rows, "pictures": n, "unused": planUnused(q, rows)})
 	})
 	// which skin the pictures were painted on, worked out from their names
 	api("/api/guessskin", func(w http.ResponseWriter, r *http.Request) {

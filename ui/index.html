@@ -2235,6 +2235,10 @@ async function replan() {
         el('td', {}, el('div', { class: 'tname', text: x.name }), el('div', { class: 'role', text: (KIND_LABEL[x.kind] || x.kind) + (x.plain ? ', one picture of ' + x.width + ' × ' + x.height : x.blocksW ? ', ' + (x.blocksW * x.blocksH) + ' tiles' + (x.blocksH === 1 ? ' (1001 to ' + (1000 + x.blocksW) + ')' : '') : '') })),
         el('td', {}, planCell(x))))));
     box.replaceChildren(el('div', { class: 'tablewrap' }, table));
+    // pictures no texture of this skin is rebuilt from: say which and why, instead of dropping them quietly
+    if (anyReady && (r.unused || []).length) box.append(el('div', { class: 'notice warn', style: 'margin-top:10px' },
+      el('strong', { text: (r.unused.length === 1 ? '1 picture is' : r.unused.length + ' pictures are') + ' not used. ' }),
+      el('ul', { style: 'margin:6px 0 0 18px' }, r.unused.map(u => el('li', {}, el('b', { text: u.file }), ': ' + u.why + '.')))));
     texOptsShown();
     const choosing = r.rows.some(x => (x.recipe.choices || []).some(c => !c.picked));
     const tiled = r.rows.some(x => !x.plain && x.blocksW * x.blocksH > 1);

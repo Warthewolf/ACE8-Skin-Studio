@@ -13,6 +13,9 @@ ACE8 Skin Studio - what changed
 - Settings catches UE4SS's own Mods folder (the one with mods.txt) chosen as
   the mods folder, and names the mod loader's IoStoreLoaderMod folder inside
   it. Mods put in UE4SS's folder are not loaded by the mod loader.
+- Repack and New skin slot say which dropped pictures are not used and why,
+  for example a normal map (_NO) dropped for a skin that has none of its
+  own (it shares the aircraft's). Before, it was left out without a word.
 - ACE8SkinStudio.exe has version details: Properties, Details shows
   2.5.1 (before, the Windows program had no version there at all).
 

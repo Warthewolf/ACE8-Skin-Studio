@@ -770,6 +770,50 @@ func paintedFiles(r planReq) ([]string, error) {
 	return files, nil
 }
 
+// unusedPicture is a dropped picture that no texture of the chosen skin is rebuilt from, and why.
+type unusedPicture struct {
+	File string `json:"file"`
+	Why  string `json:"why"`
+}
+
+// planUnused lists the pictures no row uses. A picture named for a kind of texture the chosen skin
+// does not have (a normal map for a skin that uses the aircraft's shared one) says so.
+func planUnused(r planReq, rows []planRow) []unusedPicture {
+	files, err := paintedFiles(r)
+	if err != nil {
+		return nil
+	}
+	used := map[string]bool{}
+	has := map[Kind]bool{}
+	for _, row := range rows {
+		has[row.Kind] = true
+		for _, src := range row.Recipe.Sources {
+			for _, f := range src.Files {
+				used[filepath.Clean(f)] = true
+			}
+		}
+	}
+	label := map[Kind]string{KindColour: "colour texture", KindFinish: "finish texture (metal and roughness)", KindNormal: "normal map"}
+	out := []unusedPicture{}
+	for _, f := range files {
+		if used[filepath.Clean(f)] {
+			continue
+		}
+		u := unusedPicture{File: filepath.Base(f), Why: "its name does not match a texture of this skin"}
+		name := strings.TrimSuffix(filepath.Base(f), filepath.Ext(f))
+		if i := strings.LastIndexByte(name, '.'); i > 0 { // T_..._NO.1001
+			name = name[:i]
+		}
+		if k := GuessKind(name); k != KindOther && !has[k] {
+			u.Why = "this skin has no " + label[k] + " of its own to rebuild (it uses one it shares with other skins of the aircraft)"
+		} else if ch, _, skip := classify(f); ch == ChNormal && !skip && !has[KindNormal] {
+			u.Why = "this skin has no normal map of its own to rebuild (it uses one it shares with other skins of the aircraft)"
+		}
+		out = append(out, u)
+	}
+	return out
+}
+
 func doPlan(r planReq) ([]planRow, int, error) {
 	texs, err := skinTextures(r.SkinDir)
 	if err != nil {
