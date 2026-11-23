@@ -73,3 +73,31 @@ func TestModsFolderIsUE4SSFolder(t *testing.T) {
 		t.Fatalf("the right folder: %+v", c)
 	}
 }
+
+// An installed SkinSlotText whose script is older than this program's is not current, and is brought
+// up to date by refreshSkinSlotText; one that is not installed stays not installed.
+func TestRefreshSkinSlotText(t *testing.T) {
+	ue := filepath.Join(t.TempDir(), "ue4ss", "Mods")
+	os.MkdirAll(ue, 0o755)
+	os.WriteFile(filepath.Join(ue, "mods.txt"), []byte(""), 0o644)
+	s := Settings{UE4SSMods: ue}
+	refreshSkinSlotText(s)
+	if _, err := os.Stat(filepath.Join(ue, "SkinSlotText")); err == nil {
+		t.Fatal("installed where it was not")
+	}
+	if err := installSkinSlotText(s); err != nil {
+		t.Fatal(err)
+	}
+	if st := skinSlotTextStatus(s); !st.Installed || !st.Current {
+		t.Fatalf("fresh install: %+v", st)
+	}
+	lua := filepath.Join(ue, "SkinSlotText", "Scripts", "main.lua")
+	os.WriteFile(lua, []byte("-- SkinSlotText 1.2 (old)\\n"), 0o644)
+	if st := skinSlotTextStatus(s); st.Current {
+		t.Fatal("an old script counts as current")
+	}
+	refreshSkinSlotText(s)
+	if b, _ := os.ReadFile(lua); !strings.Contains(string(b), "1.2.1") {
+		t.Fatalf("not updated: %q", b[:40])
+	}
+}

@@ -16,6 +16,11 @@ ACE8 Skin Studio - what changed
 - Repack and New skin slot say which dropped pictures are not used and why,
   for example a normal map (_NO) dropped for a skin that has none of its
   own (it shares the aircraft's). Before, it was left out without a word.
+- New skin names and descriptions show again when the game takes a long
+  time to start (SkinSlotText 1.2.1). The text mod gave up waiting while
+  the game was still loading, so pictures and emblems worked but their
+  names did not. Skin Studio updates an installed SkinSlotText by itself
+  when it starts.
 - ACE8SkinStudio.exe has version details: Properties, Details shows
   2.5.1 (before, the Windows program had no version there at all).
 

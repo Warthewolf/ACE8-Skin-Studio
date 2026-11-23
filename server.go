@@ -98,6 +98,7 @@ func runApp(args []string) int {
 	os.WriteFile(filepath.Join(dataDir, portFileName), []byte(strconv.Itoa(listenPort)), 0o644)
 	fmt.Println(baseURL + "/?t=" + token)
 	purgeInbox(getSettings())
+	go refreshSkinSlotText(getSettings())
 
 	presence.heard("")
 	if !*noOpen {

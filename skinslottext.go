@@ -31,10 +31,21 @@ func skinSlotTextStatus(s Settings) sstStatus {
 		return st
 	}
 	dll := filepath.Join(st.Dir, "SkinSlotText", "Scripts", "SkinSlotText.dll")
-	have, err := os.ReadFile(dll)
+	_, err := os.Stat(dll)
 	st.Installed = err == nil
-	want, _ := skinSlotTextFS.ReadFile("embed/SkinSlotText/Scripts/SkinSlotText.dll")
-	st.Current = st.Installed && bytes.Equal(have, want)
+	// current: every file this program carries (the DLL and its script) is there as it is here
+	st.Current = st.Installed
+	fs.WalkDir(skinSlotTextFS, "embed/SkinSlotText", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		want, _ := skinSlotTextFS.ReadFile(p)
+		rel := strings.TrimPrefix(strings.TrimPrefix(p, "embed/SkinSlotText"), "/")
+		if have, err := os.ReadFile(filepath.Join(st.Dir, "SkinSlotText", filepath.FromSlash(rel))); err != nil || !bytes.Equal(have, want) {
+			st.Current = false
+		}
+		return nil
+	})
 	if b, err := os.ReadFile(filepath.Join(st.Dir, "mods.txt")); err == nil {
 		for _, l := range strings.Split(string(b), "\n") {
 			k, v, ok := strings.Cut(l, ":")
@@ -50,6 +61,20 @@ func skinSlotTextStatus(s Settings) sstStatus {
 		st.Problem = "SkinSlotText is switched off in UE4SS's mods.txt (SkinSlotText : 0), so new skins show their text keys instead of their names. Change the 0 to 1."
 	}
 	return st
+}
+
+// refreshSkinSlotText brings an installed SkinSlotText up to this program's version when the program
+// starts (1.2.1's script fixes names never showing after a long game start). It does not install it
+// where it is not.
+func refreshSkinSlotText(s Settings) {
+	if st := skinSlotTextStatus(s); !st.Installed || st.Current {
+		return
+	}
+	if err := installSkinSlotText(s); err != nil {
+		logf("SkinSlotText could not be updated: %v", err)
+	} else {
+		logf("SkinSlotText updated in %s", s.ue4ssModsDir())
+	}
 }
 
 // installSkinSlotText copies the built-in SkinSlotText into UE4SS's Mods folder. The texts folder

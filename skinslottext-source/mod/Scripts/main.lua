@@ -1,4 +1,4 @@
--- SkinSlotText 1.2 (UE4SS Lua mod for ACE COMBAT 8, experimental)
+-- SkinSlotText 1.2.1 (UE4SS Lua mod for ACE COMBAT 8, experimental)
 -- Loads SkinSlotText.dll from this folder. The DLL gives the game the names and descriptions of new skin slots,
 -- read from texts\*.ini (and SkinSlotText.ini) next to it, and passes every other text on unchanged.
 -- Its own report is SkinSlotText.log next to the DLL.
@@ -55,10 +55,20 @@ if type(LoopAsync) ~= "function" then
     log("this UE4SS build has no LoopAsync - the texts cannot be switched on")
     return
 end
-local n = 0
+-- Once a second the DLL gets a moment on the game thread, but only when the last one has run: while
+-- the game is still loading (which can take minutes with many mods) nothing piles up, and only
+-- moments that really ran are counted. Counting queued ones instead (1.2) could use them all up in a
+-- burst once loading ended, before the DLL's few seconds of waiting were over, so it never hooked.
+local ran, waiting = 0, false
 LoopAsync(1000, function()
-    n = n + 1
-    onGameThread(function() pcall(tick) end)
-    return n >= 75          -- the DLL has decided within about 60 s; stop asking
+    if not waiting then
+        waiting = true
+        onGameThread(function()
+            pcall(tick)
+            ran = ran + 1
+            waiting = false
+        end)
+    end
+    return ran >= 90        -- the DLL has decided within about 60 s of running; stop asking
 end)
-log("1.2 loaded")
+log("1.2.1 loaded")

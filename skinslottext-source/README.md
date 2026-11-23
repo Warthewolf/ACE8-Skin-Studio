@@ -1,4 +1,4 @@
-# SkinSlotText 1.2
+# SkinSlotText 1.2.1
 
 A small UE4SS mod for ACE COMBAT 8 that gives new skin slots their names and descriptions. Skin
 mods made with ACE8 Skin Studio add skins in slots the game does not have; the game asks for their
@@ -71,3 +71,12 @@ unknown bytes, finding the function in another game build, and doing nothing wit
     test/                  the Linux tests
 
 Any issues please contact @voidcallsreaper on Discord.
+
+## 1.2.1
+
+The script keeps asking the DLL to finish until it has run about 90 times on the game thread
+(roughly a minute of the DLL's time), counted when each run happens rather than when it is asked.
+1.2 counted the asks, so when the game thread was busy for minutes while the game started, all 75
+asks were used up before the DLL's few seconds of waiting had passed, and the hook was never put in
+(the log stops at "waiting a few seconds in case another text mod hooks the lookup function first").
+The DLL is unchanged.
